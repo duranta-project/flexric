@@ -1,7 +1,7 @@
 *.out 
 *.py
 *.swp
-*.json
+compile_commands.json
 build/
 tags
 archives/
