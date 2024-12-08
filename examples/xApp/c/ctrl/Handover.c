@@ -1,0 +1,465 @@
+
+#include "../../../../src/xApp/e42_xapp_api.h"
+#include "../../../../src/sm/rc_sm/ie/ir/ran_param_struct.h"
+#include "../../../../src/sm/rc_sm/ie/ir/ran_param_list.h"
+#include "../../../../src/util/time_now_us.h"
+#include "../../../../src/util/alg_ds/ds/lock_guard/lock_guard.h"
+#include "../../../../src/sm/rc_sm/rc_sm_id.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <pthread.h>
+#include <time.h>
+#include <unistd.h>
+#include <signal.h>
+
+
+typedef enum{
+    Handover_Control_7_6_4_1 = 1,
+    Conditional_Handover_Control_7_6_4_1 = 2,
+    DAPS_Handover_Control_7_6_4_1 = 3,
+} rc_ctrl_service_style_3_act_id_e;
+
+
+static
+e2sm_rc_ctrl_hdr_frmt_1_t gen_rc_ctrl_hdr_frmt_1(ue_id_e2sm_t ue_id, uint32_t ric_style_type, uint16_t ctrl_act_id)
+{
+  e2sm_rc_ctrl_hdr_frmt_1_t dst = {0};
+
+  // 6.2.2.6
+  dst.ue_id = cp_ue_id_e2sm(&ue_id);
+
+  dst.ric_style_type = ric_style_type;
+  dst.ctrl_act_id = ctrl_act_id;
+
+  return dst;
+}
+
+
+static
+e2sm_rc_ctrl_hdr_t gen_rc_ctrl_hdr(e2sm_rc_ctrl_hdr_e hdr_frmt, ue_id_e2sm_t ue_id, uint32_t ric_style_type, uint16_t ctrl_act_id)
+{
+  e2sm_rc_ctrl_hdr_t dst = {0};
+
+  if (hdr_frmt == FORMAT_1_E2SM_RC_CTRL_HDR) {
+    dst.format = FORMAT_1_E2SM_RC_CTRL_HDR;
+    dst.frmt_1 = gen_rc_ctrl_hdr_frmt_1(ue_id, ric_style_type, ctrl_act_id);
+  } else {
+    assert(0!=0 && "not implemented the fill func for this ctrl hdr frmt");
+  }
+
+  return dst;
+}
+
+typedef enum {
+    Target_Primary_Cell_ID_8_4_4_1= 1,
+    CHOICE_Target_Cell_8_4_4_1= 2,
+    NR_Cell_8_4_4_1= 3,
+    NR_CGI_8_4_4_1= 4,
+    EUTRA_Cell_8_4_4_1= 5,
+    EUTRA_CGI_8_4_4_1= 6,
+    List_of_PDU_sessions_for_handover_8_4_4_1= 7,
+    PDU_session_Item_for_handover_8_4_4_1= 8,
+    PDU_Session_ID_8_4_4_1= 9,
+    List_of_QoS_flows_in_the_PDU_session_8_4_4_1= 10,
+    QoS_flow_Item_8_4_4_1= 11,
+    QoS_Flow_Identifier_8_4_4_1= 12,
+    List_of_DRBs_for_handover_8_4_4_1= 13,
+    DRB_item_for_handover_8_4_4_1= 14,
+    DRB_ID_8_4_4_1= 15,
+    List_of_QoS_flows_in_the_DRB_8_4_4_1= 16,
+    //QoS_flow_Item_8_4_4_1= 17,
+    //QoS_flow_Identifier_8_4_4_1= 18,
+    List_of_Secondary_cells_to_be_setup_8_4_4_1= 19,
+    Secondary_cell_Item_to_be_setup_8_4_4_1= 20,
+    Secondary_cell_ID_8_4_4_1= 21,
+} handover_Control_param_id_e;
+
+
+static
+void gen_Target_Primary_Cell_ID (seq_ran_param_t* Target_Primary_Cell_ID)
+{ 
+    // Target Primary Cell ID, STRUCTURE (len 1)
+
+  Target_Primary_Cell_ID->ran_param_id = Target_Primary_Cell_ID_8_4_4_1;
+  Target_Primary_Cell_ID->ran_param_val.type = STRUCTURE_RAN_PARAMETER_VAL_TYPE;
+  Target_Primary_Cell_ID->ran_param_val.strct = calloc(1, sizeof(ran_param_struct_t));
+  assert(Target_Primary_Cell_ID->ran_param_val.strct != NULL && "Memory exhausted");
+  Target_Primary_Cell_ID->ran_param_val.strct->sz_ran_param_struct = 1;
+  Target_Primary_Cell_ID->ran_param_val.strct->ran_param_struct = calloc(1, sizeof(seq_ran_param_t));
+  assert(Target_Primary_Cell_ID->ran_param_val.strct->ran_param_struct != NULL && "Memory exhausted");
+ 
+   // > CHOICE Target Cell, STRUCTURE (len 2)
+  seq_ran_param_t* CHOICE_Target_Cell = &Target_Primary_Cell_ID->ran_param_val.strct->ran_param_struct[0];
+  CHOICE_Target_Cell->ran_param_id = CHOICE_Target_Cell_8_4_4_1;
+  CHOICE_Target_Cell->ran_param_val.type = STRUCTURE_RAN_PARAMETER_VAL_TYPE;
+  CHOICE_Target_Cell->ran_param_val.strct = calloc(1, sizeof(ran_param_struct_t));
+  assert(CHOICE_Target_Cell->ran_param_val.strct != NULL && "Memory exhausted");
+  CHOICE_Target_Cell->ran_param_val.strct->sz_ran_param_struct = 2;
+  CHOICE_Target_Cell->ran_param_val.strct->ran_param_struct = calloc(2, sizeof(seq_ran_param_t));
+  assert(CHOICE_Target_Cell->ran_param_val.strct->ran_param_struct != NULL && "Memory exhausted");
+ 
+  // >>  NR Cell, STRUCTURE (len 1))
+  seq_ran_param_t* NR_Cell = &CHOICE_Target_Cell->ran_param_val.strct->ran_param_struct[0];
+  NR_Cell->ran_param_id = NR_Cell_8_4_4_1;
+  NR_Cell->ran_param_val.type = STRUCTURE_RAN_PARAMETER_VAL_TYPE;
+  NR_Cell->ran_param_val.strct = calloc(1, sizeof(ran_param_struct_t));
+  assert(NR_Cell->ran_param_val.strct != NULL && "Memory exhausted");
+  NR_Cell->ran_param_val.strct->sz_ran_param_struct = 1;
+  NR_Cell->ran_param_val.strct->ran_param_struct = calloc(1, sizeof(seq_ran_param_t));
+  
+   // >>> NR CGI, ELEMENT   NR CGI is usually written in the format: PLMN ID + NR Cell Identity.
+  seq_ran_param_t* NR_CGI = &NR_Cell->ran_param_val.strct->ran_param_struct[0];
+  NR_CGI->ran_param_id = NR_CGI_8_4_4_1;
+  NR_CGI->ran_param_val.type = ELEMENT_KEY_FLAG_FALSE_RAN_PARAMETER_VAL_TYPE;
+  NR_CGI->ran_param_val.flag_false = calloc(1, sizeof(ran_parameter_value_t));
+  assert(NR_CGI->ran_param_val.flag_false != NULL && "Memory exhausted");
+  NR_CGI->ran_param_val.flag_false->type = OCTET_STRING_RAN_PARAMETER_VALUE;
+  char nr_cgi_str []= "3";
+  
+  byte_array_t nr_cgi = cp_str_to_ba(nr_cgi_str); 
+  NR_CGI->ran_param_val.flag_false->octet_str_ran.len = nr_cgi.len;
+  NR_CGI->ran_param_val.flag_false->octet_str_ran.buf = nr_cgi.buf;
+
+  // >>E-UTRA Cell, STRUCTURE (len 1)
+  seq_ran_param_t* EUTRA_Cell = &CHOICE_Target_Cell->ran_param_val.strct->ran_param_struct[1];
+  EUTRA_Cell->ran_param_id = EUTRA_Cell_8_4_4_1;
+  EUTRA_Cell->ran_param_val.type = STRUCTURE_RAN_PARAMETER_VAL_TYPE;
+  EUTRA_Cell->ran_param_val.strct = calloc(1, sizeof(ran_param_struct_t));
+  assert(EUTRA_Cell->ran_param_val.strct != NULL && "Memory exhausted");
+  EUTRA_Cell->ran_param_val.strct->sz_ran_param_struct = 1;
+  EUTRA_Cell->ran_param_val.strct->ran_param_struct = calloc(1, sizeof(seq_ran_param_t));
+  
+  // >>>E-UTRA CGI, ELEMENT  The E-UTRA CGI is typically written in the format: PLMN ID + E-UTRAN Cell Identity.
+  seq_ran_param_t* EUTRA_CGI = &EUTRA_Cell->ran_param_val.strct->ran_param_struct[0];
+  EUTRA_CGI->ran_param_id = EUTRA_CGI_8_4_4_1;
+  EUTRA_CGI->ran_param_val.type = ELEMENT_KEY_FLAG_FALSE_RAN_PARAMETER_VAL_TYPE;
+  EUTRA_CGI->ran_param_val.flag_false = calloc(1, sizeof(ran_parameter_value_t));
+  assert(EUTRA_CGI->ran_param_val.flag_false != NULL && "Memory exhausted");
+  EUTRA_CGI->ran_param_val.flag_false->type = OCTET_STRING_RAN_PARAMETER_VALUE;
+  char eUTRA_cgi_str []= "3";
+ 
+  byte_array_t eUTRA_cgi = cp_str_to_ba(eUTRA_cgi_str); 
+  EUTRA_CGI->ran_param_val.flag_false->octet_str_ran.len = eUTRA_cgi.len;
+  EUTRA_CGI->ran_param_val.flag_false->octet_str_ran.buf = eUTRA_cgi.buf;
+  return;
+}
+
+
+
+static
+void gen_List_of_PDU_sessions_for_handover(seq_ran_param_t* List_PDU_sessions_ho )
+{
+  int num_PDU_session = 1;
+  // List of PDU sessions for handover, LIST (len 1)
+  List_PDU_sessions_ho->ran_param_id = List_of_PDU_sessions_for_handover_8_4_4_1;
+  List_PDU_sessions_ho->ran_param_val.type = LIST_RAN_PARAMETER_VAL_TYPE;
+  List_PDU_sessions_ho->ran_param_val.lst = calloc(1, sizeof(ran_param_list_t));
+  assert(List_PDU_sessions_ho->ran_param_val.lst != NULL && "Memory exhausted");
+  List_PDU_sessions_ho->ran_param_val.lst->sz_lst_ran_param = num_PDU_session;
+  List_PDU_sessions_ho->ran_param_val.lst->lst_ran_param = calloc(num_PDU_session, sizeof(lst_ran_param_t));
+  assert(List_PDU_sessions_ho->ran_param_val.lst->lst_ran_param != NULL && "Memory exhausted");
+  
+  // >PDU session Item for handover, STRUCTURE (len 2) 
+  lst_ran_param_t* PDU_session_item = &List_PDU_sessions_ho->ran_param_val.strct->ran_param_struct[0];
+  //PDU_session_item->ran_param_id = PDU_session_Item_for_handover_8_4_4_1;
+  //PDU_session_item->ran_param_val.type = STRUCTURE_RAN_PARAMETER_VAL_TYPE;
+  //PDU_session_item->ran_param_val.strct = calloc(1, sizeof(ran_param_struct_t));
+  //assert(PDU_session_item->ran_param_val.strct != NULL && "Memory exhausted");
+  PDU_session_item->ran_param_struct.sz_ran_param_struct = 2;
+  PDU_session_item->ran_param_struct.ran_param_struct = calloc(2, sizeof(seq_ran_param_t));
+  assert(PDU_session_item->ran_param_struct.ran_param_struct != NULL && "Memory exhausted");
+
+  // >>PDU Session ID, ELEMENT
+
+  seq_ran_param_t* PDU_Session_ID = &PDU_session_item->ran_param_struct.ran_param_struct[0];
+  PDU_Session_ID->ran_param_id = PDU_Session_ID_8_4_4_1;
+  PDU_Session_ID->ran_param_val.type = ELEMENT_KEY_FLAG_TRUE_RAN_PARAMETER_VAL_TYPE;
+  PDU_Session_ID->ran_param_val.flag_false = calloc(1, sizeof(ran_parameter_value_t));
+  assert(PDU_Session_ID->ran_param_val.flag_false != NULL && "Memory exhausted");
+  PDU_Session_ID->ran_param_val.flag_false->type = OCTET_STRING_RAN_PARAMETER_VALUE;
+  char pduid_str []= "5";
+  byte_array_t pduid  = cp_str_to_ba(pduid_str); 
+  PDU_Session_ID->ran_param_val.flag_false->octet_str_ran.len = pduid.len;
+  PDU_Session_ID->ran_param_val.flag_false->octet_str_ran.buf = pduid.buf;
+
+  // >>List of QoS flows in the PDU session, LIST (len 1)
+
+  seq_ran_param_t* List_of_QoS_flows = &PDU_session_item->ran_param_struct.ran_param_struct[1];
+  List_of_QoS_flows->ran_param_id = List_of_QoS_flows_in_the_PDU_session_8_4_4_1;
+  List_of_QoS_flows->ran_param_val.type = LIST_RAN_PARAMETER_VAL_TYPE;
+  List_of_QoS_flows->ran_param_val.lst = calloc(1, sizeof(ran_param_list_t));
+  assert(List_of_QoS_flows->ran_param_val.lst != NULL && "Memory exhausted");
+  List_of_QoS_flows->ran_param_val.lst->sz_lst_ran_param = 1;
+  List_of_QoS_flows->ran_param_val.lst->lst_ran_param = calloc(1, sizeof(lst_ran_param_t));
+  assert(List_of_QoS_flows->ran_param_val.lst->lst_ran_param != NULL && "Memory exhausted");
+
+  // >>>QoS flow Item, STRUCTURE (len 1)
+  lst_ran_param_t* QoS_flow_Item = &List_of_QoS_flows->ran_param_val.lst->lst_ran_param[0];
+  
+  QoS_flow_Item->ran_param_struct.sz_ran_param_struct = 1;
+  QoS_flow_Item->ran_param_struct.ran_param_struct = calloc(1, sizeof(seq_ran_param_t));
+  assert(QoS_flow_Item->ran_param_struct.ran_param_struct != NULL && "Memory exhausted");
+
+  // >>>>QoS Flow Identifier, ELEMENT
+  seq_ran_param_t* QoS_Flow_Id = &QoS_flow_Item->ran_param_struct.ran_param_struct[0];
+  QoS_Flow_Id->ran_param_id = QoS_Flow_Identifier_8_4_4_1;
+  QoS_Flow_Id->ran_param_val.type = ELEMENT_KEY_FLAG_TRUE_RAN_PARAMETER_VAL_TYPE;
+  QoS_Flow_Id->ran_param_val.flag_false = calloc(1, sizeof(ran_parameter_value_t));
+  assert(QoS_Flow_Id->ran_param_val.flag_false != NULL && "Memory exhausted");
+  QoS_Flow_Id->ran_param_val.flag_false->type = OCTET_STRING_RAN_PARAMETER_VALUE;
+  char QFI_str []= "1";
+  byte_array_t QFI  = cp_str_to_ba(QFI_str); 
+  QoS_Flow_Id->ran_param_val.flag_false->octet_str_ran.len = QFI.len;
+  QoS_Flow_Id->ran_param_val.flag_false->octet_str_ran.buf = QFI.buf;
+
+
+  return;
+}
+
+static
+void gen_List_of_DRBs_for_handover(seq_ran_param_t* List_DRBs_ho )
+{
+  int num_DRBs = 1;
+  // List of DRBs for handover, LIST (len 1)
+  List_DRBs_ho->ran_param_id = List_of_DRBs_for_handover_8_4_4_1;
+  List_DRBs_ho->ran_param_val.type = LIST_RAN_PARAMETER_VAL_TYPE;
+  List_DRBs_ho->ran_param_val.lst = calloc(1, sizeof(ran_param_list_t));
+  assert(List_DRBs_ho->ran_param_val.lst != NULL && "Memory exhausted");
+  List_DRBs_ho->ran_param_val.lst->sz_lst_ran_param = num_DRBs;
+  List_DRBs_ho->ran_param_val.lst->lst_ran_param = calloc(num_DRBs, sizeof(lst_ran_param_t));
+  assert(List_DRBs_ho->ran_param_val.lst->lst_ran_param != NULL && "Memory exhausted");
+
+  // > DRB item for handover, STRUCTURE (len 2)
+  lst_ran_param_t* DRB_item_ho = &List_DRBs_ho->ran_param_val.strct->ran_param_struct[0];
+  
+  DRB_item_ho->ran_param_struct.sz_ran_param_struct = 2;
+  DRB_item_ho->ran_param_struct.ran_param_struct = calloc(2, sizeof(seq_ran_param_t));
+  assert(DRB_item_ho->ran_param_struct.ran_param_struct != NULL && "Memory exhausted");
+
+  // >> DRB ID, ELEMENT
+
+  seq_ran_param_t* DRB_ID = &DRB_item_ho->ran_param_struct.ran_param_struct[0];
+  DRB_ID->ran_param_id = DRB_ID_8_4_4_1;
+  DRB_ID->ran_param_val.type = ELEMENT_KEY_FLAG_TRUE_RAN_PARAMETER_VAL_TYPE;
+  DRB_ID->ran_param_val.flag_false = calloc(1, sizeof(ran_parameter_value_t));
+  assert(DRB_ID->ran_param_val.flag_false != NULL && "Memory exhausted");
+  DRB_ID->ran_param_val.flag_false->type = OCTET_STRING_RAN_PARAMETER_VALUE;
+  char DRB_ID_str []= "3";
+  byte_array_t drpID  = cp_str_to_ba(DRB_ID_str); 
+  DRB_ID->ran_param_val.flag_false->octet_str_ran.len = drpID.len;
+  DRB_ID->ran_param_val.flag_false->octet_str_ran.buf = drpID.buf;
+
+  // >> List of QoS flows in the DRB, LIST (len 1)
+
+  seq_ran_param_t* List_of_QoS_flows = &DRB_item_ho->ran_param_struct.ran_param_struct[1];  //////.....//////
+  List_of_QoS_flows->ran_param_id = List_of_QoS_flows_in_the_DRB_8_4_4_1;
+  List_of_QoS_flows->ran_param_val.type = LIST_RAN_PARAMETER_VAL_TYPE;
+  List_of_QoS_flows->ran_param_val.lst = calloc(1, sizeof(ran_param_list_t));
+  assert(List_of_QoS_flows->ran_param_val.lst != NULL && "Memory exhausted");
+  List_of_QoS_flows->ran_param_val.lst->sz_lst_ran_param = 1;
+  List_of_QoS_flows->ran_param_val.lst->lst_ran_param = calloc(1, sizeof(lst_ran_param_t));
+  assert(List_of_QoS_flows->ran_param_val.lst->lst_ran_param != NULL && "Memory exhausted");
+
+  // >>>QoS flow Item, STRUCTURE (len 1)
+  lst_ran_param_t* QoS_flow_Item = &List_of_QoS_flows->ran_param_val.lst->lst_ran_param[0];
+  QoS_flow_Item->ran_param_struct.sz_ran_param_struct = 1;
+  QoS_flow_Item->ran_param_struct.ran_param_struct = calloc(1, sizeof(seq_ran_param_t));
+  assert(QoS_flow_Item->ran_param_struct.ran_param_struct != NULL && "Memory exhausted");
+
+  // >>>>QoS Flow Identifier, ELEMENT
+  seq_ran_param_t* QoS_Flow_Id = &QoS_flow_Item->ran_param_struct.ran_param_struct[0];
+  QoS_Flow_Id->ran_param_id = QoS_Flow_Identifier_8_4_4_1;
+  QoS_Flow_Id->ran_param_val.type = ELEMENT_KEY_FLAG_TRUE_RAN_PARAMETER_VAL_TYPE;
+  QoS_Flow_Id->ran_param_val.flag_false = calloc(1, sizeof(ran_parameter_value_t));
+  assert(QoS_Flow_Id->ran_param_val.flag_false != NULL && "Memory exhausted");
+  QoS_Flow_Id->ran_param_val.flag_false->type = OCTET_STRING_RAN_PARAMETER_VALUE;
+  char QFI_str []= "10";
+  byte_array_t QFI  = cp_str_to_ba(QFI_str); 
+  QoS_Flow_Id->ran_param_val.flag_false->octet_str_ran.len = QFI.len;
+  QoS_Flow_Id->ran_param_val.flag_false->octet_str_ran.buf = QFI.buf;
+
+  return;
+
+}
+
+static
+void gen_List_of_Secondary_cells_to_be_setup(seq_ran_param_t* List_num_2ndCells)
+{
+
+  int num_2ndCells= 1;
+  // List of Secondary cells to be setup, LIST (len 1)
+  List_num_2ndCells->ran_param_id = List_of_Secondary_cells_to_be_setup_8_4_4_1;
+  List_num_2ndCells->ran_param_val.type = LIST_RAN_PARAMETER_VAL_TYPE;
+  List_num_2ndCells->ran_param_val.lst = calloc(1, sizeof(ran_param_list_t));
+  assert(List_num_2ndCells->ran_param_val.lst != NULL && "Memory exhausted");
+  List_num_2ndCells->ran_param_val.lst->sz_lst_ran_param = num_2ndCells;
+  List_num_2ndCells->ran_param_val.lst->lst_ran_param = calloc(num_2ndCells, sizeof(lst_ran_param_t));
+  assert(List_num_2ndCells->ran_param_val.lst->lst_ran_param != NULL && "Memory exhausted");
+
+   // >Secondary cell Item to be setup, STRUCTURE (len 1)
+
+
+  lst_ran_param_t* secCell_item = &List_num_2ndCells->ran_param_val.strct->ran_param_struct[0];
+  
+  secCell_item->ran_param_struct.sz_ran_param_struct = 1;
+  secCell_item->ran_param_struct.ran_param_struct = calloc(1, sizeof(seq_ran_param_t));
+  assert(secCell_item->ran_param_struct.ran_param_struct != NULL && "Memory exhausted");
+
+   // >>Secondary cell ID, ELEMENT
+  seq_ran_param_t* secCell_Id = &secCell_item->ran_param_struct.ran_param_struct[0];
+  secCell_Id->ran_param_id = Secondary_cell_ID_8_4_4_1;
+  secCell_Id->ran_param_val.type = ELEMENT_KEY_FLAG_FALSE_RAN_PARAMETER_VAL_TYPE;
+  secCell_Id->ran_param_val.flag_false = calloc(1, sizeof(ran_parameter_value_t));
+  assert(secCell_Id->ran_param_val.flag_false != NULL && "Memory exhausted");
+  secCell_Id->ran_param_val.flag_false->type = OCTET_STRING_RAN_PARAMETER_VALUE;
+  char cellID_str []= "0";
+  byte_array_t QFI  = cp_str_to_ba(cellID_str); 
+  secCell_Id->ran_param_val.flag_false->octet_str_ran.len = QFI.len;
+  secCell_Id->ran_param_val.flag_false->octet_str_ran.buf = QFI.buf;
+  
+  return ;
+}
+
+
+
+
+
+static
+e2sm_rc_ctrl_msg_frmt_1_t gen_rc_ctrl_msg_frmt_1_Handover_Control()
+{
+  e2sm_rc_ctrl_msg_frmt_1_t dst = {0};
+  // 8.4.4.1
+
+  // Target Primary Cell ID, STRUCTURE (len 1)
+  // > CHOICE Target Cell, STRUCTURE (len 2)
+  // >>  NR Cell, STRUCTURE (len 1))
+  // >>> NR CGI, ELEMENT
+  // >>E-UTRA Cell, STRUCTURE (len 1)
+  // >>>E-UTRA CGI, ELEMENT
+
+  // List of PDU sessions for handover, LIST (len 1)
+  // >PDU session Item for handover, STRUCTURE (len 2) 
+  // >>PDU Session ID, ELEMENT
+  // >>List of QoS flows in the PDU session, LIST (len 1)
+  // >>>QoS flow Item, STRUCTURE (len 1)
+  // >>>>QoS Flow Identifier, ELEMENT
+
+  // List of DRBs for handover, LIST (len 1)
+  // > DRB item for handover, STRUCTURE (len 2)
+  // >> DRB ID, ELEMENT
+  // >> List of QoS flows in the DRB, LIST (len 1)
+  // >>> QoS flow Item, STRUCTURE (len 1)
+  // >>>> QoS flow Identifier, ELEMENT
+
+  // List of Secondary cells to be setup, LIST (len 1)
+  // >Secondary cell Item to be setup, STRUCTURE (len 1)
+  // >>Secondary cell ID, ELEMENT
+
+  dst.sz_ran_param = 4;
+  dst.ran_param = calloc(4, sizeof(seq_ran_param_t));
+  assert(dst.ran_param != NULL && "Memory exhausted");
+
+  gen_Target_Primary_Cell_ID(&dst.ran_param[0]);
+  gen_List_of_PDU_sessions_for_handover(&dst.ran_param[1]);
+  gen_List_of_DRBs_for_handover(&dst.ran_param[2]);
+  gen_List_of_Secondary_cells_to_be_setup(&dst.ran_param[3]);
+
+  return dst;
+}
+
+static
+e2sm_rc_ctrl_msg_t gen_rc_ctrl_msg(e2sm_rc_ctrl_msg_e msg_frmt)
+{
+  e2sm_rc_ctrl_msg_t dst = {0};
+
+  if (msg_frmt == FORMAT_1_E2SM_RC_CTRL_MSG) {
+    dst.format = msg_frmt;
+    dst.frmt_1 = gen_rc_ctrl_msg_frmt_1_Handover_Control();
+  } else {
+    assert(0!=0 && "not implemented the fill func for this ctrl msg frmt");
+  }
+
+  return dst;
+}
+
+
+static
+ue_id_e2sm_t gen_rc_ue_id(ue_id_e2sm_e type)
+{
+  ue_id_e2sm_t ue_id = {0};
+  if (type == GNB_UE_ID_E2SM) {
+    ue_id.type = GNB_UE_ID_E2SM;
+    // TODO
+    // ue_id.gnb.amf_ue_ngap_id = 0;
+    // ue_id.gnb.guami.plmn_id.mcc = 1;
+    // ue_id.gnb.guami.plmn_id.mnc = 1;
+    // ue_id.gnb.guami.plmn_id.mnc_digit_len = 2;
+    // ue_id.gnb.guami.amf_region_id = 0;
+    // ue_id.gnb.guami.amf_set_id = 0;
+    // ue_id.gnb.guami.amf_ptr = 0;
+    ue_id.gnb.ran_ue_id = (uint64_t *)malloc(sizeof(uint64_t));
+     *(ue_id.gnb.ran_ue_id) = 1;
+
+    // ue_id.gnb.global_gnb_id = (global_gnb_id_t *)malloc(sizeof(global_gnb_id_t));
+    // ue_id.gnb.global_gnb_id->gnb_id.nb_id = 5; 
+  } else {
+    assert(0!=0 && "not supported UE ID type");
+  }
+  return ue_id;
+}
+
+
+
+int main(int argc, char *argv[])
+{
+  fr_args_t args = init_fr_args(argc, argv);
+  //defer({ free_fr_args(&args); });
+
+  //Init the xApp
+  init_xapp_api(&args);
+  sleep(1);
+
+  e2_node_arr_xapp_t nodes = e2_nodes_xapp_api();
+  defer({ free_e2_node_arr_xapp(&nodes); });
+  assert(nodes.len > 0);
+  printf("Connected E2 nodes = %d\n", nodes.len);
+
+  ////////////
+  // START RC
+  ////////////
+
+  // RC Control
+  // CONTROL Service Style 3: Connected mode mobility control
+  // Action ID 1: Handover Control
+  // E2SM-RC Control Header Format 1
+  // E2SM-RC Control Message Format 1
+
+  rc_ctrl_req_data_t rc_ctrl = {0};
+  ue_id_e2sm_t ue_id = gen_rc_ue_id(GNB_UE_ID_E2SM);
+
+  rc_ctrl.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id, 3, Handover_Control_7_6_4_1);
+  rc_ctrl.msg = gen_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG);
+
+  int64_t st = time_now_us();
+  for(size_t i =0; i < nodes.len; ++i){
+    control_sm_xapp_api(&nodes.n[i].id, SM_RC_ID, &rc_ctrl);
+  }
+  printf("[xApp]: Control Loop Latency: %ld us\n", time_now_us() - st);
+  free_rc_ctrl_req_data(&rc_ctrl);
+
+  ////////////
+  // END RC
+  ////////////
+
+  sleep(5);
+
+
+  //Stop the xApp
+  while(try_stop_xapp_api() == false)
+    usleep(1000);
+
+  printf("Test xApp run SUCCESSFULLY\n");
+
+
+}
+

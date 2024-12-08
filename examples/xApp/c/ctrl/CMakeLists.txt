@@ -12,6 +12,21 @@ add_executable(xapp_mac_ctrl
  						-lsctp
  						-ldl
  						)
+ 						
+add_executable(xapp_rc_handover_ctrl
+    Handover.c
+    ../../../../src/util/alg_ds/alg/defer.c
+)
+
+# Link necessary libraries
+target_link_libraries(xapp_rc_handover_ctrl
+    PUBLIC
+    e42_xapp
+    pthread
+    sctp
+    dl
+)
+						
 
 
 
