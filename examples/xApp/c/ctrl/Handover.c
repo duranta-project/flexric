@@ -11,6 +11,8 @@
 #include <time.h>
 #include <unistd.h>
 #include <signal.h>
+#define TARGET_CELL '5'
+#define CURRENT_CELL '2'
 
 
 typedef enum{
@@ -114,8 +116,10 @@ void gen_Target_Primary_Cell_ID (seq_ran_param_t* Target_Primary_Cell_ID)
   NR_CGI->ran_param_val.flag_false = calloc(1, sizeof(ran_parameter_value_t));
   assert(NR_CGI->ran_param_val.flag_false != NULL && "Memory exhausted");
   NR_CGI->ran_param_val.flag_false->type = OCTET_STRING_RAN_PARAMETER_VALUE;
-  char nr_cgi_str []= "3";
-  
+  char nr_cgi_str[2] ;
+  nr_cgi_str [0] = TARGET_CELL;
+  nr_cgi_str [1] = '\0';
+
   byte_array_t nr_cgi = cp_str_to_ba(nr_cgi_str); 
   NR_CGI->ran_param_val.flag_false->octet_str_ran.len = nr_cgi.len;
   NR_CGI->ran_param_val.flag_false->octet_str_ran.buf = nr_cgi.buf;
@@ -136,8 +140,10 @@ void gen_Target_Primary_Cell_ID (seq_ran_param_t* Target_Primary_Cell_ID)
   EUTRA_CGI->ran_param_val.flag_false = calloc(1, sizeof(ran_parameter_value_t));
   assert(EUTRA_CGI->ran_param_val.flag_false != NULL && "Memory exhausted");
   EUTRA_CGI->ran_param_val.flag_false->type = OCTET_STRING_RAN_PARAMETER_VALUE;
-  char eUTRA_cgi_str []= "3";
- 
+  char eUTRA_cgi_str [2] ;
+  eUTRA_cgi_str[0] = TARGET_CELL;
+  eUTRA_cgi_str [1] = '\0';
+
   byte_array_t eUTRA_cgi = cp_str_to_ba(eUTRA_cgi_str); 
   EUTRA_CGI->ran_param_val.flag_false->octet_str_ran.len = eUTRA_cgi.len;
   EUTRA_CGI->ran_param_val.flag_false->octet_str_ran.buf = eUTRA_cgi.buf;
@@ -408,6 +414,30 @@ ue_id_e2sm_t gen_rc_ue_id(ue_id_e2sm_e type)
   return ue_id;
 }
 
+static
+ue_id_e2sm_t gen_rc_ue_id_2(ue_id_e2sm_e type)
+{
+  ue_id_e2sm_t ue_id = {0};
+  if (type == GNB_UE_ID_E2SM) {
+    ue_id.type = GNB_UE_ID_E2SM;
+    // TODO
+    // ue_id.gnb.amf_ue_ngap_id = 0;
+    // ue_id.gnb.guami.plmn_id.mcc = 1;
+    // ue_id.gnb.guami.plmn_id.mnc = 1;
+    // ue_id.gnb.guami.plmn_id.mnc_digit_len = 2;
+    // ue_id.gnb.guami.amf_region_id = 0;
+    // ue_id.gnb.guami.amf_set_id = 0;
+    // ue_id.gnb.guami.amf_ptr = 0;
+    ue_id.gnb.ran_ue_id = (uint64_t *)malloc(sizeof(uint64_t));
+     *(ue_id.gnb.ran_ue_id) = 2;
+
+    // ue_id.gnb.global_gnb_id = (global_gnb_id_t *)malloc(sizeof(global_gnb_id_t));
+    // ue_id.gnb.global_gnb_id->gnb_id.nb_id = 5; 
+  } else {
+    assert(0!=0 && "not supported UE ID type");
+  }
+  return ue_id;
+}
 
 
 int main(int argc, char *argv[])
@@ -434,18 +464,33 @@ int main(int argc, char *argv[])
   // E2SM-RC Control Header Format 1
   // E2SM-RC Control Message Format 1
 
-  rc_ctrl_req_data_t rc_ctrl = {0};
-  ue_id_e2sm_t ue_id = gen_rc_ue_id(GNB_UE_ID_E2SM);
+  rc_ctrl_req_data_t rc_ctrl_1 = {0};
+  ue_id_e2sm_t ue_id_1 = gen_rc_ue_id(GNB_UE_ID_E2SM);
+  ue_id_e2sm_t ue_id_2 = gen_rc_ue_id_2(GNB_UE_ID_E2SM);
 
-  rc_ctrl.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id, 3, Handover_Control_7_6_4_1);
-  rc_ctrl.msg = gen_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG);
+  rc_ctrl_1.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_1, 3, Handover_Control_7_6_4_1);
+  rc_ctrl_1.msg = gen_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG);
 
   int64_t st = time_now_us();
+  printf("[xApp]: Send Handover Control message to move rnti %ld from cellId %c to target cellId %c \n",*(ue_id_1.gnb.ran_ue_id), CURRENT_CELL,TARGET_CELL);
   for(size_t i =0; i < nodes.len; ++i){
-    control_sm_xapp_api(&nodes.n[i].id, SM_RC_ID, &rc_ctrl);
+    control_sm_xapp_api(&nodes.n[i].id, SM_RC_ID, &rc_ctrl_1);
   }
-  printf("[xApp]: Control Loop Latency: %ld us\n", time_now_us() - st);
-  free_rc_ctrl_req_data(&rc_ctrl);
+  printf("[xApp]: Control Loop Latency for the first control message : %ld us\n", time_now_us() - st);
+   sleep(5);
+//  ***********************************************************************************************************
+   rc_ctrl_req_data_t rc_ctrl_2 = {0};
+  rc_ctrl_2.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_2, 3, Handover_Control_7_6_4_1);
+  rc_ctrl_2.msg = gen_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG);
+
+  int64_t st1 = time_now_us();
+    printf("[xApp]: Send Handover Control message to move rnti %ld from cellId %c to target cellId %c \n",*(ue_id_2.gnb.ran_ue_id), CURRENT_CELL,TARGET_CELL);
+  for(size_t i =0; i < nodes.len; ++i){
+    control_sm_xapp_api(&nodes.n[i].id, SM_RC_ID, &rc_ctrl_2);
+  }
+  printf("[xApp]: Control Loop Latency for the second control message : %ld us\n", time_now_us() - st1);
+  free_rc_ctrl_req_data(&rc_ctrl_1);
+  free_rc_ctrl_req_data(&rc_ctrl_2);
 
   ////////////
   // END RC
@@ -457,7 +502,7 @@ int main(int argc, char *argv[])
   //Stop the xApp
   while(try_stop_xapp_api() == false)
     usleep(1000);
-
+  
   printf("Test xApp run SUCCESSFULLY\n");
 
 
