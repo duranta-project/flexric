@@ -15,6 +15,8 @@
 #include <time.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <arpa/inet.h>
+
 
 static
 ue_id_e2sm_t ue_id;
@@ -235,12 +237,13 @@ void sm_cb_kpm(sm_ag_if_rd_t const* rd)
   kpm_ind_data_t const* ind = &rd->ind.kpm.ind;
   kpm_ric_ind_hdr_format_1_t const* hdr_frm_1 = &ind->hdr.kpm_ric_ind_hdr_format_1;
 
-  int64_t const now = time_now_us();
+  uint64_t const now = time_now_us();
   static int counter = 1;
   {
     lock_guard(&mtx);
-
-    printf("\n%7d KPM ind_msg latency = %ld [μs]\n", counter, now - hdr_frm_1->collectStartTime); // xApp <-> E2 Node
+    printf("\n time now = %ld \n",now); 
+    printf("\n time from simulator = %ld \n", hdr_frm_1->collectStartTime); //ntohll(hdr_frm_1->collectStartTime)
+    printf("\n%7d KPM ind_msg latency = %ld [μs]\n", counter, now -  hdr_frm_1->collectStartTime); // xApp <-> E2 Node
 
     if (ind->msg.type == FORMAT_1_INDICATION_MESSAGE) {
       log_kpm_measurements(&ind->msg.frm_1);

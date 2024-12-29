@@ -26,6 +26,33 @@ target_link_libraries(xapp_rc_handover_ctrl
     sctp
     dl
 )
+
+add_executable(xapp_energy_saving_with_CU
+    energy_saving_with_CU.c
+    ../../../../src/util/alg_ds/alg/defer.c
+)
+
+# Link necessary libraries
+target_link_libraries(xapp_energy_saving_with_CU
+    PUBLIC
+    e42_xapp
+    pthread
+    sctp
+    dl
+)
+add_executable(xapp_energy_saving_with_LB
+    energy_saving_with_LB.c
+    ../../../../src/util/alg_ds/alg/defer.c
+)
+
+# Link necessary libraries
+target_link_libraries(xapp_energy_saving_with_LB
+    PUBLIC
+    e42_xapp
+    pthread
+    sctp
+    dl
+)
 						
 
 
