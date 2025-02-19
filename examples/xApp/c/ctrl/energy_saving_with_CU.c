@@ -29,6 +29,7 @@
  *-------------------------------------------------------------------------------
  * Author:
  *  Abdelrhman Soliman <abdelrhman.soliman.ext@orange.com>
+ *  Mostafa Ashraf <mostafa.ashraf.ext@orange.com>
  */ 
 
 //Energy saving xapp with cell utilization
@@ -48,8 +49,30 @@
 #include <signal.h>
 #include <arpa/inet.h>
 #define CURRENT_CELL '2'
-#define CELL_OFF '0'
 
+#define MIN_SINR -10
+#define NOT(X) !X
+
+typedef struct {
+    const e2_node_arr_xapp_t *nodes;
+    struct SINRNeighboringValues* neighCells;
+    int ueID;
+    uint8_t frmCurntCell;
+    uint8_t toTargetCell;
+} callback_data_t;
+
+typedef uint16_t(*Callback)(callback_data_t);
+
+typedef enum{
+    Connected_Mode_Mobility =3, 
+    Energy_State =300
+} rc_ctrl_service_style_id_e;
+
+typedef enum {
+  Cell_Off = '0',
+  Cell_on  = '1',
+  Cell_sleep = '2',
+} cell_state; 
 
 
 static
@@ -118,8 +141,10 @@ void log_int_value(byte_array_t name, meas_record_lst_t meas_record)
     printf("DRB.PdcpSduVolumeDL = %d [kb]\n", meas_record.int_val);
   } else if (cmp_str_ba("DRB.PdcpSduVolumeUL", name) == 0) {
     printf("DRB.PdcpSduVolumeUL = %d [kb]\n", meas_record.int_val);
+  } else if (strncmp(name.buf, "L3neighSINRListOf_UEID_", strlen("L3neighSINRListOf_UEID_")) == 0) {
+    printf("%s, Neighbour=%d \n", name.buf, meas_record.int_val);
   } else {
-    printf("Measurement Name not yet supported\n");
+    // printf("Name= %s, value= %d \n", name.buf, meas_record.int_val);
   }
 }
 
@@ -132,8 +157,12 @@ void log_real_value(byte_array_t name, meas_record_lst_t meas_record)
     printf("DRB.UEThpDl = %.2f [kbps]\n", meas_record.real_val);
   } else if (cmp_str_ba("DRB.UEThpUl", name) == 0) {
     printf("DRB.UEThpUl = %.2f [kbps]\n", meas_record.real_val);
+  } else if (strncmp(name.buf, "L3servingSINR3gpp_cell_", strlen("L3servingSINR3gpp_cell_")) == 0) {
+    printf("%s, sinr= %.4f [db]\n", name.buf, meas_record.real_val);
+  } else if (strncmp(name.buf, "L3neighSINRListOf_UEID_", strlen("L3neighSINRListOf_UEID_")) == 0) {
+    printf("%s, sinr= %.4f [db]\n", name.buf, meas_record.real_val);
   } else {
-    printf("Measurement Name not yet supported\n");
+    // printf("Name= %s, value= %.6f \n", name.buf, meas_record.real_val);
   }
 }
 
@@ -169,26 +198,385 @@ check_meas_type match_meas_type[END_MEAS_TYPE] = {
     match_id_meas_type,
 };
 
+/*
+each cell has connected UEs(with SINR value), 
+each Cell have neighbours of cells(with SINR value)
+All of them in one indication message per Cell
+*/
+
+// ctrl after this
+const int MAX_NUM_OF_RIC_INDICATIONS = 5;
+struct SINRNeighboringValues
+{
+  bool is_available;
+  uint16_t neighCellID;
+  double sinr; // (2+3)/2 ==> (x+4)/3 ---> (z+4)/5 --> a 9
+  int counter;
+};
+
+struct SINRServingValues
+{
+  bool is_available;
+  uint16_t ueID;
+  double sinr;
+  struct SINRNeighboringValues* neighCells; // array
+  size_t numOfNeighCells;
+};
+
+// Per Cell
+struct SINR_Map
+{
+  uint16_t cellID;
+  struct SINRServingValues* connectedUEs; // array
+  size_t numOfConnectedUEs;
+  bool is_running;
+};
+
+struct registeredCells {
+  bool is_registered;
+  struct SINR_Map* sinrMap;
+};
+
+#define MAX_REGISTERED_CELLS 10
+#define MAX_REGISTERED_UES 20
+#define MAX_REGISTERED_NEIGHBOURS 20
+
+
+struct registeredCells cells_sinr_map[MAX_REGISTERED_CELLS] = {{false, NULL}};
+
+/*
+
+struct SINR_MapCells
+{ 
+  struct SINR_Map* sinrMapForCells;
+  size_t numOfsinrMapForCells;
+};
+
+L3servingSINR3gpp_cell_5_UEID_00002, sinr= 2.0000 [db]
+L3neighSINRListOf_UEID_00002, Neighbour=4 
+L3neighSINRListOf_UEID_00002, sinr= -12.0000 [db]
+L3neighSINRListOf_UEID_00002, Neighbour=2 
+L3neighSINRListOf_UEID_00002, sinr= -13.0000 [db]
+L3neighSINRListOf_UEID_00002, Neighbour=3 
+L3neighSINRListOf_UEID_00002, sinr= -16.0000 [db]
+
+Based on SINR
+struct targetCell{
+UEid(IMSI), cellID
+}
+
+// int x -->> int* y = &x;  --> int** z = &y
+// int* a = &z
+
+*/
+
+struct SINR_Map* add_SINR(const uint16_t cellID) {
+  assert (cellID != 0);
+  if(cells_sinr_map[cellID].sinrMap == NULL && NOT(cells_sinr_map[cellID].is_registered)) {
+    cells_sinr_map[cellID].sinrMap = (struct SINR_Map*) calloc(1, sizeof(struct SINR_Map));
+    cells_sinr_map[cellID].is_registered = true;
+    cells_sinr_map[cellID].sinrMap->cellID = cellID;
+    cells_sinr_map[cellID].sinrMap->connectedUEs = NULL;
+    cells_sinr_map[cellID].sinrMap->numOfConnectedUEs = 0;
+  }
+  return cells_sinr_map[cellID].sinrMap;
+}
+
+// Serving msg
+void add_UE(struct SINR_Map* cell, const uint16_t ueID, const double sinr) {
+  
+  assert(cell != NULL);
+  if(cell->connectedUEs == NULL /*&& cell->numOfConnectedUEs == 0*/) {
+    cell->connectedUEs = (struct SINRServingValues*) calloc(MAX_REGISTERED_UES, sizeof(struct SINRServingValues));
+    
+    // struct SINRServingValues* UE = &cell->connectedUEs[ueID];//cell->numOfConnectedUEs];
+    cell->connectedUEs[ueID].ueID = ueID;
+    cell->connectedUEs[ueID].sinr = sinr;
+    cell->connectedUEs[ueID].neighCells = NULL;
+    cell->connectedUEs[ueID].numOfNeighCells = 0;
+  } else {
+    assert(cell->connectedUEs != NULL);
+    assert(cell->numOfConnectedUEs != 0);
+    assert (ueID <= MAX_REGISTERED_UES);
+
+    // cell->connectedUEs = (struct SINRServingValues*) realloc(cell->connectedUEs, (cell->numOfConnectedUEs + 1) * sizeof(struct SINRServingValues));
+    // struct SINRServingValues* UE = &cell->connectedUEs[cell->numOfConnectedUEs+1];
+    // struct SINRServingValues* UE = &cell->connectedUEs[ueID];
+    cell->connectedUEs[ueID].ueID = ueID;
+    cell->connectedUEs[ueID].sinr = sinr;
+  }
+  cell->connectedUEs[ueID].is_available = true;
+  cell->numOfConnectedUEs += 1;
+}
+
+struct SINRServingValues* get_UE(const uint16_t cellID, const uint16_t ueID) {
+  if(cells_sinr_map[cellID].is_registered) { 
+    assert(cells_sinr_map[cellID].sinrMap->connectedUEs[ueID].ueID == ueID);
+
+    return  &(cells_sinr_map[cellID].sinrMap->connectedUEs[ueID]);
+    // printf("x->ueID=%d, ueID=%d\n", x->ueID , ueID);
+    // return x;
+    // for (size_t i = 0; i < cells_sinr_map[cellID].sinrMap->numOfConnectedUEs; i++)
+    // {
+    //   if(cells_sinr_map[cellID].sinrMap->connectedUEs[i].ueID == ueID) {
+    //     return &cells_sinr_map[cellID].sinrMap->connectedUEs[i];
+    //   }
+    // }
+  }
+  return NULL;
+}
+
+
+/*
+
+
+DoRecvLteMmWaveHandoverCompleted
+*/
+
+// m_rrc
+// m_lastMmWaveCell[[a-z]+\] = 
+// m_lastMmWaveCell[m_[a-z]+\] = 
+// m_lastMmWaveCell[m
+// DoRecvLteMmWaveHandoverCompleted
+// UeManager::RecvRrcConnectionReconfigurationCompleted(MC_CONNECTION_RECONFIGURATION OR CONNECTION_RECONFIGURATION)
+
+// LteEnbRrc::DoRecvRrcConnectionReconfigurationCompleted
+// LteEnbRrc::DoRecvLteMmWaveHandoverCompleted --> IMP (m_lastMmWaveCell[imsi] = params.targetCellId;)
+
+void add_neighCell(struct SINRServingValues* UE,const uint16_t neighCellID, const double sinr) {
+  
+  // struct SINRNeighboringValues* neighCell = NULL;
+  assert(UE != NULL);
+  if(UE->neighCells == NULL && UE->numOfNeighCells == 0) {
+    UE->neighCells = (struct SINRNeighboringValues*) calloc(MAX_REGISTERED_NEIGHBOURS, sizeof(struct SINRNeighboringValues));
+    UE->neighCells[neighCellID].neighCellID = neighCellID;
+    UE->neighCells[neighCellID].sinr = sinr;
+    UE->neighCells[neighCellID].counter = 0;
+    // neighCell= &UE->neighCells[neighCellID];
+    // neighCell->neighCellID = neighCellID;
+    // neighCell->sinr = sinr;
+    // neighCell->counter = 0;
+  } else {  
+    // UE->neighCells = (struct SINRNeighboringValues* ) realloc(UE->neighCells, (UE->numOfNeighCells + 1) * sizeof(struct SINRNeighboringValues));
+    // neighCell = &UE->neighCells[UE->numOfNeighCells+1];
+    // neighCell = &UE->neighCells[neighCellID];
+    // neighCell = &UE->neighCells[neighCellID];
+
+    assert (neighCellID <= MAX_REGISTERED_NEIGHBOURS);
+    assert(&UE->neighCells[neighCellID] != NULL);
+    UE->neighCells[neighCellID].neighCellID = neighCellID;
+    if(UE->neighCells[neighCellID].counter == 0 || UE->neighCells[neighCellID].counter == MAX_NUM_OF_RIC_INDICATIONS + 1) {
+      UE->neighCells[neighCellID].sinr = sinr;
+      if(UE->neighCells[neighCellID].counter == MAX_NUM_OF_RIC_INDICATIONS) {
+        UE->neighCells[neighCellID].counter = 0;    
+      }
+    } else {
+      // ((1 + 2)/2) + 3 )/3
+      UE->neighCells[neighCellID].sinr = (UE->neighCells[neighCellID].sinr + sinr) / UE->neighCells[neighCellID].counter;
+    }
+  }
+
+  UE->neighCells[neighCellID].is_available = true;
+  UE->numOfNeighCells += 1;
+  UE->neighCells[neighCellID].counter += 1;
+}
+
+uint8_t getTargerCellID(callback_data_t data) {
+  assert(data.neighCells != NULL);
+
+  double max_sinr;// = max_sinr = data.neighCells[0].sinr;
+  uint8_t targetCell = -1; //data.neighCells[0].neighCellID;
+  int i = 1;
+  for (; i < MAX_REGISTERED_NEIGHBOURS; i++)
+  {
+    if(data.neighCells[i].is_available) {
+      max_sinr = data.neighCells[i].sinr;
+      targetCell = data.neighCells[i].neighCellID;
+      printf("targetCell innn== %d ..\n", targetCell);
+
+      break;
+    }
+  }
+  ++i;
+  for (; i < MAX_REGISTERED_NEIGHBOURS; i++)
+  {
+      if(data.neighCells[i].is_available && data.neighCells[i].sinr > max_sinr) {
+          max_sinr = data.neighCells[i].sinr;
+          targetCell = data.neighCells[i].neighCellID;
+      } 
+  }
+  return targetCell;
+}
+
+uint16_t forEachUE(struct SINR_Map* sinrMap, Callback targetCell, Callback HO, Callback OffCell, callback_data_t data) {
+  assert(sinrMap != NULL);
+  printf("sinrMap->cellID== %d ..\n", sinrMap->cellID);
+
+  bool handover_flag = false;
+  for (int i = 0; i < MAX_REGISTERED_UES; i++)
+  {
+    if(sinrMap->connectedUEs[i].is_available && sinrMap->connectedUEs[i].neighCells != NULL) {
+    
+      printf("sinrMap->cellID== %d ..\n", sinrMap->cellID);
+
+        callback_data_t data_per_ue = {
+                .nodes = data.nodes,
+                .neighCells = sinrMap->connectedUEs[i].neighCells,
+                .ueID = sinrMap->connectedUEs[i].ueID,
+                .frmCurntCell = sinrMap->cellID,
+        };
+        // uint8_t _perfectNeighCell = targetCell(data_per_ue);
+        data_per_ue.toTargetCell = targetCell(data_per_ue); //_perfectNeighCell;
+        handover_flag = true;
+        HO(data_per_ue);
+    }
+  }
+  if(handover_flag) {
+    // Switch off Cell #
+    data.frmCurntCell = sinrMap->cellID;
+    OffCell(data);
+  }
+}
+
+// forEachCell(getTargerCellID, doHandoverAction, switchOffCurrentCell, data);
+void forEachCell(Callback targetCellFinding, Callback cbHOAction, Callback cbSwitchOffAction, callback_data_t data) {
+  for (int i = 0; i < MAX_REGISTERED_CELLS; i++)
+  {
+    // assert(cells_sinr_map[i].sinrMap == NULL);
+    if(cells_sinr_map[i].sinrMap != NULL && cells_sinr_map[i].is_registered) {
+      printf("cells_sinr_map[i].sinrMap->cellID== %d ..\n", cells_sinr_map[i].sinrMap->cellID);
+
+      forEachUE(cells_sinr_map[i].sinrMap, targetCellFinding, cbHOAction, cbSwitchOffAction, data);
+    }
+  }
+}
+
+// TODO
+void remove_UE() {}
+void remove_neighCell() {}
+
+// T Search(fp);
+// GetIMSI, getSINR, findX, getTargetCell(sinrMap, targetCell)
+// seach(findXX);
+
+// static
+// void log_kpm_measurements(kpm_ind_msg_format_1_t const* msg_frm_1)
+// {
+//   assert(msg_frm_1->meas_info_lst_len > 0 && "Cannot correctly print measurements");
+//   // UE Measurements per granularity period
+//   for (size_t j = 0; j < msg_frm_1->meas_data_lst_len; j++) {
+//     meas_data_lst_t const data_item = msg_frm_1->meas_data_lst[j];
+//     for (size_t z = 0; z < data_item.meas_record_len; z++) {
+//       meas_type_t const meas_type = msg_frm_1->meas_info_lst[z].meas_type;
+//       meas_record_lst_t const record_item = data_item.meas_record_lst[z];
+//       match_meas_type[meas_type.type](meas_type, record_item);
+//       if (data_item.incomplete_flag && *data_item.incomplete_flag == TRUE_ENUM_VALUE)
+//         printf("Measurement Record not reliable");
+//     }
+//   }
+// }
+struct InfoObj { 
+  uint16_t cellID;
+  uint16_t ueID;
+};
+
+// struct InfoObj parseStr()
+struct InfoObj parseServingMsg(const char* msg) {
+    struct InfoObj info;
+
+    int ret = sscanf(msg, "L3servingSINR3gpp_cell_%hd_UEID_%hd", &info.cellID, &info.ueID);
+
+    if (ret == 2)
+      return info;
+
+    info.cellID = -1;
+    info.ueID = -1;
+    return info;
+}
+
+struct InfoObj parseNeighMsg(const char* msg) {
+    struct InfoObj info;
+
+    int ret = sscanf(msg, "L3neighSINRListOf_UEID_%hd_of_Cell_%hd", &info.ueID, &info.cellID);
+
+    if (ret == 2)
+      return info;
+
+    info.ueID = -1;
+    info.cellID = -1;
+    return info;
+}
+
+bool isMeasNameContains(const char* meas_name, const char* name) {
+  return strncmp(meas_name, name, strlen(name)) == 0;
+}
+
 static
 void log_kpm_measurements(kpm_ind_msg_format_1_t const* msg_frm_1)
 {
   assert(msg_frm_1->meas_info_lst_len > 0 && "Cannot correctly print measurements");
-
-  // UE Measurements per granularity period
-  for (size_t j = 0; j < msg_frm_1->meas_data_lst_len; j++) {
-    meas_data_lst_t const data_item = msg_frm_1->meas_data_lst[j];
-
-    for (size_t z = 0; z < data_item.meas_record_len; z++) {
-      meas_type_t const meas_type = msg_frm_1->meas_info_lst[z].meas_type;
-      meas_record_lst_t const record_item = data_item.meas_record_lst[z];
-
-      match_meas_type[meas_type.type](meas_type, record_item);
-
-      if (data_item.incomplete_flag && *data_item.incomplete_flag == TRUE_ENUM_VALUE)
-        printf("Measurement Record not reliable");
-    }
+ 
+  // assert(msg_frm_1->meas_info_lst_len == msg_frm_1->meas_data_lst_len && "meas_info_lst_len not equal meas_data_lst_len");
+  if(msg_frm_1->meas_info_lst_len != msg_frm_1->meas_data_lst_len) {
+    printf("Error: meas_info_lst_len= (%ld) not equal meas_data_lst_len= (%ld)\n",msg_frm_1->meas_info_lst_len,  msg_frm_1->meas_data_lst_len);
+    return;
   }
+ 
 
+  // UE Measurements per granularity period  
+  for (size_t i = 0; i < msg_frm_1->meas_info_lst_len; i++)
+  {
+      meas_type_t const meas_type = msg_frm_1->meas_info_lst[i].meas_type;
+      meas_data_lst_t const data_item = msg_frm_1->meas_data_lst[i];
+ 
+      bool isneighSINRList = false;
+      for (size_t j = 0; j < data_item.meas_record_len;)
+      {
+        meas_record_lst_t const record_item = data_item.meas_record_lst[j];
+ 
+        match_meas_type[meas_type.type](meas_type, record_item);
+        // TODO
+
+        if(meas_type.type == NAME_MEAS_TYPE) {
+          if(isMeasNameContains(meas_type.name.buf, "L3servingSINR3gpp_cell_")) {
+            // Sample: L3servingSINR3gpp_cell_5_UEID_00003, sinr= 4.0000 [db]
+            struct InfoObj info = parseServingMsg(meas_type.name.buf);
+            // printf("CellID= %d\n", info.cellID);
+            double sinr = record_item.real_val;
+            struct SINR_Map* cell = add_SINR(info.cellID);
+            // printf("&cell=%p, cell=%p", &cell, cell);
+            add_UE(cell, info.ueID, sinr);
+          } else if (isMeasNameContains(meas_type.name.buf, "L3neighSINRListOf_UEID_")) {
+            isneighSINRList = true;
+            // Sample:
+            // L3neighSINRListOf_UEID_00002_of_Cell_5, sinr= -7.0000 [db]
+            // L3neighSINRListOf_UEID_00002_of_Cell_5, Neighbour=5
+
+            struct InfoObj info = parseNeighMsg(meas_type.name.buf);
+            meas_record_lst_t const sinr = record_item; // data_item.meas_record_lst[j]
+            meas_record_lst_t const NeighbourID = data_item.meas_record_lst[j + 1];
+            match_meas_type[meas_type.type](meas_type, NeighbourID);
+
+            printf("NeighbourID= %d\n", NeighbourID.int_val);
+            printf("info.cellID=%d, info.ueID=%d\n", info.cellID, info.ueID);
+
+            struct SINRServingValues* UE = get_UE(info.cellID, info.ueID);
+            assert(UE != NULL);
+            printf("UE->ueID= %d, UE->numOfNeighCells=%d\n", UE->ueID, UE->numOfNeighCells);
+
+            add_neighCell(UE ,NeighbourID.int_val, sinr.real_val);
+          }
+        }
+        if(isneighSINRList) {
+          j += 2;
+        } else {
+          j++;
+        }
+
+        if (data_item.incomplete_flag && *data_item.incomplete_flag == TRUE_ENUM_VALUE)
+          printf("Measurement Record not reliable");
+      }  
+  }
 }
 
 static
@@ -406,9 +794,6 @@ size_t find_sm_idx(sm_ran_function_t* rf, size_t sz, bool (*f)(sm_ran_function_t
 }
 
 //*************************************************************** *//
-typedef enum{
-    Connected_mode_mobility =3,Energy_state =300
-} rc_ctrl_service_style_id_e;
 
 typedef enum{
     Handover_Control_7_6_4_1 = 1,
@@ -786,7 +1171,7 @@ e2sm_rc_ctrl_msg_frmt_1_t gen_rc_ctrl_msg_frmt_1_cell_trigger(char targetcell)
 
 
 static
-e2sm_rc_ctrl_msg_t gen_handover_rc_ctrl_msg(e2sm_rc_ctrl_msg_e msg_frmt,char targetcell)
+e2sm_rc_ctrl_msg_t gen_handover_rc_ctrl_msg(e2sm_rc_ctrl_msg_e msg_frmt, uint8_t targetcell)
 {
   e2sm_rc_ctrl_msg_t dst = {0};
 
@@ -836,6 +1221,58 @@ bool eq_sm(sm_ran_function_t const* elem, int const id)
     return true;
 
   return false;
+}
+
+// void switchOffCurrentCell(const e2_node_arr_xapp_t * nodes, const uint8_t curntCellID) {
+uint16_t switchOffCurrentCell(callback_data_t data) {
+
+  rc_ctrl_req_data_t rc_ctrl = {0};
+  // Dummy UE just for CTRL structure.
+  int ueID = 2;
+  ue_id_e2sm_t ue_id = gen_rc_ue_id(GNB_UE_ID_E2SM, ueID);
+
+  rc_ctrl.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id, Energy_State, Cell_Off);
+  assert(rc_ctrl.hdr.frmt_1.ctrl_act_id > 0);
+  char frmCurentCell = '0' + data.frmCurntCell;
+  rc_ctrl.msg = gen_cell_trigger_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG, frmCurentCell);
+  printf("[xApp]: Send switch off Control message to switch off target cellId %c \n", frmCurentCell);
+  // TODO:
+  
+  control_sm_xapp_api(&(*data.nodes).n[0].id, SM_RC_ID, &rc_ctrl);
+
+  free_rc_ctrl_req_data(&rc_ctrl);
+
+  return 1;
+}
+
+// void doHandoverAction(const e2_node_arr_xapp_t * nodes, const int ueID, const uint8_t frmCurntCell, const uint8_t toTargetCell) {
+uint16_t doHandoverAction(callback_data_t data) {
+
+  // TODO: extend to support multi Cell greater than (9).
+  char trgtCell = '0' + data.toTargetCell;
+  printf("[xApp]: data.toTargetCell= %d ..\n", data.toTargetCell);
+  assert((trgtCell > '0' &&  trgtCell <= '9'));
+
+  rc_ctrl_req_data_t rc_ctrl = {0};
+  data.ueID = (data.ueID * 10)  + data.frmCurntCell;
+  ue_id_e2sm_t ue_id_1 = gen_rc_ue_id(GNB_UE_ID_E2SM, data.ueID);
+
+  rc_ctrl.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_1, Connected_Mode_Mobility, Handover_Control_7_6_4_1);
+  rc_ctrl.msg = gen_handover_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG, trgtCell);
+
+  int64_t st = time_now_us();
+  printf("[xApp]: Send Handover Control message to move rnti %d from cellId %d to target cellId %c \n",*(ue_id_1.gnb.ran_ue_id), data.frmCurntCell, trgtCell);
+  for(size_t i =0; i < (*data.nodes).len; ++i){
+    // if(&(*nodes).n[i].id == frmCurntCell)
+    // global_e2_node_id_t* id;
+    control_sm_xapp_api(&(*data.nodes).n[i].id, SM_RC_ID, &rc_ctrl);
+  }
+
+  printf("[xApp]: Control Loop Latency for the first control message : %ld us\n", time_now_us() - st);
+
+  free_rc_ctrl_req_data(&rc_ctrl);
+
+  return 1;
 }
 
 int main(int argc, char *argv[])
@@ -894,50 +1331,64 @@ int main(int argc, char *argv[])
   // E2SM-RC Control Header Format 1
   // E2SM-RC Control Message Format 1
 
+  callback_data_t context = {.nodes = &nodes};
+  forEachCell(getTargerCellID, doHandoverAction, switchOffCurrentCell, context);
 
-  //move imsi 13 that have ranti 1 to cell 3  
-  char targetcell = '3' ;
-  rc_ctrl_req_data_t rc_ctrl_1 = {0};
-  ue_id_e2sm_t ue_id_1 = gen_rc_ue_id(GNB_UE_ID_E2SM,1);
+  // rnti(Radio Network Temporary Identifier)
 
-  rc_ctrl_1.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_1, Connected_mode_mobility, Handover_Control_7_6_4_1);
-  rc_ctrl_1.msg = gen_handover_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG,targetcell);
+  // move imsi 13 that have ranti 1 to cell 3
+  // context.ueID = 1;
+  // context.frmCurntCell = 2;
+  // context.toTargetCell = 3;
+  // doHandoverAction(context);
+  // sleep(5);
 
-  int64_t st = time_now_us();
-  printf("[xApp]: Send Handover Control message to move rnti %ld from cellId %c to target cellId %c \n",*(ue_id_1.gnb.ran_ue_id), CURRENT_CELL,targetcell);
-  for(size_t i =0; i < nodes.len; ++i){
-    control_sm_xapp_api(&nodes.n[i].id, SM_RC_ID, &rc_ctrl_1);
-  }
-  printf("[xApp]: Control Loop Latency for the first control message : %ld us\n", time_now_us() - st);
-   sleep(5);
-//  ***********************************************************************************************************
+  // move imsi 13 that have ranti 1 to cell 3  
+  // char targetcell = '3' ;
+  // rc_ctrl_req_data_t rc_ctrl_1 = {0};
+  // ue_id_e2sm_t ue_id_1 = gen_rc_ue_id(GNB_UE_ID_E2SM,1);
+  // rc_ctrl_1.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_1, Connected_mode_mobility, Handover_Control_7_6_4_1);
+  // rc_ctrl_1.msg = gen_handover_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG,targetcell);
+  // int64_t st = time_now_us();
+  // printf("[xApp]: Send Handover Control message to move rnti %ld from cellId %c to target cellId %c \n",*(ue_id_1.gnb.ran_ue_id), CURRENT_CELL,targetcell);
+  // for(size_t i =0; i < nodes.len; ++i){
+  //   control_sm_xapp_api(&nodes.n[i].id, SM_RC_ID, &rc_ctrl_1);
+  // }
+  // printf("[xApp]: Control Loop Latency for the first control message : %ld us\n", time_now_us() - st);
+
+  // move imsi 15 that have ranti 2 to cell 5
+  // context.ueID = 2;
+  // context.frmCurntCell = 2;
+  // context.toTargetCell = 5;
+  // doHandoverAction(context);
+  // sleep(10);
+
+  // move imsi 15 that have ranti 2 to cell 5  
+  // targetcell = '5';
+  // rc_ctrl_req_data_t rc_ctrl_2 = {0};
+  // ue_id_e2sm_t ue_id_2 = gen_rc_ue_id(GNB_UE_ID_E2SM,2);
+  // rc_ctrl_2.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_2, Connected_mode_mobility, Handover_Control_7_6_4_1);
+  // rc_ctrl_2.msg = gen_handover_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG,targetcell);
+  // int64_t st1 = time_now_us();
+  //   printf("[xApp]: Send Handover Control message to move rnti %ld from cellId %c to target cellId %c \n",*(ue_id_2.gnb.ran_ue_id), CURRENT_CELL,targetcell);
+  // for(size_t i =0; i < nodes.len; ++i){
+  //   control_sm_xapp_api(&nodes.n[i].id, SM_RC_ID, &rc_ctrl_2);
+  // }
+  // printf("[xApp]: Control Loop Latency for the second control message : %ld us\n", time_now_us() - st1);
   
-  //move imsi 15 that have ranti 2 to cell 5  
-  targetcell = '5';
-  rc_ctrl_req_data_t rc_ctrl_2 = {0};
-  ue_id_e2sm_t ue_id_2 = gen_rc_ue_id(GNB_UE_ID_E2SM,2);
-  rc_ctrl_2.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_2, Connected_mode_mobility, Handover_Control_7_6_4_1);
-  rc_ctrl_2.msg = gen_handover_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG,targetcell);
+  // context.frmCurntCell = 2;
+  // switchOffCurrentCell(context);
 
-  int64_t st1 = time_now_us();
-    printf("[xApp]: Send Handover Control message to move rnti %ld from cellId %c to target cellId %c \n",*(ue_id_2.gnb.ran_ue_id), CURRENT_CELL,targetcell);
-  for(size_t i =0; i < nodes.len; ++i){
-    control_sm_xapp_api(&nodes.n[i].id, SM_RC_ID, &rc_ctrl_2);
-  }
-  printf("[xApp]: Control Loop Latency for the second control message : %ld us\n", time_now_us() - st1);
- 
-  //**********************************************************************************************************
-   sleep(10);
-  rc_ctrl_req_data_t rc_ctrl_3 = {0};
-  rc_ctrl_3.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_2, Energy_state, CELL_OFF);
-  rc_ctrl_3.msg = gen_cell_trigger_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG,CURRENT_CELL);
-    printf("[xApp]: Send switch off Control message to switch off target cellId %c \n",CURRENT_CELL);
-    control_sm_xapp_api(&nodes.n[0].id, SM_RC_ID, &rc_ctrl_3);
+  // rc_ctrl_req_data_t rc_ctrl_3 = {0};
+  // rc_ctrl_3.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_2, Energy_state, CELL_OFF);
+  // rc_ctrl_3.msg = gen_cell_trigger_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG,CURRENT_CELL);
+  // printf("[xApp]: Send switch off Control message to switch off target cellId %c \n",CURRENT_CELL);
+  // control_sm_xapp_api(&nodes.n[0].id, SM_RC_ID, &rc_ctrl_3);
 
 
-  free_rc_ctrl_req_data(&rc_ctrl_1);
-  free_rc_ctrl_req_data(&rc_ctrl_2);
-  free_rc_ctrl_req_data(&rc_ctrl_3);
+  // free_rc_ctrl_req_data(&rc_ctrl_1);
+  // free_rc_ctrl_req_data(&rc_ctrl_2);
+  // free_rc_ctrl_req_data(&rc_ctrl_3);
 
 
   ////////////
@@ -957,7 +1408,7 @@ int main(int argc, char *argv[])
   while(try_stop_xapp_api() == false)
     usleep(1000);
   
-    //free_e2_node_arr_xapp(&nodes);
+  // free_e2_node_arr_xapp(&nodes);
 
   rc = pthread_mutex_destroy(&mtx);
   assert(rc == 0);
