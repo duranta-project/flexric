@@ -48,7 +48,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <arpa/inet.h>
-#define CURRENT_CELL '2'
 
 #define MIN_SINR -10
 #define NOT(X) !X
@@ -121,7 +120,7 @@ typedef void (*log_ue_id)(ue_id_e2sm_t ue_id);
 
 static
 log_ue_id log_ue_id_e2sm[END_UE_ID_E2SM] = {
-    log_gnb_ue_id, // common for gNB-mono, CU and CU-CP
+   // log_gnb_ue_id, // common for gNB-mono, CU and CU-CP
     log_du_ue_id,
     log_cuup_ue_id,
     NULL,
@@ -141,8 +140,8 @@ void log_int_value(byte_array_t name, meas_record_lst_t meas_record)
     printf("DRB.PdcpSduVolumeDL = %d [kb]\n", meas_record.int_val);
   } else if (cmp_str_ba("DRB.PdcpSduVolumeUL", name) == 0) {
     printf("DRB.PdcpSduVolumeUL = %d [kb]\n", meas_record.int_val);
-  } else if (strncmp(name.buf, "L3neighSINRListOf_UEID_", strlen("L3neighSINRListOf_UEID_")) == 0) {
-    printf("%s, Neighbour=%d \n", name.buf, meas_record.int_val);
+ // } else if (strncmp(name.buf, "L3neighSINRListOf_UEID_", strlen("L3neighSINRListOf_UEID_")) == 0) {
+ //   printf("%s, Neighbour=%d \n", name.buf, meas_record.int_val);
   } else {
     // printf("Name= %s, value= %d \n", name.buf, meas_record.int_val);
   }
@@ -427,9 +426,9 @@ uint16_t forEachUE(struct SINR_Map* sinrMap, Callback targetCell, Callback HO, C
         };
         // uint8_t _perfectNeighCell = targetCell(data_per_ue);
         data_per_ue.toTargetCell = targetCell(data_per_ue); //_perfectNeighCell;
-        handover_flag = true;
         HO(data_per_ue);
-    }
+        handover_flag = true;
+      }
   }
   if(handover_flag) {
     // Switch off Cell #
@@ -595,16 +594,16 @@ void sm_cb_kpm(sm_ag_if_rd_t const* rd)
   static int counter = 1;
   {
     lock_guard(&mtx);
-    printf("\n time now = %ld \n",now); 
-    printf("\n time from simulator = %ld \n", hdr_frm_1->collectStartTime); //ntohll(hdr_frm_1->collectStartTime)
-    printf("\n%7d KPM ind_msg latency = %ld [μs]\n", counter, now -  hdr_frm_1->collectStartTime); // xApp <-> E2 Node
+    //printf("\n time now = %ld \n",now); 
+    //printf("\n time from simulator = %ld \n", hdr_frm_1->collectStartTime); //ntohll(hdr_frm_1->collectStartTime)
+    //printf("\n%7d KPM ind_msg latency = %ld [μs]\n", counter, now -  hdr_frm_1->collectStartTime); // xApp <-> E2 Node
 
     // Reported list of measurements per UE
     for (size_t i = 0; i < msg_frm_3->ue_meas_report_lst_len; i++) {
       // log UE ID
       ue_id_e2sm_t const ue_id_e2sm = msg_frm_3->meas_report_per_ue[i].ue_meas_report_lst;
       ue_id_e2sm_e const type = ue_id_e2sm.type;
-      log_ue_id_e2sm[type](ue_id_e2sm);
+      //log_ue_id_e2sm[type](ue_id_e2sm);
       // Save UE ID for filling RC Control message
       free_ue_id_e2sm(&ue_id);
       ue_id = cp_ue_id_e2sm(&ue_id_e2sm);
@@ -1254,14 +1253,14 @@ uint16_t doHandoverAction(callback_data_t data) {
   assert((trgtCell > '0' &&  trgtCell <= '9'));
 
   rc_ctrl_req_data_t rc_ctrl = {0};
-  data.ueID = (data.ueID * 10)  + data.frmCurntCell;
+  //data.ueID = (data.ueID * 10)  + data.frmCurntCell;
   ue_id_e2sm_t ue_id_1 = gen_rc_ue_id(GNB_UE_ID_E2SM, data.ueID);
 
   rc_ctrl.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_1, Connected_Mode_Mobility, Handover_Control_7_6_4_1);
   rc_ctrl.msg = gen_handover_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG, trgtCell);
 
   int64_t st = time_now_us();
-  printf("[xApp]: Send Handover Control message to move rnti %d from cellId %d to target cellId %c \n",*(ue_id_1.gnb.ran_ue_id), data.frmCurntCell, trgtCell);
+  printf("[xApp]: Send Handover Control message to move IMSI %d from cellId %d to target cellId %c \n",*(ue_id_1.gnb.ran_ue_id), data.frmCurntCell, trgtCell);
   for(size_t i =0; i < (*data.nodes).len; ++i){
     // if(&(*nodes).n[i].id == frmCurntCell)
     // global_e2_node_id_t* id;
