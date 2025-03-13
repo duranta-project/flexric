@@ -391,7 +391,7 @@ e2sm_rc_ctrl_msg_t gen_rc_ctrl_msg(e2sm_rc_ctrl_msg_e msg_frmt)
 
 
 static
-ue_id_e2sm_t gen_rc_ue_id(ue_id_e2sm_e type)
+ue_id_e2sm_t gen_rc_ue_id(ue_id_e2sm_e type,uint64_t IMSI)
 {
   ue_id_e2sm_t ue_id = {0};
   if (type == GNB_UE_ID_E2SM) {
@@ -405,32 +405,7 @@ ue_id_e2sm_t gen_rc_ue_id(ue_id_e2sm_e type)
     // ue_id.gnb.guami.amf_set_id = 0;
     // ue_id.gnb.guami.amf_ptr = 0;
     ue_id.gnb.ran_ue_id = (uint64_t *)malloc(sizeof(uint64_t));
-     *(ue_id.gnb.ran_ue_id) = 1;
-
-    // ue_id.gnb.global_gnb_id = (global_gnb_id_t *)malloc(sizeof(global_gnb_id_t));
-    // ue_id.gnb.global_gnb_id->gnb_id.nb_id = 5; 
-  } else {
-    assert(0!=0 && "not supported UE ID type");
-  }
-  return ue_id;
-}
-
-static
-ue_id_e2sm_t gen_rc_ue_id_2(ue_id_e2sm_e type)
-{
-  ue_id_e2sm_t ue_id = {0};
-  if (type == GNB_UE_ID_E2SM) {
-    ue_id.type = GNB_UE_ID_E2SM;
-    // TODO
-    // ue_id.gnb.amf_ue_ngap_id = 0;
-    // ue_id.gnb.guami.plmn_id.mcc = 1;
-    // ue_id.gnb.guami.plmn_id.mnc = 1;
-    // ue_id.gnb.guami.plmn_id.mnc_digit_len = 2;
-    // ue_id.gnb.guami.amf_region_id = 0;
-    // ue_id.gnb.guami.amf_set_id = 0;
-    // ue_id.gnb.guami.amf_ptr = 0;
-    ue_id.gnb.ran_ue_id = (uint64_t *)malloc(sizeof(uint64_t));
-     *(ue_id.gnb.ran_ue_id) = 2;
+     *(ue_id.gnb.ran_ue_id) = IMSI;
 
     // ue_id.gnb.global_gnb_id = (global_gnb_id_t *)malloc(sizeof(global_gnb_id_t));
     // ue_id.gnb.global_gnb_id->gnb_id.nb_id = 5; 
@@ -466,14 +441,16 @@ int main(int argc, char *argv[])
   // E2SM-RC Control Message Format 1
 
   rc_ctrl_req_data_t rc_ctrl_1 = {0};
-  ue_id_e2sm_t ue_id_1 = gen_rc_ue_id(GNB_UE_ID_E2SM);
-  ue_id_e2sm_t ue_id_2 = gen_rc_ue_id_2(GNB_UE_ID_E2SM);
+  uint64_t IMSI_ue1=3;
+  uint64_t IMSI_ue2=8;
+  ue_id_e2sm_t ue_id_1 = gen_rc_ue_id(GNB_UE_ID_E2SM,IMSI_ue1);
+  ue_id_e2sm_t ue_id_2 = gen_rc_ue_id(GNB_UE_ID_E2SM,IMSI_ue2);
 
   rc_ctrl_1.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_1, 3, Handover_Control_7_6_4_1);
   rc_ctrl_1.msg = gen_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG);
 
   int64_t st = time_now_us();
-  printf("[xApp]: Send Handover Control message to move rnti %ld from cellId %c to target cellId %c \n",*(ue_id_1.gnb.ran_ue_id), CURRENT_CELL,TARGET_CELL);
+  printf("[xApp]: Send Handover Control message to move IMSI %ld from cellId %c to target cellId %c \n",*(ue_id_1.gnb.ran_ue_id), CURRENT_CELL,TARGET_CELL);
   for(size_t i =0; i < nodes.len; ++i){
     control_sm_xapp_api(&nodes.n[i].id, SM_RC_ID, &rc_ctrl_1);
   }
@@ -485,7 +462,7 @@ int main(int argc, char *argv[])
   rc_ctrl_2.msg = gen_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG);
 
   int64_t st1 = time_now_us();
-    printf("[xApp]: Send Handover Control message to move rnti %ld from cellId %c to target cellId %c \n",*(ue_id_2.gnb.ran_ue_id), CURRENT_CELL,TARGET_CELL);
+    printf("[xApp]: Send Handover Control message to move IMSI %ld from cellId %c to target cellId %c \n",*(ue_id_2.gnb.ran_ue_id), CURRENT_CELL,TARGET_CELL);
   for(size_t i =0; i < nodes.len; ++i){
     control_sm_xapp_api(&nodes.n[i].id, SM_RC_ID, &rc_ctrl_2);
   }
