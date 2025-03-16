@@ -559,7 +559,7 @@ void sm_cb_kpm(sm_ag_if_rd_t const* rd)
   kpm_ric_ind_hdr_format_1_t const* hdr_frm_1 = &ind->hdr.kpm_ric_ind_hdr_format_1;
   kpm_ind_msg_format_3_t const* msg_frm_3 = &ind->msg.frm_3;
 
-  uint64_t const now = time_now_us();
+ // uint64_t const now = time_now_us();
   static int counter = 1;
   {
     lock_guard(&mtx);
@@ -1297,7 +1297,8 @@ void forEachCell(Callback targetCellFinding, Callback cbHOAction, Callback cbSwi
            control_sm_xapp_api(&(*data.nodes).n[0].id, SM_RC_ID, &rc_ctrl);
 
      free_rc_ctrl_req_data(&rc_ctrl);
-                
+      
+     return 0 ; 
   
     }  
 int main(int argc, char *argv[])
