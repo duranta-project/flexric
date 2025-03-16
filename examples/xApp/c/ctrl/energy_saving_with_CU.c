@@ -31,6 +31,7 @@
  *  Mina Yonan <m.yonan@aucegypt.edu>
  *  Mostafa Ashraf <mostafa.ashraf.ext@orange.com>
  *  Abdelrhman Soliman <abdelrhman.soliman.ext@orange.com>
+ *  Aya Kamal <aya.kamal.ext@orange.com>
  */ 
 
 //Energy saving xapp with cell utilization
@@ -608,26 +609,23 @@ test_info_lst_t filter_predicate(test_cond_type_e type, test_cond_e cond, int va
   test_info_lst_t dst = {0};
 
   dst.test_cond_type = type;
-  // It can only be TRUE_TEST_COND_TYPE so it does not matter the type
-  // but ugly ugly...
-  dst.S_NSSAI = TRUE_TEST_COND_TYPE;
+    dst.IsStat = TRUE_TEST_COND_TYPE;
 
-  dst.test_cond = calloc(1, sizeof(test_cond_e));
-  assert(dst.test_cond != NULL && "Memory exhausted");
-  *dst.test_cond = cond;
+    // Allocate memory for test_cond and set its value
+    dst.test_cond = calloc(1, sizeof(test_cond_e));
+    assert(dst.test_cond != NULL && "Memory allocation failed for test_cond");
+    *dst.test_cond = cond;
 
-  dst.test_cond_value = calloc(1, sizeof(test_cond_value_t));
-  assert(dst.test_cond_value != NULL && "Memory exhausted");
-  dst.test_cond_value->type = OCTET_STRING_TEST_COND_VALUE;
+    // Allocate memory for test_cond_value
+    dst.test_cond_value = calloc(1, sizeof(test_cond_value_t));
+    assert(dst.test_cond_value != NULL && "Memory allocation failed for test_cond_value");
+    dst.test_cond_value->type = INTEGER_TEST_COND_VALUE;
 
-  dst.test_cond_value->octet_string_value = calloc(1, sizeof(byte_array_t));
-  assert(dst.test_cond_value->octet_string_value != NULL && "Memory exhausted");
-  const size_t len_nssai = 1;
-  dst.test_cond_value->octet_string_value->len = len_nssai;
-  dst.test_cond_value->octet_string_value->buf = calloc(len_nssai, sizeof(uint8_t));
-  assert(dst.test_cond_value->octet_string_value->buf != NULL && "Memory exhausted");
-  dst.test_cond_value->octet_string_value->buf[0] = value;
-
+    // Allocate memory for int_value and set its value
+    int64_t *int_value = calloc(1, sizeof(int64_t));
+    assert(int_value != NULL && "Memory allocation failed for int_value");
+    *int_value = value; 
+    dst.test_cond_value->int_value = int_value;
   return dst;
 }
 
@@ -699,9 +697,9 @@ kpm_act_def_t fill_report_style_4(ric_report_style_item_t const* report_item)
   act_def.frm_4.matching_cond_lst = calloc(act_def.frm_4.matching_cond_lst_len, sizeof(matching_condition_format_4_lst_t));
   assert(act_def.frm_4.matching_cond_lst != NULL && "Memory exhausted");
   // Filter connected UEs by S-NSSAI criteria
-  test_cond_type_e const type = S_NSSAI_TEST_COND_TYPE; // CQI_TEST_COND_TYPE
-  test_cond_e const condition = EQUAL_TEST_COND; // GREATERTHAN_TEST_COND
-  int const value = 1;
+  test_cond_type_e const type = IsStat_TEST_COND_TYPE; // CQI_TEST_COND_TYPE
+  test_cond_e const condition = LESSTHAN_TEST_COND; // GREATERTHAN_TEST_COND
+  int const value = 40;
   act_def.frm_4.matching_cond_lst[0].test_info_lst = filter_predicate(type, condition, value);
 
   // Fill Action Definition Format 1
