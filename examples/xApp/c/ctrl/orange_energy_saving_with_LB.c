@@ -817,13 +817,13 @@ e2sm_rc_ctrl_msg_t gen_cell_trigger_rc_ctrl_msg(e2sm_rc_ctrl_msg_e msg_frmt,char
 }
 
 static
-ue_id_e2sm_t gen_rc_ue_id(ue_id_e2sm_e type,int ueid)
+ue_id_e2sm_t gen_rc_ue_id(ue_id_e2sm_e type,int IMSI)
 {
   ue_id_e2sm_t ue_id = {0};
   if (type == GNB_UE_ID_E2SM) {
     ue_id.type = GNB_UE_ID_E2SM;
     ue_id.gnb.ran_ue_id = (uint64_t *)malloc(sizeof(uint64_t));
-     *(ue_id.gnb.ran_ue_id) = ueid;
+     *(ue_id.gnb.ran_ue_id) = IMSI;
   } else {
     assert(0!=0 && "not supported UE ID type");
   }
@@ -898,15 +898,15 @@ int main(int argc, char *argv[])
 
   //move imsi 3 that have ranti 1 to cell 5  
   char targetcell = '5' ;
-  
+  int IMSI = 3;
   rc_ctrl_req_data_t rc_ctrl_1 = {0};
-  ue_id_e2sm_t ue_id_1 = gen_rc_ue_id(GNB_UE_ID_E2SM,1);
+  ue_id_e2sm_t ue_id_1 = gen_rc_ue_id(GNB_UE_ID_E2SM,IMSI);
 
   rc_ctrl_1.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_1, Connected_mode_mobility, Handover_Control_7_6_4_1);
   rc_ctrl_1.msg = gen_handover_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG,targetcell);
 
   int64_t st = time_now_us();
-  printf("[xApp]: Send Handover Control message to move rnti %ld from cellId %c to target cellId %c \n",*(ue_id_1.gnb.ran_ue_id), CURRENT_CELL,targetcell);
+  printf("[xApp]: Send Handover Control message to move IMSI %ld from cellId %c to target cellId %c \n",*(ue_id_1.gnb.ran_ue_id), CURRENT_CELL,targetcell);
   for(size_t i =0; i < nodes.len; ++i){
     control_sm_xapp_api(&nodes.n[i].id, SM_RC_ID, &rc_ctrl_1);
   }
@@ -917,12 +917,13 @@ int main(int argc, char *argv[])
   //move imsi 8 that have ranti 2 to cell 4 
   targetcell = '4';
   rc_ctrl_req_data_t rc_ctrl_2 = {0};
-  ue_id_e2sm_t ue_id_2 = gen_rc_ue_id(GNB_UE_ID_E2SM,2);
+  IMSI = 8;
+  ue_id_e2sm_t ue_id_2 = gen_rc_ue_id(GNB_UE_ID_E2SM,IMSI);
   rc_ctrl_2.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_2, Connected_mode_mobility, Handover_Control_7_6_4_1);
   rc_ctrl_2.msg = gen_handover_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG,targetcell);
 
   int64_t st1 = time_now_us();
-    printf("[xApp]: Send Handover Control message to move rnti %ld from cellId %c to target cellId %c \n",*(ue_id_2.gnb.ran_ue_id), CURRENT_CELL,targetcell);
+    printf("[xApp]: Send Handover Control message to move IMSI %ld from cellId %c to target cellId %c \n",*(ue_id_2.gnb.ran_ue_id), CURRENT_CELL,targetcell);
   for(size_t i =0; i < nodes.len; ++i){
     control_sm_xapp_api(&nodes.n[i].id, SM_RC_ID, &rc_ctrl_2);
   }
@@ -934,12 +935,13 @@ int main(int argc, char *argv[])
     //move imsi 9 that have ranti 3 to cell 3  
   targetcell = '3';
   rc_ctrl_req_data_t rc_ctrl_3 = {0};
-  ue_id_e2sm_t ue_id_3 = gen_rc_ue_id(GNB_UE_ID_E2SM,3);
-  rc_ctrl_3.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_2, Connected_mode_mobility, Handover_Control_7_6_4_1);
+  IMSI = 9;
+  ue_id_e2sm_t ue_id_3 = gen_rc_ue_id(GNB_UE_ID_E2SM,IMSI);
+  rc_ctrl_3.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_3, Connected_mode_mobility, Handover_Control_7_6_4_1);
   rc_ctrl_3.msg = gen_handover_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG,targetcell);
 
   int64_t st2 = time_now_us();
-    printf("[xApp]: Send Handover Control message to move rnti %ld from cellId %c to target cellId %c \n",*(ue_id_3.gnb.ran_ue_id), CURRENT_CELL,targetcell);
+    printf("[xApp]: Send Handover Control message to move IMSI %ld from cellId %c to target cellId %c \n",*(ue_id_3.gnb.ran_ue_id), CURRENT_CELL,targetcell);
   for(size_t i =0; i < nodes.len; ++i){
     control_sm_xapp_api(&nodes.n[i].id, SM_RC_ID, &rc_ctrl_3);
   }
@@ -950,12 +952,13 @@ int main(int argc, char *argv[])
     //move imsi 10 that have ranti 4 to cell 5  
   targetcell= '5';
   rc_ctrl_req_data_t rc_ctrl_4 = {0};
-  ue_id_e2sm_t ue_id_4 = gen_rc_ue_id(GNB_UE_ID_E2SM,4);
-  rc_ctrl_4.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_2, Connected_mode_mobility, Handover_Control_7_6_4_1);
+  IMSI = 10;
+  ue_id_e2sm_t ue_id_4 = gen_rc_ue_id(GNB_UE_ID_E2SM,IMSI);
+  rc_ctrl_4.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_4, Connected_mode_mobility, Handover_Control_7_6_4_1);
   rc_ctrl_4.msg = gen_handover_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG,targetcell);
   
   int64_t st3 = time_now_us();
-    printf("[xApp]: Send Handover Control message to move rnti %ld from cellId %c to target cellId %c \n",*(ue_id_4.gnb.ran_ue_id), CURRENT_CELL,targetcell);
+    printf("[xApp]: Send Handover Control message to move IMSI %ld from cellId %c to target cellId %c \n",*(ue_id_4.gnb.ran_ue_id), CURRENT_CELL,targetcell);
   for(size_t i =0; i < nodes.len; ++i){
     control_sm_xapp_api(&nodes.n[i].id, SM_RC_ID, &rc_ctrl_4);
   }
