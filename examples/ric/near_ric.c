@@ -34,6 +34,7 @@
 #include <time.h>
 #include <unistd.h>
 
+const uint16_t SRS_ran_func_id = 141;
 const uint16_t MAC_ran_func_id = 142;
 const uint16_t RLC_ran_func_id = 143;
 const uint16_t PDCP_ran_func_id = 144;

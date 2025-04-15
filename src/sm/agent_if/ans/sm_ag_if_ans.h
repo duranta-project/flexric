@@ -29,6 +29,7 @@
 #include "../../tc_sm/ie/tc_data_ie.h"
 #include "../../gtp_sm/ie/gtp_data_ie.h"
 #include "../../rc_sm/ie/rc_data_ie.h"
+#include "../../srs_sm/ie/srs_data_ie.h"
 
 #include "../write/subscription_aperiod.h"
 #include "../write/subscription_period.h"
@@ -56,6 +57,7 @@ typedef enum{
   RAN_CTRL_V1_3_AGENT_IF_CTRL_ANS_V0,
 
   SM_AGENT_IF_CTRL_ANS_V0_END,
+  SRS_AGENT_IF_CTRL_ANS_V0,
 } sm_ag_if_ans_ctrl_e;
 
 typedef struct{
@@ -68,6 +70,7 @@ typedef struct{
     tc_ctrl_out_t tc;
     gtp_ctrl_out_t gtp;
     e2sm_rc_ctrl_out_t rc;
+    srs_ctrl_out_t srs;
   };
 } sm_ag_if_ans_ctrl_t;
 

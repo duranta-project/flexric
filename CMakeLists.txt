@@ -277,6 +277,11 @@ set(SM_ENCODING_GTP "PLAIN" CACHE STRING "The GTP SM encoding to use")
 set_property(CACHE SM_ENCODING_GTP PROPERTY STRINGS "PLAIN")
 message(STATUS "Selected GTP SM_ENCODING: ${SM_ENCODING_GTP}")
 
+# SRS SM
+set(SM_ENCODING_SRS "PLAIN" CACHE STRING "The SRS SM encoding to use")
+set_property(CACHE SM_ENCODING_SRS PROPERTY STRINGS "PLAIN")
+message(STATUS "Selected SRS SM_ENCODING: ${SM_ENCODING_SRS}")
+
 #######
 ## Flatbuffer encoding
 #######
@@ -331,6 +336,7 @@ install(TARGETS tc_sm DESTINATION ${CMAKE_INSTALL_LIBDIR}/flexric)
 install(TARGETS gtp_sm DESTINATION ${CMAKE_INSTALL_LIBDIR}/flexric)
 install(TARGETS kpm_sm DESTINATION ${CMAKE_INSTALL_LIBDIR}/flexric)
 install(TARGETS rc_sm DESTINATION ${CMAKE_INSTALL_LIBDIR}/flexric)
+install(TARGETS srs_sm DESTINATION ${CMAKE_INSTALL_LIBDIR}/flexric)
 
 #######
 ## Install globally nearRT-RIC
