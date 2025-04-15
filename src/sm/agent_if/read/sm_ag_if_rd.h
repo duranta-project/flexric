@@ -52,8 +52,8 @@ typedef enum{
   GTP_STATS_V0, 
   KPM_STATS_V3_0, 
   RAN_CTRL_STATS_V1_03,
-  SM_AGENT_IF_READ_V0_END,
   SRS_STATS_V0,
+  SM_AGENT_IF_READ_V0_END,
 } sm_ag_if_rd_ind_e;
 
 typedef struct{
@@ -103,8 +103,8 @@ typedef enum{
   GTP_AGENT_IF_E2_SETUP_ANS_V0,
   KPM_V3_0_AGENT_IF_E2_SETUP_ANS_V0,
   RAN_CTRL_V1_3_AGENT_IF_E2_SETUP_ANS_V0,
-  SM_AGENT_IF_E2_SETUP_ANS_V0_END,
   SRS_AGENT_IF_E2_SETUP_ANS_V0,
+  SM_AGENT_IF_E2_SETUP_ANS_V0_END,
 } sm_ag_if_rd_e2setup_e;
 
 typedef struct{
@@ -118,6 +118,7 @@ typedef struct{
     gtp_e2_setup_data_t gtp;
     kpm_e2_setup_t kpm;
     rc_e2_setup_t rc;
+    srs_e2_setup_data_t srs;
   };
 } sm_ag_if_rd_e2setup_t;
 
@@ -134,6 +135,7 @@ typedef enum{
   GTP_AGENT_IF_RIC_SERV_UPDATE_CTRL_ANS_V0,
   KPM_V3_0_AGENT_IF_RIC_SERV_UPDATE_CTRL_ANS_V0,
   RAN_CTRL_V1_3_AGENT_IF_RIC_SERV_UPDATE_CTRL_ANS_V0,
+  SRS_AGENT_IF_RIC_SERV_UPDATE_CTRL_ANS_V0,
 
   SM_AGENT_IF_RIC_SERV_UPDATE_CTRL_ANS_V0_END,
 } sm_ag_if_rd_rsu_e;
@@ -149,6 +151,7 @@ typedef struct{
     gtp_ric_service_update_t gtp;
     kpm_ric_service_update_t kpm;
     rc_ric_service_update_t rc;
+    srs_ric_service_update_t srs;
   };
 } sm_ag_if_rd_rsu_t;
 

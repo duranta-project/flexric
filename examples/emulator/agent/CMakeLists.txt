@@ -4,6 +4,7 @@
 
 add_library(test_agent_obj OBJECT 
   ../../../test/rnd/fill_rnd_data_gtp.c                  
+  ../../../test/rnd/fill_rnd_data_srs.c
   ../../../test/rnd/fill_rnd_data_tc.c                  
   ../../../test/rnd/fill_rnd_data_mac.c                  
   ../../../test/rnd/fill_rnd_data_rlc.c                  
@@ -22,6 +23,7 @@ add_library(test_agent_obj OBJECT
   sm_rlc.c
   sm_slice.c
   sm_tc.c
+  sm_srs.c
   )
 
 target_compile_definitions(test_agent_obj PRIVATE ${E2AP_VERSION}  ${KPM_VERSION}  )

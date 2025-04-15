@@ -55,9 +55,9 @@ typedef enum{
   TC_AGENT_IF_CTRL_ANS_V0,
   GTP_AGENT_IF_CTRL_ANS_V0,
   RAN_CTRL_V1_3_AGENT_IF_CTRL_ANS_V0,
+  SRS_AGENT_IF_CTRL_ANS_V0,
 
   SM_AGENT_IF_CTRL_ANS_V0_END,
-  SRS_AGENT_IF_CTRL_ANS_V0,
 } sm_ag_if_ans_ctrl_e;
 
 typedef struct{
