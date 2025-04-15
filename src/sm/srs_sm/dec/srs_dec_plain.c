@@ -55,20 +55,20 @@ srs_ind_msg_t srs_dec_ind_msg_plain(size_t len, uint8_t const ind_msg[len])
 //  assert(len == sizeof(srs_ind_msg_t)); 
   srs_ind_msg_t ret;
 
-  static_assert(sizeof(uint32_t) == sizeof(ret.len_ue_stats), "Different sizes!");
+  static_assert(sizeof(uint32_t) == sizeof(ret.len), "Different sizes!");
 
-  const size_t len_sizeof = sizeof(ret.len_ue_stats);
-  memcpy(&ret.len_ue_stats, ind_msg, len_sizeof);
+  const size_t len_sizeof = sizeof(ret.len);
+  memcpy(&ret.len, ind_msg, len_sizeof);
 
-  if(ret.len_ue_stats > 0){
-    ret.ue_stats = calloc(ret.len_ue_stats, sizeof(srs_ue_stats_impl_t));
-    assert(ret.ue_stats != NULL && "Memory exhausted!");
+  if(ret.len > 0){
+    ret.indication_stats = calloc(ret.len, sizeof(srs_indication_stats_impl_t));
+    assert(ret.indication_stats != NULL && "Memory exhausted!");
   }
   
   void* ptr = (void*)&ind_msg[len_sizeof];
-  for(uint32_t i = 0; i < ret.len_ue_stats; ++i){
-    memcpy(&ret.ue_stats[i], ptr, sizeof( srs_ue_stats_impl_t) );
-    ptr += sizeof( srs_ue_stats_impl_t); 
+  for(uint32_t i = 0; i < ret.len; ++i){
+    memcpy(&ret.indication_stats[i], ptr, sizeof( srs_indication_stats_impl_t) );
+    ptr += sizeof( srs_indication_stats_impl_t); 
   }
 
   memcpy(&ret.tstamp, ptr, sizeof(ret.tstamp));

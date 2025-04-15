@@ -22,6 +22,7 @@
 #include "../../src/agent/e2_agent_api.h"
 #include "../../src/ric/near_ric_api.h"
 #include "../../src/xApp/e42_xapp_api.h"
+#include "../../src/sm/srs_sm/srs_sm_id.h"
 #include "../../src/sm/slice_sm/slice_sm_id.h"
 #include "../../src/sm/gtp_sm/gtp_sm_id.h"
 #include "../../src/sm/kpm_sm/kpm_sm_id_wrapper.h"
@@ -29,6 +30,7 @@
 #include "../../src/util/alg_ds/alg/defer.h"
 #include "../../src/util/time_now_us.h"
 
+#include "../rnd/fill_rnd_data_srs.h"
 #include "../rnd/fill_rnd_data_gtp.h"                  
 #include "../rnd/fill_rnd_data_tc.h"                  
 #include "../rnd/fill_rnd_data_mac.h"                  
@@ -129,6 +131,15 @@ bool read_ind_tc(void* ind)
   assert(ind != NULL);
   tc_ind_data_t* tc = (tc_ind_data_t*)ind;
   fill_tc_ind_data(tc);
+  return true;
+}
+
+static
+bool read_ind_srs(void* ind)
+{
+  assert(ind != NULL);
+  srs_ind_data_t* srs = (srs_ind_data_t*)ind;
+  fill_srs_ind_data(srs);
   return true;
 }
 
@@ -284,6 +295,22 @@ void sm_cb_gtp(sm_ag_if_rd_t const* rd)
   ++cnt_gtp;
 }
 
+static 
+int cnt_srs = 0;
+static
+void sm_cb_srs(sm_ag_if_rd_t const* rd)
+{
+  assert(rd != NULL);
+  assert(rd->type == INDICATION_MSG_AGENT_IF_ANS_V0);
+  assert(rd->ind.type == SRS_STATS_V0); 
+
+  if(cnt_srs % 128 == 0){
+  int64_t now = time_now_us();
+  printf("SRS ind_msg latency = %ld μs\n", now - rd->ind.srs.msg.tstamp);
+  }
+  ++cnt_srs;
+}
+
 static
 void sm_cb_kpm(sm_ag_if_rd_t const* rd)
 {
@@ -373,6 +400,7 @@ sm_io_ag_ran_t init_sm_io_ag_ran(void)
   dst.read_ind_tbl[GTP_STATS_V0] =   read_ind_gtp;
   dst.read_ind_tbl[KPM_STATS_V3_0] =   read_ind_kpm;
   dst.read_ind_tbl[RAN_CTRL_STATS_V1_03] = read_ind_rc;
+  dst.read_ind_tbl[SRS_STATS_V0] =   read_ind_srs;
 
   //  READ: E2 Setup
   dst.read_setup_tbl[KPM_V3_0_AGENT_IF_E2_SETUP_ANS_V0] = read_e2_setup_kpm;
@@ -489,6 +517,10 @@ int main(int argc, char *argv[])
   sm_ans_xapp_t h_5 = report_sm_xapp_api(&nodes.n[0].id, SM_RC_ID, &rc_sub, sm_cb_rc);
   assert(h_5.success);
 
+  // returns a handle
+  sm_ans_xapp_t h_6 = report_sm_xapp_api(&nodes.n[0].id, SM_SRS_ID, (void*)period, sm_cb_srs);
+  assert(h_6.success == true);
+
   sleep(3);
   
   rm_report_sm_xapp_api(h_1.u.handle);
@@ -496,6 +528,7 @@ int main(int argc, char *argv[])
   rm_report_sm_xapp_api(h_3.u.handle);
   rm_report_sm_xapp_api(h_4.u.handle);
   rm_report_sm_xapp_api(h_5.u.handle);
+  rm_report_sm_xapp_api(h_6.u.handle);
 
   sleep(1);
 

@@ -22,6 +22,7 @@
 #include "../src/ric/near_ric_api.h"
 #include "../src/agent/e2_agent_api.h"
 
+#include "../rnd/fill_rnd_data_srs.h"                  
 #include "../rnd/fill_rnd_data_gtp.h"                  
 #include "../rnd/fill_rnd_data_tc.h"                  
 #include "../rnd/fill_rnd_data_mac.h"                  
@@ -108,6 +109,15 @@ bool read_ind_tc(void* ind)
   assert(ind != NULL);
   tc_ind_data_t* tc = (tc_ind_data_t*)ind;
   fill_tc_ind_data(tc);
+  return true;
+}
+
+static
+bool read_ind_srs(void* ind)
+{
+  assert(ind != NULL);
+  srs_ind_data_t* srs = (srs_ind_data_t*)ind;
+  fill_srs_ind_data(srs);
   return true;
 }
 
@@ -219,6 +229,7 @@ sm_io_ag_ran_t init_sm_io_ag_ran(void)
   dst.read_ind_tbl[GTP_STATS_V0] =   read_ind_gtp;
   dst.read_ind_tbl[KPM_STATS_V3_0] =   read_ind_kpm;
   dst.read_ind_tbl[RAN_CTRL_STATS_V1_03] = read_ind_rc;
+  dst.read_ind_tbl[SRS_STATS_V0] =   read_ind_srs;
 
   //  READ: E2 Setup
   dst.read_setup_tbl[KPM_V3_0_AGENT_IF_E2_SETUP_ANS_V0] = read_e2_setup_kpm;
@@ -308,6 +319,9 @@ int main(int argc, char *argv[])
 
   const uint16_t h8 = report_service_near_ric_api(id, RC_ran_func_id, &rc_sub);
 
+  const uint16_t SRS_ran_func_id = 141;
+  uint16_t h9 = report_service_near_ric_api(id, SRS_ran_func_id, cmd);
+
   /// RAN Control Control 
   rc_ctrl_req_data_t rc_ctrl = fill_rc_ctrl();
 
@@ -323,6 +337,7 @@ int main(int argc, char *argv[])
   rm_report_service_near_ric_api(id, GTP_ran_func_id, h6);
   rm_report_service_near_ric_api(id, KPM_ran_func_id, h7);
   rm_report_service_near_ric_api(id, RC_ran_func_id, h8);
+  rm_report_service_near_ric_api(id, SRS_ran_func_id, h9);
 
   sleep(1);
 

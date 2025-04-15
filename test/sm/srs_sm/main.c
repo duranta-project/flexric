@@ -60,7 +60,7 @@ sm_ag_if_ans_t write_ctrl(void const* data)
 
   srs_ctrl_req_data_t* ctrl = (srs_ctrl_req_data_t*)data; 
   assert(ctrl->hdr.dummy == 1);
-  assert(ctrl->msg.action == 42);
+  assert(ctrl->msg.dummy == 2);
 
   sm_ag_if_ans_t ans = {.type = CTRL_OUTCOME_SM_AG_IF_ANS_V0 };
   return ans;
@@ -128,7 +128,7 @@ void check_ctrl(sm_agent_t* ag, sm_ric_t* ric)
   assert(ag != NULL);
   assert(ric != NULL);
 
-  srs_ctrl_req_data_t ctrl = {.hdr.dummy = 1, .msg.action = 42}; 
+  srs_ctrl_req_data_t ctrl = {.hdr.dummy = 1, .msg.dummy = 2}; 
   sm_ctrl_req_data_t msg = ric->proc.on_control_req(ric, &ctrl);
   
   sm_ctrl_out_data_t out = ag->proc.on_control(ag, &msg);

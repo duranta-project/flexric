@@ -16,7 +16,8 @@ endif()
 #############################
 
 add_executable(test_near_ric 
-  test_near_ric.c 
+  test_near_ric.c
+  ../rnd/fill_rnd_data_srs.c 
   ../rnd/fill_rnd_data_gtp.c  
   ../rnd/fill_rnd_data_tc.c                  
   ../rnd/fill_rnd_data_mac.c  

@@ -69,18 +69,18 @@ byte_array_t srs_enc_ind_msg_plain(srs_ind_msg_t const* ind_msg)
   assert(ind_msg != NULL);
 
   byte_array_t ba = {0};
-  const uint32_t len = sizeof(ind_msg->len_ue_stats) 
-                      + sizeof(srs_ue_stats_impl_t) * ind_msg->len_ue_stats
+  const uint32_t len = sizeof(ind_msg->len) 
+                      + sizeof(srs_indication_stats_impl_t) * ind_msg->len
                       + sizeof(ind_msg->tstamp); 
   ba.buf = calloc(1, len); 
   assert(ba.buf != NULL);
 
-  memcpy(ba.buf, &ind_msg->len_ue_stats, sizeof(ind_msg->len_ue_stats));
-  void* ptr = ba.buf + sizeof(ind_msg->len_ue_stats);
+  memcpy(ba.buf, &ind_msg->len, sizeof(ind_msg->len));
+  void* ptr = ba.buf + sizeof(ind_msg->len);
 
-  for(uint32_t i = 0; i < ind_msg->len_ue_stats; ++i){
-    memcpy(ptr, &ind_msg->ue_stats[i], sizeof(ind_msg->ue_stats[0])); 
-    ptr += sizeof(ind_msg->ue_stats[0]);
+  for(uint32_t i = 0; i < ind_msg->len; ++i){
+    memcpy(ptr, &ind_msg->indication_stats[i], sizeof(ind_msg->indication_stats[0])); 
+    ptr += sizeof(ind_msg->indication_stats[0]);
   }
 
   memcpy(ptr, &ind_msg->tstamp, sizeof(ind_msg->tstamp));

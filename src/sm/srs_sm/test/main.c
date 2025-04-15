@@ -21,7 +21,7 @@
 
 
 
-#include "../../../../test/common/fill_ind_data.h"
+#include "../../rnd/fill_rnd_data_srs.h"
 #include "../../srs_sm/srs_sm_agent.h"
 #include "../../srs_sm/srs_sm_ric.h"
 

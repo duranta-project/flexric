@@ -31,30 +31,6 @@ if(SM_ENCODING_SRS STREQUAL "PLAIN")
   # Static
   add_library(srs_sm_static STATIC ${SM_ENCODING_SRS_SRC_ASN})
 
-elseif(SM_ENCODING_SRS STREQUAL "ASN")
-  message(FATAL_ERROR "SRS SM ASN not implemented")
-
-  add_subdirectory(ie/asn)
-
-  add_library(srs_sm SHARED
-                      ${SM_ENCODING_SRS_SRC}
-                      enc/srs_enc_asn.c 
-                      dec/srs_dec_asn.c 
-                      )
-                    #target_include_directories(srs_sm PRIVATE
-                    #        "ie/asn")
-                    #  target_compile_options(srs_sm PUBLIC "-DASN_DISABLE_OER_SUPPORT")
-                    #  target_compile_options(srs_sm PRIVATE -Wno-missing-field-initializers -Wno-unused-parameter)
-
-
-
-elseif(SM_ENCODING_SRS STREQUAL "FLATBUFFERS" )
-  message(FATAL_ERROR "SRS SM FB not implemented")
-  add_library(srs_sm SHARED 
-                      ${SM_ENCODING_SRS_SRC}
-                      enc/srs_enc_fb.c 
-                      dec/srs_dec_fb.c 
-                      )
 else()
   message(FATAL_ERROR "Unknown SM encoding type")
 endif()

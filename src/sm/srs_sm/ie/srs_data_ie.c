@@ -126,17 +126,17 @@ bool eq_srs_ind_hdr(srs_ind_hdr_t* m0, srs_ind_hdr_t* m1)
 void free_srs_ind_msg(srs_ind_msg_t* src)
 {
   assert(src != NULL);
-  if(src->len_ue_stats > 0){
-    assert(src->ue_stats != NULL);
-    free(src->ue_stats);
+  if(src->len > 0){
+    assert(src->indication_stats != NULL);
+    free(src->indication_stats);
   }
 }
 
-srs_ue_stats_impl_t cp_srs_ue_stats_impl(srs_ue_stats_impl_t const* src)
+srs_indication_stats_impl_t cp_srs_indication_stats_impl(srs_indication_stats_impl_t const* src)
 {
   assert(src != NULL);
 
-  srs_ue_stats_impl_t dst = { .rnti = src->rnti}; 
+  srs_indication_stats_impl_t dst = { .rnti = src->rnti}; 
 
   return dst;
 }
@@ -147,14 +147,14 @@ srs_ind_msg_t cp_srs_ind_msg( srs_ind_msg_t const* src)
 
   srs_ind_msg_t dst = {0};
 
-  dst.len_ue_stats = src->len_ue_stats;
-  if(dst.len_ue_stats > 0){
-    dst.ue_stats = calloc(dst.len_ue_stats, sizeof( srs_ue_stats_impl_t) );
-    assert(dst.ue_stats != NULL && "Memory exhausted");
+  dst.len = src->len;
+  if(dst.len > 0){
+    dst.indication_stats = calloc(dst.len, sizeof( srs_indication_stats_impl_t) );
+    assert(dst.indication_stats != NULL && "Memory exhausted");
   }
 
-  for(size_t i = 0; i < dst.len_ue_stats; ++i){
-    dst.ue_stats[i] = cp_srs_ue_stats_impl(&src->ue_stats[i]); 
+  for(size_t i = 0; i < dst.len; ++i){
+    dst.indication_stats[i] = cp_srs_indication_stats_impl(&src->indication_stats[i]); 
   }
 
   dst.tstamp = src->tstamp; 
@@ -167,12 +167,12 @@ bool eq_srs_ind_msg(srs_ind_msg_t* m0, srs_ind_msg_t* m1)
   assert(m0 != NULL);
   assert(m1 != NULL);
 
-  if(m0->len_ue_stats != m1->len_ue_stats || m0->tstamp != m1->tstamp)
+  if(m0->len != m1->len || m0->tstamp != m1->tstamp)
     return false;
 
-  for(uint32_t i = 0 ; i < m0->len_ue_stats; ++i){
-    srs_ue_stats_impl_t* ue0 = &m0->ue_stats[i]; 
-    srs_ue_stats_impl_t* ue1 = &m1->ue_stats[i]; 
+  for(uint32_t i = 0 ; i < m0->len; ++i){
+    srs_indication_stats_impl_t* ue0 = &m0->indication_stats[i]; 
+    srs_indication_stats_impl_t* ue1 = &m1->indication_stats[i]; 
 
     if(
         ue0->rnti != ue1->rnti

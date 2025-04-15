@@ -92,13 +92,13 @@ typedef struct
 {
   // Some fields from nfapi_nr_srs_indication_pdu_t
   uint16_t rnti;
-} srs_ue_stats_impl_t;
+} srs_indication_stats_impl_t;
 
-srs_ue_stats_impl_t cp_srs_ue_stats_impl(srs_ue_stats_impl_t const* src);
+srs_indication_stats_impl_t cp_srs_indication_stats_impl(srs_indication_stats_impl_t const* src);
 
 typedef struct {
-  uint32_t len_ue_stats;
-  srs_ue_stats_impl_t* ue_stats;
+  uint32_t len;
+  srs_indication_stats_impl_t* indication_stats;
   int64_t tstamp;
 } srs_ind_msg_t;
 

@@ -69,40 +69,8 @@ if(SM_ENCODING_SRS  STREQUAL "PLAIN")
                       ../ie/srs_data_ie.c
                       ../../../../test/common/fill_ind_data.c
               )
-elseif(SM_ENCODING_SRS STREQUAL "ASN")
-  include_directories(${CMAKE_CURRENT_SOURCE_DIR}../ie/asn/ )
-  file(GLOB asn_sources "../ie/asn/*.c")
-  #include_directories("/usr/local/share/asn1c/")
-  target_compile_options(test_srs_sm PUBLIC "-DASN_DISABLE_OER_SUPPORT")
-  add_executable(test_srs_sm
-                      main.c 
-                      ../../sm_proc_data.c 
-                      ../srs_sm_agent.c 
-                      ../srs_sm_server.c 
-                      ../enc/srs_enc_asn.c 
-                      ../dec/srs_dec_asn.c 
-                      ../../util/alg_ds/alg/defer.c
-                      ../../util/alg_ds/alg/eq_float.c
-                      ../ie/srs_data_ie.c
-                      ../../if_sm/read/sm_rd_if.c
-                      ../../../../test/common/fill_ind_data.c
-                      ${asn_sources} 
-              )
-elseif(SM_ENCODING_SRS STREQUAL "FLATBUFFERS")
-  include_directories(${CMAKE_CURRENT_SOURCE_DIR}../ie/fb/ )
-  add_executable(test_srs_sm
-                      main.c 
-                      ../../sm_proc_data.c 
-                      ../srs_sm_agent.c 
-                      ../srs_sm_server.c 
-                      ../enc/srs_enc_fb.c 
-                      ../dec/srs_dec_fb.c 
-                      ../../../util/alg_ds/alg/defer.c
-                      ../../../util/alg_ds/alg/eq_float.c
-                      ../ie/srs_data_ie.c
-                      ../../if_sm/read/sm_rd_if.c
-                      ../../../../test/common/fill_ind_data.c
-              )
+else()
+  message(FATAL_ERROR "Unknown SM encoding type ")
 endif()
 
 target_compile_definitions(test_srs_sm PUBLIC ${SM_ENCODING_SRS})
