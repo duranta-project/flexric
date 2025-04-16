@@ -25,6 +25,7 @@
 #include "../../sm/mac_sm/ie/mac_data_ie.h"    // for mac_ind_msg_t
 #include "../../sm/pdcp_sm/ie/pdcp_data_ie.h"  // for pdcp_ind_msg_t
 #include "../../sm/rlc_sm/ie/rlc_data_ie.h"    // for rlc_ind_msg_t
+#include "../../sm/srs_sm/ie/srs_data_ie.h"
 #include "string_parser.h"                               // for to_string_ma..
 
 #include "../../util/time_now_us.h"
@@ -200,6 +201,28 @@ void print_gtp_stats(gtp_ind_msg_t const* gtp)
 
 }
 
+static
+void print_srs_stats(srs_ind_msg_t const* srs)
+{
+  assert(srs != NULL);
+  pthread_once(&init_fp_once, init_fp);
+  assert(fp != NULL);
+
+  for(uint32_t i = 0; i < srs->len; ++i){
+    char stats[1024] = {0};
+    to_string_srs_indication(&srs->indication_stats[i], srs->tstamp , stats , 1024);
+
+    int const rc = fputs(stats , fp);
+    // Edit: The C99 standard §7.19.1.3 states:
+    // The macros are [...]
+    // EOF which expands to an integer constant expression,
+    // with type int and a negative value, that is returned by
+    // several functions to indicate end-of-ﬁle, that is, no more input from a stream;
+    assert(rc > -1);
+  }
+
+}
+
 
 
 void print_kpm_ind_msg_frm_1(const kpm_ind_msg_format_1_t message, uint32_t truncated_ts)
@@ -337,6 +360,8 @@ void notify_stdout_listener(sm_ag_if_rd_ind_t const* data)
     print_slice_stats(&data->slice.msg);
   else if (data->type == GTP_STATS_V0)
     print_gtp_stats(&data->gtp.msg);
+  else if (data->type == SRS_STATS_V0)
+    print_srs_stats(&data->srs.msg);
   else if (data->type == TC_STATS_V0){
     // assert(0!=0 && "Not implemented");
     //print_tc_stats(&data->gtp.msg);

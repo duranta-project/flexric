@@ -303,6 +303,9 @@ sm_ran_function_def_t mv_rd_e2_setup(sm_ag_if_rd_e2setup_t const* src)
   } else if(src->type == RAN_CTRL_V1_3_AGENT_IF_E2_SETUP_ANS_V0){
     dst.type = RC_RAN_FUNC_DEF_E; 
     dst.rc = src->rc.ran_func_def;
+  } else if(src->type == SRS_AGENT_IF_E2_SETUP_ANS_V0) {
+    dst.type = SRS_RAN_FUNC_DEF_E;
+    dst.srs = src->srs.func_def;
   } else {
     assert(0!=0 && "Unknown types");
   }

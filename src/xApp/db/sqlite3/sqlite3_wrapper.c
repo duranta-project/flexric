@@ -312,6 +312,26 @@ void create_kpm_table(sqlite3* db)
 }
 
 static
+void create_srs_table(sqlite3* db)
+{
+  assert(db != NULL);
+
+  // ToDo: PRIMARY KEY UNIQUE
+  char* sql_srs = "DROP TABLE IF EXISTS SRS_Indication;"
+  "CREATE TABLE SRS_Indication(tstamp INT CHECK(tstamp > 0),"
+                            "ngran_node INT CHECK(ngran_node >= 0 AND ngran_node <= 10),"
+                            "mcc INT,"
+                            "mnc INT,"
+                            "mnc_digit_len INT,"
+                            "nb_id INT,"
+                            "cu_du_id TEXT,"
+                            "rnti INT "
+                            ");";
+
+  create_table(db, sql_srs);
+}
+
+static
 void insert_db(sqlite3* db, char const* sql)
 {
   assert(db != NULL);
@@ -900,6 +920,44 @@ int to_sql_string_gtp_NGUT(global_e2_node_id_t const* id,gtp_ngu_t_stats_t* gtp,
   return rc;
 }
 
+static
+int to_sql_string_srs_indication(global_e2_node_id_t const* id, srs_indication_stats_impl_t* srs, int64_t tstamp, char* out, size_t out_len)
+{
+  assert(srs != NULL);
+  assert(out != NULL);
+  const size_t max = 1024;
+  assert(out_len >= max);
+
+  char* c_null = NULL;
+  char c_cu_du_id[26];
+  if (id->cu_du_id) {
+    int rc = snprintf(c_cu_du_id, 26, "%lu", *id->cu_du_id);
+    assert(rc < (int) max && "Not enough space in the char array to write all the data");
+  }
+
+  int const rc = snprintf(out, max,
+        "INSERT INTO SRS_Indication VALUES("
+        "%ld," //tstamp
+        "%d," //ngran_node
+        "%d," //mcc
+        "%d," //mnc
+        "%d," //mnc_digit_len
+        "%d," //nb_id
+        "'%s'," //cu_du_id
+        "%u" //rnti
+        ");"
+        , tstamp
+        , id->type
+        , id->plmn.mcc
+        , id->plmn.mnc
+        , id->plmn.mnc_digit_len
+        , id->nb_id.nb_id
+        , id->cu_du_id ? c_cu_du_id : c_null
+        , srs->rnti
+        );
+  assert(rc < (int)max && "Not enough space in the char array to write all the data");
+  return rc;
+}
 // static
 // void to_sql_string_kpm_measRecord(global_e2_node_id_t const* id,  
 //                                  MeasDataItem_t* kpm_measData, 
@@ -1149,6 +1207,23 @@ void write_gtp_stats(sqlite3* db, global_e2_node_id_t const* id, gtp_ind_data_t 
   insert_db(db, buffer);
 }
 
+static
+void write_srs_stats(sqlite3* db, global_e2_node_id_t const* id, srs_ind_data_t const* ind)
+{
+  assert(db != NULL);
+  assert(ind != NULL);
+
+  srs_ind_msg_t const* ind_msg_srs = &ind->msg;
+
+  char buffer[2048] = {0};
+  int pos = 0;
+  for(size_t i = 0; i < ind_msg_srs->len; ++i){
+    pos += to_sql_string_srs_indication(id, &ind_msg_srs->indication_stats[i], ind_msg_srs->tstamp, buffer + pos, 2048 - pos);
+  }
+
+  insert_db(db, buffer);
+}
+
 // void write_kpm_stats(sqlite3* db, global_e2_node_id_t const* id, kpm_ric_indication_t const* ind)
 // {
 //   // TODO: Add granulPeriod into database
@@ -1226,6 +1301,11 @@ void init_db_sqlite3(sqlite3** db, char const* db_filename)
   // KPM
   ////
   create_kpm_table(*db);
+
+  ////
+  // SRS
+  ////
+  create_srs_table(*db);
 }
 
 void close_db_sqlite3(sqlite3* db)
@@ -1251,7 +1331,7 @@ void write_db_sqlite3(sqlite3* db, global_e2_node_id_t const* id, sm_ag_if_rd_t 
   assert(rd->type == MAC_STATS_V0   || rd->type == RLC_STATS_V0 
       || rd->type == PDCP_STATS_V0  || rd->type == SLICE_STATS_V0 
       || rd->type == KPM_STATS_V3_0 || rd->type == GTP_STATS_V0
-      || rd->type == RAN_CTRL_STATS_V1_03);
+      || rd->type == RAN_CTRL_STATS_V1_03 || rd->type == SRS_STATS_V0);
 
   if(rd->type == MAC_STATS_V0){
     write_mac_stats(db, id, &rd->mac);
@@ -1275,6 +1355,8 @@ void write_db_sqlite3(sqlite3* db, global_e2_node_id_t const* id, sm_ag_if_rd_t 
       printf("RAN Control sqlite not implemented\n"); 
       rc_acc = 0;
     }
+  } else if (rd->type == SRS_STATS_V0){
+    write_srs_stats(db, id, &rd->srs);
   } else {
     assert(0!=0 && "Unknown statistics type received ");
   }

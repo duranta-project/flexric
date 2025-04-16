@@ -25,6 +25,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <time.h>
+#include <stdio.h>
 
 void fill_srs_ind_data(srs_ind_data_t* ind)
 {
@@ -52,7 +53,8 @@ void fill_srs_ind_data(srs_ind_data_t* ind)
     srs_indication_stats_impl_t* indication_stats = &ind_msg->indication_stats[i];
       
     // Fill dummy data in your data structure  
-    indication_stats->rnti=abs(rand()%mod);
+    indication_stats->rnti=rand()%mod;
+    printf("filled RNTI: %d for UE: %d\n", indication_stats->rnti,i);
   }
 }
 

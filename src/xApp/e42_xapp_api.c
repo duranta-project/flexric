@@ -30,6 +30,7 @@
 #include "../sm/tc_sm/tc_sm_id.h"
 #include "../sm/rc_sm/rc_sm_id.h"
 #include "../sm/mac_sm/mac_sm_id.h"
+#include "../sm/srs_sm/srs_sm_id.h"
 
 #include <signal.h>
 #include <stdio.h>
@@ -162,7 +163,7 @@ bool valid_sm_id(global_e2_node_id_t* id, uint32_t sm_id)
   assert(id != NULL);
 
   // Only for testing purposes
-  assert( sm_id == 2 ||  sm_id == 3 ||  sm_id == 142 || sm_id == 143 || sm_id == 144 
+  assert( sm_id == 2 ||  sm_id == 3 || sm_id == 141 || sm_id == 142 || sm_id == 143 || sm_id == 144
       || sm_id == 145 || sm_id == 146 || sm_id == 147 || sm_id == 148);
 
   return true;

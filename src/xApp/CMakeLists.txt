@@ -80,6 +80,7 @@ set(XAPP_SRC
   ../sm/slice_sm/ie/slice_data_ie.c
   ../sm/tc_sm/ie/tc_data_ie.c
   ../sm/gtp_sm/ie/gtp_data_ie.c
+  ../sm/srs_sm/ie/srs_data_ie.c
 
   )
 

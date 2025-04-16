@@ -35,6 +35,7 @@
 #include "../../sm/mac_sm/ie/mac_data_ie.h"    // for mac_ind_msg_t
 #include "../../sm/pdcp_sm/ie/pdcp_data_ie.h"  // for pdcp_ind_msg_t
 #include "../../sm/rlc_sm/ie/rlc_data_ie.h"    // for rlc_ind_msg_t
+#include "../../sm/srs_sm/ie/srs_data_ie.h"
 #include "../../sm/agent_if/read/sm_ag_if_rd.h"
 #include "string_parser.h"                               // for to_string_ma...
 
@@ -186,7 +187,7 @@ void notify_influx_listener(sm_ag_if_rd_ind_t const* data)
 
   assert(data->type == MAC_STATS_V0 || data->type == RLC_STATS_V0 || data->type == PDCP_STATS_V0 
       || data->type == SLICE_STATS_V0 || data->type == KPM_STATS_V3_0 || data->type == GTP_STATS_V0
-      || data->type == TC_STATS_V0 || data->type == RAN_CTRL_STATS_V1_03);
+      || data->type == TC_STATS_V0 || data->type == RAN_CTRL_STATS_V1_03|| data->type == SRS_STATS_V0);
 
   return;
 
@@ -282,6 +283,17 @@ void notify_influx_listener(sm_ag_if_rd_ind_t const* data)
    //   assert(false && "Unknown Indication Message Type");
    // }
 
+  } else if(data->type == SRS_STATS_V0){
+    srs_ind_msg_t const* srs = &data->srs.msg;
+
+    for(uint32_t i = 0; i < srs->len; ++i){
+      char stats[512] = {0};
+      srs_indication_stats_impl_t* indication_stats = &srs->indication_stats[i];
+
+      to_string_srs_indication(indication_stats, srs->tstamp, stats, 512);
+      int const rc = sendto(sockfd, stats, strlen(stats),  MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
+      assert(rc != -1);
+    }
   } else {
     assert(0 != 0 || "invalid data type ");
   }

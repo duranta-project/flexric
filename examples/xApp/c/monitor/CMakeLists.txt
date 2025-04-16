@@ -26,6 +26,19 @@ add_executable(xapp_gtp_mac_rlc_pdcp_moni
                       -ldl
                       )
 
+add_executable(xapp_srs_moni
+		xapp_srs_moni.c
+                ../../../../src/util/alg_ds/alg/defer.c
+              )
+
+ target_link_libraries(xapp_srs_moni
+                      PUBLIC
+                      e42_xapp
+                      -pthread
+                      -lsctp
+                      -ldl
+                      )
+
 set(UE_ID_COMMON_E2SM_SRCS
   ../../../../src/sm/rc_sm/ie/asn/AMFPointer.c
   ../../../../src/sm/rc_sm/ie/asn/AMFRegionID.c
