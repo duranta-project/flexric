@@ -27,6 +27,32 @@
 #include <time.h>
 #include <stdio.h>
 
+srs_event_trigger_t fill_rnd_srs_event_trigger(void)
+{
+  srs_event_trigger_t et = {0};
+  et.ev_trigger_cond_id = rand()%100;
+  return et;
+}
+
+srs_action_def_t fill_rnd_srs_action_definition(void)
+{
+  srs_action_def_t ad = {0};
+  ad.dummy = rand()%100;
+  return ad;
+}
+
+srs_sub_data_t fill_rnd_srs_subscription(void)
+{
+  srs_sub_data_t dst = {0};
+  dst.et = fill_rnd_srs_event_trigger();
+
+  dst.ad = malloc(sizeof(srs_action_def_t));
+  assert(dst.ad != NULL && "Memory exhausted");
+  *dst.ad = fill_rnd_srs_action_definition();
+
+  return dst;
+}
+
 void fill_srs_ind_data(srs_ind_data_t* ind)
 {
   assert(ind != NULL);

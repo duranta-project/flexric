@@ -30,15 +30,15 @@
 srs_event_trigger_t srs_dec_event_trigger_plain(size_t len, uint8_t const ev_tr[len])
 {
   srs_event_trigger_t ev = {0};
-  memcpy(&ev.ms, ev_tr, sizeof(ev.ms));
+  memcpy(&ev.ev_trigger_cond_id, ev_tr, sizeof(ev.ev_trigger_cond_id));
   return ev;
 }
 
 srs_action_def_t srs_dec_action_def_plain(size_t len, uint8_t const action_def[len])
 {
-  assert(0!=0 && "Not implemented");
-  assert(action_def != NULL);
-  srs_action_def_t act_def;// = {0};
+  assert(len == sizeof(srs_action_def_t));
+  srs_action_def_t act_def;
+  memcpy(&act_def, action_def, len);
   return act_def;
 }
 

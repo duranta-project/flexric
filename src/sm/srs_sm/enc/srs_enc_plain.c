@@ -32,21 +32,27 @@ byte_array_t srs_enc_event_trigger_plain(srs_event_trigger_t const* event_trigge
   assert(event_trigger != NULL);
   byte_array_t  ba = {0};
  
-  ba.len = sizeof(event_trigger->ms);
+  ba.len = sizeof(event_trigger->ev_trigger_cond_id);
   ba.buf = malloc(ba.len);
   assert(ba.buf != NULL && "Memory exhausted");
 
-  memcpy(ba.buf, &event_trigger->ms, ba.len);
+  memcpy(ba.buf, &event_trigger->ev_trigger_cond_id, ba.len);
 
   return ba;
 }
 
 byte_array_t srs_enc_action_def_plain(srs_action_def_t const* action_def)
 {
-  assert(0!=0 && "Not implemented");
 
   assert(action_def != NULL);
   byte_array_t  ba = {0};
+
+  ba.len = sizeof(action_def->dummy);
+  ba.buf = malloc(ba.len);
+  assert(ba.buf != NULL && "Memory exhausted");
+
+  memcpy(ba.buf, &action_def->dummy, ba.len);
+
   return ba;
 }
 

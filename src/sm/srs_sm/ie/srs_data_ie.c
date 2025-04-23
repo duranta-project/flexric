@@ -35,15 +35,17 @@
 void free_srs_event_trigger(srs_event_trigger_t* src)
 {
   assert(src != NULL);
-  assert(0!=0 && "Not implemented" ); 
+  (void)src;
 }
 
 srs_event_trigger_t cp_srs_event_trigger( srs_event_trigger_t const* src)
 {
   assert(src != NULL);
-  assert(0!=0 && "Not implemented" ); 
 
   srs_event_trigger_t et = {0};
+
+  et.ev_trigger_cond_id = src->ev_trigger_cond_id;
+
   return et;
 }
 
@@ -52,7 +54,8 @@ bool eq_srs_event_trigger(srs_event_trigger_t const* m0, srs_event_trigger_t con
   assert(m0 != NULL);
   assert(m1 != NULL);
 
-  assert(0!=0 && "Not implemented" ); 
+  if(m0->ev_trigger_cond_id != m1->ev_trigger_cond_id)
+    return false;
 
   return true;
 }
@@ -65,17 +68,16 @@ bool eq_srs_event_trigger(srs_event_trigger_t const* m0, srs_event_trigger_t con
 void free_srs_action_def(srs_action_def_t* src)
 {
   assert(src != NULL);
-
-  assert(0!=0 && "Not implemented" ); 
+  (void)src;
 }
 
-srs_action_def_t cp_srs_action_def(srs_action_def_t* src)
+srs_action_def_t cp_srs_action_def(srs_action_def_t const* src)
 {
   assert(src != NULL);
 
-  assert(0!=0 && "Not implemented" ); 
-  srs_action_def_t ad = {0};
-  return ad;
+  srs_action_def_t dst = {0};
+  dst.dummy = src->dummy;
+  return dst;
 }
 
 bool eq_srs_action_def(srs_event_trigger_t* m0,  srs_event_trigger_t* m1)
@@ -83,7 +85,7 @@ bool eq_srs_action_def(srs_event_trigger_t* m0,  srs_event_trigger_t* m1)
   assert(m0 != NULL);
   assert(m1 != NULL);
 
-  assert(0!=0 && "Not implemented" ); 
+  assert(0!=0 && "Not implemented" );
 
   return true;
 }
@@ -348,6 +350,33 @@ bool eq_srs_func_def(srs_func_def_t const* m0, srs_func_def_t const* m1)
 
   int rc = memcmp(m0, m1, m0->len);
   return rc == 0;
+}
+
+///////////////
+/// RIC Subscription
+///////////////
+
+srs_sub_data_t cp_srs_sub_data( srs_sub_data_t const* src)
+{
+  assert(src != NULL);
+
+  srs_sub_data_t dst = {0};
+  dst.et = cp_srs_event_trigger(&src->et);
+
+  if(src->ad != NULL){
+    dst.ad = malloc(sizeof(srs_action_def_t));
+    assert(dst.ad != NULL && "Memory exhausted");
+    *dst.ad = cp_srs_action_def(src->ad);
+  }
+
+  return dst;
+}
+
+void free_srs_sub_data(srs_sub_data_t* sub)
+{
+  assert(sub != NULL);
+  free_srs_event_trigger(&sub->et);
+  free_srs_action_def(sub->ad);
 }
 
 ///////////////

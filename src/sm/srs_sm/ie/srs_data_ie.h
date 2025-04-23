@@ -41,7 +41,7 @@ extern "C" {
 /////////////////////////////////////
 
 typedef struct {
-  uint32_t ms;
+  uint16_t ev_trigger_cond_id; // only 1 type FAPI SRS.indication message
 } srs_event_trigger_t;
 
 void free_srs_event_trigger(srs_event_trigger_t* src); 
@@ -63,7 +63,7 @@ typedef struct {
 
 void free_srs_action_def(srs_action_def_t* src); 
 
-srs_action_def_t cp_srs_action_def(srs_action_def_t* src);
+srs_action_def_t cp_srs_action_def(srs_action_def_t const* src);
 
 bool eq_srs_action_def(srs_event_trigger_t* m0,  srs_event_trigger_t* m1);
 
@@ -208,6 +208,10 @@ typedef struct{
   srs_event_trigger_t et; 
   srs_action_def_t* ad;
 } srs_sub_data_t;
+
+srs_sub_data_t cp_srs_sub_data(srs_sub_data_t const* src);
+
+void free_srs_sub_data(srs_sub_data_t* sub);
 
 ///////////////
 // RIC Indication

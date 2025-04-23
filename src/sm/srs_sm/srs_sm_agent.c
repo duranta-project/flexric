@@ -58,15 +58,22 @@ sm_ag_if_ans_subs_t on_subscription_srs_sm_ag(sm_agent_t const* sm_agent, const 
   assert(data != NULL);
 
   sm_srs_agent_t* sm = (sm_srs_agent_t*)sm_agent;
- 
-  srs_event_trigger_t ev = srs_dec_event_trigger(&sm->enc, data->len_et, data->event_trigger);
 
-  sm_ag_if_ans_subs_t ans = {.type = PERIODIC_SUBSCRIPTION_FLRC}; 
-  ans.per.t.ms = ev.ms;
-  return ans;
-//  const sm_wr_if_t wr = {.type = SUBSCRIBE_TIMER, .sub_timer = timer };
-//  sm->base.io.write(&wr);
-//  printf("on_subscription called with event trigger = %u \n", ev.ms);
+  srs_sub_data_t srs = {0};
+
+  srs.et = srs_dec_event_trigger(&sm->enc, data->len_et, data->event_trigger);
+  // Destructor
+  defer({ free_srs_event_trigger(&srs.et); });
+
+  srs.ad = malloc(sizeof(srs_action_def_t));
+  assert(srs.ad != NULL && "Memory exhausted");
+  *srs.ad = srs_dec_action_def(&sm->enc, data->len_ad, data->action_def);
+  defer({ free_srs_action_def(srs.ad); });
+
+  sm_ag_if_ans_t subs = sm->base.io.write_subs(&srs);
+  assert(subs.type == SUBS_OUTCOME_SM_AG_IF_ANS_V0);
+  assert(subs.subs_out.type == APERIODIC_SUBSCRIPTION_FLRC);
+  return subs.subs_out;
 }
 
 static

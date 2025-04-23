@@ -23,6 +23,7 @@
 #include "../../rnd/fill_rnd_data_srs.h"
 #include "../../../src/sm/srs_sm/srs_sm_agent.h"
 #include "../../../src/sm/srs_sm/srs_sm_ric.h"
+#include "../../../src/util/alg_ds/alg/defer.h"
 
 #include <assert.h>
 #include <stdbool.h>
@@ -32,6 +33,9 @@
 
 static
 srs_ind_data_t cp;
+
+static
+srs_sub_data_t cp_srs_sub;
 
 /////
 // AGENT
@@ -66,7 +70,27 @@ sm_ag_if_ans_t write_ctrl(void const* data)
   return ans;
 }
 
+static
+void free_aperiodic_subscription(uint32_t ric_req_id)
+{
+  (void)ric_req_id;
+}
 
+static
+sm_ag_if_ans_t write_subs_srs(void const* data)
+{
+  assert(data != NULL);
+
+  srs_sub_data_t const* srs = (srs_sub_data_t const*)data;
+
+  cp_srs_sub = cp_srs_sub_data(srs);
+
+  sm_ag_if_ans_t ans = {.type = SUBS_OUTCOME_SM_AG_IF_ANS_V0 };
+  ans.subs_out.type = APERIODIC_SUBSCRIPTION_FLRC;
+  ans.subs_out.aper.free_aper_subs = free_aperiodic_subscription;
+
+  return ans;
+}
 /////////////////////////////
 // Check Functions
 // //////////////////////////
@@ -86,14 +110,19 @@ void check_subscription(sm_agent_t* ag, sm_ric_t* ric)
   assert(ag != NULL);
   assert(ric != NULL);
 
-  char sub[] = "2_ms";
-  sm_subs_data_t data = ric->proc.on_subscription(ric, &sub);
+  srs_sub_data_t srs = fill_rnd_srs_subscription();
+  defer({ free_srs_sub_data(&srs); });
+
+  sm_subs_data_t data = ric->proc.on_subscription(ric, &srs);
+  defer({ free_sm_subs_data(&data); });
 
   sm_ag_if_ans_subs_t const subs = ag->proc.on_subscription(ag, &data); 
-  assert(subs.type == PERIODIC_SUBSCRIPTION_FLRC);
-  assert(subs.per.t.ms == 2);
+  assert(subs.type == APERIODIC_SUBSCRIPTION_FLRC);
+  assert(subs.aper.free_aper_subs != NULL);
 
-  free_sm_subs_data(&data);
+  defer({  free_srs_sub_data(&cp_srs_sub); });
+  // Not yet impleemnted
+  //assert(eq_srs_sub_data(&srs, &cp_srs_sub) == true);
 }
 
 // E2 -> RIC
@@ -142,6 +171,7 @@ int main()
   sm_io_ag_ran_t io_ag = {0};
   io_ag.read_ind_tbl[SRS_STATS_V0] = read_ind_srs; 
   io_ag.write_ctrl_tbl[SRS_CTRL_REQ_V0] = write_ctrl; 
+  io_ag.write_subs_tbl[SRS_SUBS_V0] = write_subs_srs;
 
   sm_agent_t* sm_ag = make_srs_sm_agent(io_ag);
   sm_ric_t* sm_ric = make_srs_sm_ric();

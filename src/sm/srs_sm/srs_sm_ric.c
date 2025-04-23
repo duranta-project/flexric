@@ -51,37 +51,27 @@ sm_subs_data_t on_subscription_srs_sm_ric(sm_ric_t const* sm_ric, void* cmd)
   assert(sm_ric != NULL); 
   assert(cmd != NULL); 
 
-  sm_srs_ric_t* sm = (sm_srs_ric_t*)sm_ric;  
  
-  srs_sub_data_t srs = {0}; 
+  srs_sub_data_t const* src = cmd;
+  sm_srs_ric_t* sm = (sm_srs_ric_t*)sm_ric;
+  sm_subs_data_t dst = {0};
 
-  const int max_str_sz = 10;
-  if(strncmp(cmd, "1_ms", max_str_sz) == 0 ){
-    srs.et.ms = 1;
-  } else if (strncmp(cmd, "2_ms", max_str_sz) == 0 ) {
-    srs.et.ms = 2;
-  } else if (strncmp(cmd, "5_ms", max_str_sz) == 0 ) {
-    srs.et.ms = 5;
-  } else if (strncmp(cmd, "10_ms", max_str_sz) == 0 ) {
-    srs.et.ms = 10;
-  } else {
-    assert(0 != 0 && "Invalid input");
-  }
-  
   // Event trigger
-  const byte_array_t ba = srs_enc_event_trigger(&sm->enc, &srs.et); 
+  const byte_array_t ba = srs_enc_event_trigger(&sm->enc, &src->et);
 
-  sm_subs_data_t data = {0}; 
   
   // Event trigger IE
-  data.event_trigger = ba.buf;
-  data.len_et = ba.len;
+  dst.event_trigger = ba.buf;
+  dst.len_et = ba.len;
 
   // Action Definition IE
-  data.action_def = NULL;
-  data.len_ad = 0;
+  assert(src->ad != NULL);
+  const byte_array_t ba_ad = srs_enc_action_def(&sm->enc, src->ad);
+  assert(ba_ad.len < 10*1024 && "Really encoding so much data?" );
+  dst.action_def = ba_ad.buf;
+  dst.len_ad = ba_ad.len;
 
-  return data;
+  return dst;
 }
 
 static
