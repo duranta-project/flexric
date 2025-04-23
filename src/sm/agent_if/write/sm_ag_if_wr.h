@@ -92,6 +92,10 @@ typedef struct{
   rc_sub_data_t rc;
 } wr_rc_sub_data_t;
 
+typedef struct{ 
+  uint32_t ric_req_id;
+  srs_sub_data_t srs;
+} wr_srs_sub_data_t;
 
 typedef struct{
   sm_ag_if_subs_e type;
@@ -104,7 +108,7 @@ typedef struct{
     gtp_sub_data_t gtp;
     kpm_sub_data_t kpm;
     wr_rc_sub_data_t wr_rc;
-    srs_sub_data_t srs;
+    wr_srs_sub_data_t wr_srs;
   };
 } sm_ag_if_wr_subs_t;
 

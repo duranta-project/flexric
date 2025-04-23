@@ -117,7 +117,10 @@ bool read_ind_srs(void* ind)
 {
   assert(ind != NULL);
   srs_ind_data_t* srs = (srs_ind_data_t*)ind;
-  fill_srs_ind_data(srs);
+  // fill_rnd_srs_ind_data(srs);
+  // I can also do:
+  srs->hdr = fill_rnd_srs_ind_hdr();
+  srs->msg = fill_rnd_srs_ind_msg();
   return true;
 }
 
@@ -176,9 +179,12 @@ static
 uint32_t sta_ric_id;
 
 static
+uint32_t srs_ric_id;
+
+static
 void free_aperiodic_subscription(uint32_t ric_req_id)
 {
-  assert(ric_req_id == sta_ric_id); 
+  assert(ric_req_id == sta_ric_id || ric_req_id == srs_ric_id); 
   (void)ric_req_id;
 }
 
@@ -216,6 +222,44 @@ sm_ag_if_ans_t write_subs_rc(void const* data)
 }
 
 static
+void* emulate_srs_fapi_msg(void* ptr)
+{
+  (void)ptr;
+  for(size_t i = 0; i < 1000; ++i){
+    usleep(rand()%50);
+    srs_ind_data_t* d = calloc(1, sizeof(srs_ind_data_t));
+    assert(d != NULL && "Memory exhausted");
+    d->hdr = fill_rnd_srs_ind_hdr();
+    d->msg = fill_rnd_srs_ind_msg();
+    async_event_agent_api(srs_ric_id, d);
+    printf("Event for RIC Req ID %u generated\n", srs_ric_id);
+  }
+
+  return NULL;
+}
+
+static
+pthread_t t_srs_subs_ctrl;
+
+sm_ag_if_ans_t write_subs_srs(void const* data)
+{
+  assert(data != NULL);
+
+  wr_srs_sub_data_t* wr_srs = (wr_srs_sub_data_t*)data;
+
+  srs_ric_id = wr_srs->ric_req_id;
+
+  int srs = pthread_create(&t_srs_subs_ctrl, NULL, emulate_srs_fapi_msg, NULL);
+  assert(srs == 0);
+
+  sm_ag_if_ans_t ans = {.type = SUBS_OUTCOME_SM_AG_IF_ANS_V0};
+  ans.subs_out.type = APERIODIC_SUBSCRIPTION_FLRC;
+  ans.subs_out.aper.free_aper_subs = free_aperiodic_subscription;
+
+  return ans;
+}
+
+static
 sm_io_ag_ran_t init_sm_io_ag_ran(void)
 {
   sm_io_ag_ran_t dst = {0};
@@ -243,7 +287,8 @@ sm_io_ag_ran_t init_sm_io_ag_ran(void)
   dst.write_ctrl_tbl[RAN_CONTROL_CTRL_V1_03] = write_ctrl_rc;
 
   // WRITE: SUBSCRIPTION
-  dst.write_subs_tbl[RAN_CTRL_SUBS_V1_03] = write_subs_rc; 
+  dst.write_subs_tbl[RAN_CTRL_SUBS_V1_03] = write_subs_rc;
+  dst.write_subs_tbl[SRS_SUBS_V0] = write_subs_srs;
 
   return dst;
 }
@@ -319,14 +364,25 @@ int main(int argc, char *argv[])
 
   const uint16_t h8 = report_service_near_ric_api(id, RC_ran_func_id, &rc_sub);
 
-  const uint16_t SRS_ran_func_id = 141;
-  uint16_t h9 = report_service_near_ric_api(id, SRS_ran_func_id, cmd);
-
   /// RAN Control Control 
   rc_ctrl_req_data_t rc_ctrl = fill_rc_ctrl();
 
   control_service_near_ric_api(id, RC_ran_func_id, &rc_ctrl);
 
+  // SRS
+
+  // SRS Subscription
+  const uint16_t SRS_ran_func_id = 141;
+
+  srs_sub_data_t srs_sub = {0};
+  srs_sub.et = fill_rnd_srs_event_trigger();
+
+  srs_sub.ad = malloc(sizeof(srs_action_def_t));
+  assert(srs_sub.ad != NULL && "Memory exhausted");
+  srs_sub.ad[0] = fill_rnd_srs_action_definition();
+
+  
+  uint16_t h9 = report_service_near_ric_api(id, SRS_ran_func_id, &srs_sub);
   sleep(2);
 
   rm_report_service_near_ric_api(id, MAC_ran_func_id, h);
@@ -336,8 +392,10 @@ int main(int argc, char *argv[])
   rm_report_service_near_ric_api(id, TC_ran_func_id, h5);
   rm_report_service_near_ric_api(id, GTP_ran_func_id, h6);
   rm_report_service_near_ric_api(id, KPM_ran_func_id, h7);
-  rm_report_service_near_ric_api(id, RC_ran_func_id, h8);
+  // to investigate why I need to chage thr order of thr RC and SRS reports
   rm_report_service_near_ric_api(id, SRS_ran_func_id, h9);
+  rm_report_service_near_ric_api(id, RC_ran_func_id, h8);
+
 
   sleep(1);
 
@@ -350,11 +408,15 @@ int main(int argc, char *argv[])
   free_kpm_sub_data(&kpm_sub); 
   free_rc_sub_data(&rc_sub); 
   free_rc_ctrl_req_data(&rc_ctrl);
+  free_srs_sub_data(&srs_sub);
 
   free_e2_nodes_api(&e2_nodes); // e2_nodes_api_t* src);
 
   int rc = pthread_join(t, NULL);
   assert(rc == 0);
+
+  int srs = pthread_join(t_srs_subs_ctrl,NULL);
+  assert(srs == 0);
 
   printf("Test communicating E2-Agent and Near-RIC run SUCCESSFULLY\n");
 }

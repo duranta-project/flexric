@@ -45,7 +45,7 @@ void read_RAN(sm_ag_if_rd_t* read)
   assert(read != NULL);
   assert(read->type == SRS_STATS_V0);
 
-  fill_srs_ind_data(&read->srs_stats);
+  fill_rnd_srs_ind_data(&read->srs_stats);
   cp.hdr = cp_srs_ind_hdr(&read->srs_stats.hdr);
   cp.msg = cp_srs_ind_msg(&read->srs_stats.msg);
 }

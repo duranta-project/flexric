@@ -29,6 +29,7 @@ add_executable(test_near_ric
   ../rnd/fill_rnd_data_e2_setup_req.c 
   ${KPM_SRC} 
   ../../src/sm/rc_sm/ie/rc_data_ie.c
+  ../../src/sm/srs_sm/ie/srs_data_ie.c
   ../../src/util/conversions.c
   )
 

@@ -48,12 +48,42 @@ srs_sub_data_t fill_rnd_srs_subscription(void)
 
   dst.ad = malloc(sizeof(srs_action_def_t));
   assert(dst.ad != NULL && "Memory exhausted");
-  *dst.ad = fill_rnd_srs_action_definition();
+  dst.ad[0] = fill_rnd_srs_action_definition();
 
   return dst;
 }
 
-void fill_srs_ind_data(srs_ind_data_t* ind)
+srs_ind_hdr_t fill_rnd_srs_ind_hdr(void)
+{
+  srs_ind_hdr_t hdr = {0};
+  hdr.dummy = rand()%10;
+  return hdr;
+}
+
+srs_ind_msg_t fill_rnd_srs_ind_msg(void)
+{
+  srs_ind_msg_t msg = {0};
+  msg.len = rand()%4;
+  msg.tstamp = time_now_us();
+  
+  if(msg.len > 0 ){  
+    msg.indication_stats = calloc(msg.len, sizeof(srs_indication_stats_impl_t));
+    assert(msg.indication_stats != NULL && "Memory exhausted");
+  }
+
+  for(uint32_t i = 0; i < msg.len; ++i){
+    srs_indication_stats_impl_t* indication_stats = &msg.indication_stats[i];
+      
+    // Fill dummy data in your data structure  
+    indication_stats->rnti=rand()%1000;
+    printf("Random RNTI in fill_rnd_srs_ind_msg: %d for UE: %d\n", indication_stats->rnti,i);
+  }
+
+  return msg;
+}
+
+
+void fill_rnd_srs_ind_data(srs_ind_data_t* ind)
 {
   assert(ind != NULL);
 

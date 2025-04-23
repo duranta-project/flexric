@@ -59,18 +59,20 @@ sm_ag_if_ans_subs_t on_subscription_srs_sm_ag(sm_agent_t const* sm_agent, const 
 
   sm_srs_agent_t* sm = (sm_srs_agent_t*)sm_agent;
 
-  srs_sub_data_t srs = {0};
+  wr_srs_sub_data_t wr_srs = {0};
 
-  srs.et = srs_dec_event_trigger(&sm->enc, data->len_et, data->event_trigger);
+  wr_srs.ric_req_id = data->ric_req_id;
+
+  wr_srs.srs.et = srs_dec_event_trigger(&sm->enc, data->len_et, data->event_trigger);
   // Destructor
-  defer({ free_srs_event_trigger(&srs.et); });
+  defer({ free_srs_event_trigger(&wr_srs.srs.et); });
 
-  srs.ad = malloc(sizeof(srs_action_def_t));
-  assert(srs.ad != NULL && "Memory exhausted");
-  *srs.ad = srs_dec_action_def(&sm->enc, data->len_ad, data->action_def);
-  defer({ free_srs_action_def(srs.ad); });
+  wr_srs.srs.ad = malloc(sizeof(srs_action_def_t));
+  assert(wr_srs.srs.ad != NULL && "Memory exhausted");
+  *wr_srs.srs.ad = srs_dec_action_def(&sm->enc, data->len_ad, data->action_def);
+  defer({ free_srs_action_def(wr_srs.srs.ad); });
 
-  sm_ag_if_ans_t subs = sm->base.io.write_subs(&srs);
+  sm_ag_if_ans_t subs = sm->base.io.write_subs(&wr_srs);
   assert(subs.type == SUBS_OUTCOME_SM_AG_IF_ANS_V0);
   assert(subs.subs_out.type == APERIODIC_SUBSCRIPTION_FLRC);
   return subs.subs_out;
@@ -81,7 +83,7 @@ exp_ind_data_t on_indication_srs_sm_ag(sm_agent_t const* sm_agent, void* act_def
 {
   //printf("on_indication called \n");
   assert(sm_agent != NULL);
-  assert(act_def == NULL && "Action definition data not needed for this SM");
+  assert(act_def != NULL && "Action definition needed for this SM");
   sm_srs_agent_t* sm = (sm_srs_agent_t*)sm_agent;
 
   exp_ind_data_t ret = {.has_value = true};

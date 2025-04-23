@@ -13,5 +13,7 @@ void read_srs_setup_sm(void*);
 
 sm_ag_if_ans_t write_ctrl_srs_sm(void const*);
 
+sm_ag_if_ans_t write_subs_srs_sm(void const* src);
+
 #endif
 

@@ -50,7 +50,7 @@ bool read_ind_srs(void* read)
 
   srs_ind_data_t* ind = (srs_ind_data_t*)read; // &read->ind.srs;
 
-  fill_srs_ind_data(ind);
+  fill_rnd_srs_ind_data(ind);
   cp.hdr = cp_srs_ind_hdr(&ind->hdr);
   cp.msg = cp_srs_ind_msg(&ind->msg);
   return true;
@@ -81,9 +81,9 @@ sm_ag_if_ans_t write_subs_srs(void const* data)
 {
   assert(data != NULL);
 
-  srs_sub_data_t const* srs = (srs_sub_data_t const*)data;
+  wr_srs_sub_data_t const* wr_srs = (wr_srs_sub_data_t const*)data;
 
-  cp_srs_sub = cp_srs_sub_data(srs);
+  cp_srs_sub = cp_srs_sub_data(&wr_srs->srs);
 
   sm_ag_if_ans_t ans = {.type = SUBS_OUTCOME_SM_AG_IF_ANS_V0 };
   ans.subs_out.type = APERIODIC_SUBSCRIPTION_FLRC;
@@ -121,7 +121,7 @@ void check_subscription(sm_agent_t* ag, sm_ric_t* ric)
   assert(subs.aper.free_aper_subs != NULL);
 
   defer({  free_srs_sub_data(&cp_srs_sub); });
-  // Not yet impleemnted
+  // Not yet implemented
   //assert(eq_srs_sub_data(&srs, &cp_srs_sub) == true);
 }
 

@@ -139,7 +139,7 @@ bool read_ind_srs(void* ind)
 {
   assert(ind != NULL);
   srs_ind_data_t* srs = (srs_ind_data_t*)ind;
-  fill_srs_ind_data(srs);
+  fill_rnd_srs_ind_data(srs);
   return true;
 }
 
@@ -204,9 +204,13 @@ static
 uint32_t sta_ric_id;
 
 static
+uint32_t srs_ric_id;
+
+
+static
 void free_aperiodic_subscription(uint32_t ric_req_id)
 {
-  assert(ric_req_id == sta_ric_id); 
+  assert(ric_req_id == sta_ric_id || ric_req_id == srs_ric_id); 
   (void)ric_req_id;
 }
 
@@ -216,7 +220,7 @@ void* emulate_rrc_msg(void* ptr)
   (void)ptr;
   for(size_t i = 0; i < 1000; ++i){
     usleep(rand()%50);
-    rc_ind_data_t* d = calloc(1, sizeof(rc_ind_data_t)); 
+    rc_ind_data_t* d = calloc(1, sizeof(rc_ind_data_t));
     assert(d != NULL && "Memory exhausted");
     *d = fill_rnd_rc_ind_data();
     async_event_agent_api(sta_ric_id, d);
@@ -243,6 +247,44 @@ sm_ag_if_ans_t write_subs_rc(void const* data)
   sm_ag_if_ans_t ans = {.type = SUBS_OUTCOME_SM_AG_IF_ANS_V0};
   ans.subs_out.type = APERIODIC_SUBSCRIPTION_FLRC;
   ans.subs_out.aper.free_aper_subs = free_aperiodic_subscription;
+  return ans;
+}
+
+static
+void* emulate_srs_fapi_msg(void* ptr)
+{
+  (void)ptr;
+  for(size_t i = 0; i < 1000; ++i){
+    usleep(rand()%50);
+    srs_ind_data_t* d = calloc(1, sizeof(srs_ind_data_t));
+    assert(d != NULL && "Memory exhausted");
+    d->hdr = fill_rnd_srs_ind_hdr();
+    d->msg = fill_rnd_srs_ind_msg();
+    async_event_agent_api(srs_ric_id, d);
+    printf("Event for RIC Req ID %u generated\n", srs_ric_id);
+  }
+
+  return NULL;
+}
+
+static
+pthread_t t_srs_subs_ctrl;
+
+sm_ag_if_ans_t write_subs_srs(void const* data)
+{
+  assert(data != NULL);
+
+  wr_srs_sub_data_t* wr_srs = (wr_srs_sub_data_t*)data;
+
+  srs_ric_id = wr_srs->ric_req_id;
+
+  int srs = pthread_create(&t_srs_subs_ctrl, NULL, emulate_srs_fapi_msg, NULL);
+  assert(srs == 0);
+
+  sm_ag_if_ans_t ans = {.type = SUBS_OUTCOME_SM_AG_IF_ANS_V0};
+  ans.subs_out.type = APERIODIC_SUBSCRIPTION_FLRC;
+  ans.subs_out.aper.free_aper_subs = free_aperiodic_subscription;
+
   return ans;
 }
 
@@ -295,8 +337,8 @@ void sm_cb_gtp(sm_ag_if_rd_t const* rd)
   ++cnt_gtp;
 }
 
-static 
-int cnt_srs = 0;
+// static 
+// int cnt_srs = 0;
 static
 void sm_cb_srs(sm_ag_if_rd_t const* rd)
 {
@@ -304,11 +346,11 @@ void sm_cb_srs(sm_ag_if_rd_t const* rd)
   assert(rd->type == INDICATION_MSG_AGENT_IF_ANS_V0);
   assert(rd->ind.type == SRS_STATS_V0); 
 
-  if(cnt_srs % 128 == 0){
+  //if(cnt_srs % 128 == 0){
   int64_t now = time_now_us();
   printf("SRS ind_msg latency = %ld μs\n", now - rd->ind.srs.msg.tstamp);
-  }
-  ++cnt_srs;
+  //}
+  //++cnt_srs;
 }
 
 static
@@ -416,7 +458,8 @@ sm_io_ag_ran_t init_sm_io_ag_ran(void)
   dst.write_ctrl_tbl[RAN_CONTROL_CTRL_V1_03] = write_ctrl_rc;
 
   // WRITE: SUBSCRIPTION
-  dst.write_subs_tbl[RAN_CTRL_SUBS_V1_03] = write_subs_rc; 
+  dst.write_subs_tbl[RAN_CTRL_SUBS_V1_03] = write_subs_rc;
+  dst.write_subs_tbl[SRS_SUBS_V0] = write_subs_srs; 
 
   return dst;
 }
@@ -517,33 +560,47 @@ int main(int argc, char *argv[])
   sm_ans_xapp_t h_5 = report_sm_xapp_api(&nodes.n[0].id, SM_RC_ID, &rc_sub, sm_cb_rc);
   assert(h_5.success);
 
+  // // // SRS Subscription
+  srs_sub_data_t srs_sub = {0};
+  defer({ free_srs_sub_data(&srs_sub); });
+
+  srs_sub.et = fill_rnd_srs_event_trigger();
+  // problem here
+  srs_sub.ad = calloc(1,sizeof(srs_action_def_t));
+  assert(srs_sub.ad != NULL && "Memory exhausted");
+  srs_sub.ad[0] = fill_rnd_srs_action_definition();
+
   // returns a handle
-  sm_ans_xapp_t h_6 = report_sm_xapp_api(&nodes.n[0].id, SM_SRS_ID, (void*)period, sm_cb_srs);
+  sm_ans_xapp_t h_6 = report_sm_xapp_api(&nodes.n[0].id, SM_SRS_ID, &srs_sub, sm_cb_srs);
   assert(h_6.success == true);
 
   sleep(3);
-  
   rm_report_sm_xapp_api(h_1.u.handle);
   rm_report_sm_xapp_api(h_2.u.handle);
   rm_report_sm_xapp_api(h_3.u.handle);
   rm_report_sm_xapp_api(h_4.u.handle);
-  rm_report_sm_xapp_api(h_5.u.handle);
+  // // FIX BUG HERE maybe see the free subscription ids/ some sort of order
   rm_report_sm_xapp_api(h_6.u.handle);
+  rm_report_sm_xapp_api(h_5.u.handle);
+  
 
   sleep(1);
 
   //Stop the xApp
-  while(try_stop_xapp_api() == false)
-    usleep(1000);     
-
+  while(try_stop_xapp_api() == false){
+    usleep(1000);
+  }
   // Stop the Agent
-  stop_agent_api();
+   stop_agent_api();
 
   // Stop the RIC
-  stop_near_ric_api();
+   stop_near_ric_api();
 
   int const rc = pthread_join(t, NULL);
   assert(rc == 0);
+
+  int const srs = pthread_join(t_srs_subs_ctrl,NULL);
+  assert(srs == 0);
 
   printf("Test communicating E2-Agent, Near-RIC and xApp run SUCCESSFULLY\n");
 }

@@ -24,7 +24,11 @@
  
  #include "../../src/sm/srs_sm/ie/srs_data_ie.h"
  
- void fill_srs_ind_data(srs_ind_data_t* ind);
+ srs_ind_hdr_t fill_rnd_srs_ind_hdr(void);
+
+ srs_ind_msg_t fill_rnd_srs_ind_msg(void);
+
+ void fill_rnd_srs_ind_data(srs_ind_data_t* ind);
 
  srs_event_trigger_t fill_rnd_srs_event_trigger(void);
 
