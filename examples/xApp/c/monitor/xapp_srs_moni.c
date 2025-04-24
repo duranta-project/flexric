@@ -52,6 +52,22 @@ void sm_cb_srs(sm_ag_if_rd_t const* rd)
   // cnt_srs++;
 }
 
+static
+srs_event_trigger_t fill_srs_event_trigger(void)
+{
+  srs_event_trigger_t et = {0};
+  et.ev_trigger_cond_id = rand()%100;
+  return et;
+}
+
+static
+srs_action_def_t fill_srs_action_definition(void)
+{
+  srs_action_def_t ad = {0};
+  ad.dummy = rand()%100;
+  return ad;
+}
+
 int main(int argc, char *argv[])
 {
     fr_args_t args = init_fr_args(argc, argv);
@@ -68,8 +84,7 @@ int main(int argc, char *argv[])
 
     printf("Connected E2 nodes = %d\n", nodes.len);
 
-    // SRS RIC indication
-    const char* i_0 = "5_ms"; // interval time of the RIC indication
+    // SRS REPORT handle
     sm_ans_xapp_t* srs_handle = NULL;
 
     if(nodes.len > 0){
@@ -77,13 +92,26 @@ int main(int argc, char *argv[])
         assert(srs_handle  != NULL);
     }
 
+    const int SRS_ran_function = 141;
+
     for (int i = 0; i < nodes.len; i++) {
         e2_node_connected_xapp_t* n = &nodes.n[i];
-        for (size_t j = 0; j < n->len_rf; j++)
+        for (size_t j = 0; j < n->len_rf; j++) {
           printf("Registered node %d ran func id = %d \n ", i, n->rf[j].id);
+        }
+    // SRS SM Subscription
+    srs_sub_data_t srs_sub = {0};
+    defer({ free_srs_sub_data(&srs_sub); });
 
-        srs_handle[i] = report_sm_xapp_api(&nodes.n[i].id, 141, (void*)i_0, sm_cb_srs);
-        assert(srs_handle[i].success == true);
+    srs_sub.et = fill_srs_event_trigger();
+    // problem here
+    srs_sub.ad = calloc(1,sizeof(srs_action_def_t));
+    assert(srs_sub.ad != NULL && "Memory exhausted");
+    srs_sub.ad[0] = fill_srs_action_definition();
+
+
+    srs_handle[i] = report_sm_xapp_api(&nodes.n[i].id, SRS_ran_function, &srs_sub, sm_cb_srs);
+    assert(srs_handle[i].success == true);
     }
 
     sleep(10);

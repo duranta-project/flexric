@@ -98,7 +98,7 @@ void init_write_subs(write_subs_fp (*write_subs_tbl)[SM_AGENT_IF_WRITE_SUBS_V0_E
   (*write_subs_tbl)[GTP_SUBS_V0] = NULL;
   (*write_subs_tbl)[KPM_SUBS_V3_0] = NULL;
   (*write_subs_tbl)[RAN_CTRL_SUBS_V1_03] = write_subs_rc_sm;
-  (*write_subs_tbl)[SRS_SUBS_V0] = NULL;
+  (*write_subs_tbl)[SRS_SUBS_V0] = write_subs_srs_sm;
 }
 
 static
