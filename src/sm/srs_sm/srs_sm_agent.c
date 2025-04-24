@@ -89,7 +89,7 @@ exp_ind_data_t on_indication_srs_sm_ag(sm_agent_t const* sm_agent, void* act_def
   exp_ind_data_t ret = {.has_value = true};
 
   // Fill Indication Header
-  srs_ind_hdr_t hdr = {.dummy = 0 };
+  srs_ind_hdr_t hdr = {.ev_trigger_cond_id = 2};
   byte_array_t ba_hdr = srs_enc_ind_hdr(&sm->enc, &hdr);
   ret.data.ind_hdr = ba_hdr.buf;
   ret.data.len_hdr = ba_hdr.len;

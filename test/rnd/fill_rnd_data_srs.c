@@ -56,7 +56,7 @@ srs_sub_data_t fill_rnd_srs_subscription(void)
 srs_ind_hdr_t fill_rnd_srs_ind_hdr(void)
 {
   srs_ind_hdr_t hdr = {0};
-  hdr.dummy = rand()%10;
+  hdr.ev_trigger_cond_id = rand()%10;
   return hdr;
 }
 

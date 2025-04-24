@@ -75,7 +75,7 @@ bool eq_srs_action_def(srs_event_trigger_t* m0,  srs_event_trigger_t* m1);
 
 
 typedef struct{
-  uint32_t dummy;  
+  uint16_t ev_trigger_cond_id;  // should match event trigger id
 } srs_ind_hdr_t;
 
 void free_srs_ind_hdr(srs_ind_hdr_t* src); 

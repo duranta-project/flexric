@@ -106,7 +106,7 @@ srs_ind_hdr_t cp_srs_ind_hdr(srs_ind_hdr_t const* src)
 {
   assert(src != NULL);
   srs_ind_hdr_t dst = {0}; 
-  dst.dummy = src->dummy;
+  dst.ev_trigger_cond_id = src->ev_trigger_cond_id;
   return dst;
 }
 
@@ -115,7 +115,7 @@ bool eq_srs_ind_hdr(srs_ind_hdr_t* m0, srs_ind_hdr_t* m1)
   assert(m0 != 0);
   assert(m1 != 0);
 
-  if(m0->dummy != m1->dummy)
+  if(m0->ev_trigger_cond_id != m1->ev_trigger_cond_id)
     return false;
   return true;
 }
