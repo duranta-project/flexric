@@ -30,8 +30,8 @@
  #include <time.h>
  #include <unistd.h>
 
-//static
-//uint64_t cnt_srs; // RIC indication message counter
+static
+uint64_t cnt_srs; // RIC indication message counter
 
 // Call back
 static
@@ -43,13 +43,14 @@ void sm_cb_srs(sm_ag_if_rd_t const* rd)
 
   int64_t now = time_now_us();
   if(true){
-    //printf("Received RIC indication message number: %d\n", cnt_srs);
+    printf("Received RIC indication message number: %ld\n", cnt_srs);
     const srs_indication_stats_impl_t* srs_stats = rd->ind.srs.msg.indication_stats;
     uint16_t rnti = srs_stats->rnti;
     printf("SRS ind_msg latency = %ld μs\n", now - rd->ind.srs.msg.tstamp);
-    printf("SRS RNTI = %d\n", rnti);
+    printf("SRS RNTI = %u\n", rnti);
+    //printf("SRS CALLBACK\n");
   }
-  // cnt_srs++;
+  cnt_srs++;
 }
 
 static

@@ -79,18 +79,26 @@ sm_ag_if_ans_subs_t on_subscription_srs_sm_ag(sm_agent_t const* sm_agent, const 
 }
 
 static
-exp_ind_data_t on_indication_srs_sm_ag(sm_agent_t const* sm_agent, void* act_def)
+exp_ind_data_t on_indication_srs_sm_ag(sm_agent_t const* sm_agent, void* ind_data)
 {
   //printf("on_indication called \n");
   assert(sm_agent != NULL);
-  assert(act_def != NULL && "Action definition needed for this SM");
+  assert(ind_data != NULL && "Indication data needed for this SM");
   sm_srs_agent_t* sm = (sm_srs_agent_t*)sm_agent;
 
   exp_ind_data_t ret = {.has_value = true};
 
+ // Liberate the memory if previously allocated by the RAN. It sucks. Profoundly
+  srs_ind_data_t* srs = (srs_ind_data_t*)ind_data; 
+  defer({ free_srs_ind_data(srs);  free(srs); });
+
+  // defer({ free_srs_ind_hdr(&srs.hdr) ;});
+  // defer({ free_srs_ind_msg(&srs.msg) ;});
+  defer({ free_srs_call_proc_id(srs->proc_id);});
+ 
   // Fill Indication Header
-  srs_ind_hdr_t hdr = {.ev_trigger_cond_id = 2};
-  byte_array_t ba_hdr = srs_enc_ind_hdr(&sm->enc, &hdr);
+  // srs_ind_hdr_t hdr = {.ev_trigger_cond_id = 2};
+  byte_array_t ba_hdr = srs_enc_ind_hdr(&sm->enc, &srs->hdr);
   ret.data.ind_hdr = ba_hdr.buf;
   ret.data.len_hdr = ba_hdr.len;
 
@@ -98,20 +106,9 @@ exp_ind_data_t on_indication_srs_sm_ag(sm_agent_t const* sm_agent, void* act_def
   //sm_ag_if_rd_t rd_if = {.type = INDICATION_MSG_AGENT_IF_ANS_V0};
   //rd_if.ind.type = SRS_STATS_V0;
 
-  srs_ind_data_t srs = {0};
- // Liberate the memory if previously allocated by the RAN. It sucks. Profoundly
-  //  defer({ free_sm_rd_if(&rd_if); }; );
-  defer({ free_srs_ind_hdr(&srs.hdr) ;});
-  defer({ free_srs_ind_msg(&srs.msg) ;});
-  defer({ free_srs_call_proc_id(srs.proc_id);});
- 
-  // This may allocate memory by the RAN
-  if(sm->base.io.read_ind(&srs) == false)
-    return (exp_ind_data_t){.has_value = false};
-
-  byte_array_t ba = srs_enc_ind_msg(&sm->enc, &srs.msg);
-  ret.data.ind_msg = ba.buf;
-  ret.data.len_msg = ba.len;
+  byte_array_t ba_msg = srs_enc_ind_msg(&sm->enc, &srs->msg);
+  ret.data.ind_msg = ba_msg.buf;
+  ret.data.len_msg = ba_msg.len;
 
   // Fill the optional Call Process ID
   ret.data.call_process_id = NULL;
