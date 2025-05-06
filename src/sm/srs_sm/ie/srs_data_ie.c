@@ -125,20 +125,29 @@ bool eq_srs_ind_hdr(srs_ind_hdr_t* m0, srs_ind_hdr_t* m1)
 // RIC Indication Message 
 /////////////////////////////////////
 
+void free_srs_indication_stats_impl(srs_indication_stats_impl_t* src){
+  assert(src != NULL);
+  free_byte_array(src->srs_unpacked_pdu);
+}
+
 void free_srs_ind_msg(srs_ind_msg_t* src)
 {
   assert(src != NULL);
-  if(src->len > 0){
-    assert(src->indication_stats != NULL);
-    free(src->indication_stats);
+  assert(src->len > 0);
+
+  for(size_t i = 0; i < src->len; i++){
+    free_srs_indication_stats_impl(&src->indication_stats[i]);
   }
+  free(src->indication_stats);
 }
 
 srs_indication_stats_impl_t cp_srs_indication_stats_impl(srs_indication_stats_impl_t const* src)
 {
   assert(src != NULL);
 
-  srs_indication_stats_impl_t dst = { .rnti = src->rnti}; 
+  srs_indication_stats_impl_t dst = {0};
+  dst.rnti = src->rnti;
+  dst.srs_unpacked_pdu = copy_byte_array(src->srs_unpacked_pdu);
 
   return dst;
 }
@@ -164,6 +173,20 @@ srs_ind_msg_t cp_srs_ind_msg( srs_ind_msg_t const* src)
   return dst;
 }
 
+bool eq_srs_stats_impl(srs_indication_stats_impl_t* m0, srs_indication_stats_impl_t* m1)
+{
+  assert(m0 != NULL);
+  assert(m1 != NULL);
+
+  if(
+    m0->rnti != m1->rnti ||
+    eq_byte_array(&m0->srs_unpacked_pdu, &m1->srs_unpacked_pdu) == false
+    )
+    return false;
+
+  return true;
+}
+
 bool eq_srs_ind_msg(srs_ind_msg_t* m0, srs_ind_msg_t* m1)
 {
   assert(m0 != NULL);
@@ -173,12 +196,7 @@ bool eq_srs_ind_msg(srs_ind_msg_t* m0, srs_ind_msg_t* m1)
     return false;
 
   for(uint32_t i = 0 ; i < m0->len; ++i){
-    srs_indication_stats_impl_t* ue0 = &m0->indication_stats[i]; 
-    srs_indication_stats_impl_t* ue1 = &m1->indication_stats[i]; 
-
-    if(
-        ue0->rnti != ue1->rnti
-      )
+    if(eq_srs_stats_impl(&m0->indication_stats[i],&m1->indication_stats[i]) == false)
       return false;
   }
   return true;

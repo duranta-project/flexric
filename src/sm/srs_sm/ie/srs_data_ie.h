@@ -35,6 +35,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
+#include "../../../util/byte_array.h"
 
 //////////////////////////////////////
 // RIC Event Trigger Definition
@@ -92,6 +93,8 @@ typedef struct
 {
   // Some fields from nfapi_nr_srs_indication_pdu_t
   uint16_t rnti;
+  // uint32_t len;
+  byte_array_t srs_unpacked_pdu; // 
 } srs_indication_stats_impl_t;
 
 srs_indication_stats_impl_t cp_srs_indication_stats_impl(srs_indication_stats_impl_t const* src);
@@ -102,7 +105,7 @@ typedef struct {
   int64_t tstamp;
 } srs_ind_msg_t;
 
-void free_srs_ind_msg(srs_ind_msg_t* src); 
+void free_srs_ind_msg(srs_ind_msg_t* src);
 
 srs_ind_msg_t cp_srs_ind_msg(srs_ind_msg_t const* src);
 

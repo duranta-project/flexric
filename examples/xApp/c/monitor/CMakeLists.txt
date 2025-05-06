@@ -29,6 +29,8 @@ add_executable(xapp_gtp_mac_rlc_pdcp_moni
 add_executable(xapp_srs_moni
 		xapp_srs_moni.c
                 ../../../../src/util/alg_ds/alg/defer.c
+                srs_fapi/debug.c
+                srs_fapi/nfapi.c
               )
 
  target_link_libraries(xapp_srs_moni

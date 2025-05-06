@@ -70,14 +70,17 @@ byte_array_t srs_enc_ind_hdr_plain(srs_ind_hdr_t const* ind_hdr)
   return ba;
 }
 
-byte_array_t srs_enc_ind_msg_plain(srs_ind_msg_t const* ind_msg)
-{
-  assert(ind_msg != NULL);
-
+byte_array_t srs_enc_ind_msg_plain(srs_ind_msg_t const* ind_msg) { assert(ind_msg != NULL);
+  // compute the total size of the serialized buffer
+  uint32_t len = sizeof(ind_msg->len); 
+  for(uint32_t i = 0; i< ind_msg->len; i++){
+    const srs_indication_stats_impl_t* srs_stats = &ind_msg->indication_stats[i];
+    len += sizeof(srs_stats->rnti);
+    len += sizeof(srs_stats->srs_unpacked_pdu.len);
+    len += srs_stats->srs_unpacked_pdu.len;
+  }
+  len += sizeof(ind_msg->tstamp); 
   byte_array_t ba = {0};
-  const uint32_t len = sizeof(ind_msg->len) 
-                      + sizeof(srs_indication_stats_impl_t) * ind_msg->len
-                      + sizeof(ind_msg->tstamp); 
   ba.buf = calloc(1, len); 
   assert(ba.buf != NULL);
 
@@ -85,13 +88,26 @@ byte_array_t srs_enc_ind_msg_plain(srs_ind_msg_t const* ind_msg)
   void* ptr = ba.buf + sizeof(ind_msg->len);
 
   for(uint32_t i = 0; i < ind_msg->len; ++i){
-    memcpy(ptr, &ind_msg->indication_stats[i], sizeof(ind_msg->indication_stats[0])); 
-    ptr += sizeof(ind_msg->indication_stats[0]);
+    // This won't copy the content of the packed srs_indication(it's a shallow copy)
+    //memcpy(ptr, &ind_msg->indication_stats[i], sizeof(ind_msg->indication_stats[0])); 
+    //ptr += sizeof(ind_msg->indication_stats[0]);
+
+    // deep copy
+
+    const srs_indication_stats_impl_t* srs_stats = &ind_msg->indication_stats[i];
+    memcpy(ptr, &srs_stats->rnti, sizeof(srs_stats->rnti));
+    ptr += sizeof(srs_stats->rnti);
+
+    memcpy(ptr, &srs_stats->srs_unpacked_pdu.len, sizeof(srs_stats->srs_unpacked_pdu.len));
+    ptr += sizeof(srs_stats->srs_unpacked_pdu.len);
+
+    memcpy(ptr, srs_stats->srs_unpacked_pdu.buf, srs_stats->srs_unpacked_pdu.len);
+    ptr += srs_stats->srs_unpacked_pdu.len;
   }
 
   memcpy(ptr, &ind_msg->tstamp, sizeof(ind_msg->tstamp));
   ptr += sizeof(ind_msg->tstamp);
-
+// cpy the byte array.
   assert(ptr == ba.buf + len && "Data layout mismatch");
 
   ba.len = len;

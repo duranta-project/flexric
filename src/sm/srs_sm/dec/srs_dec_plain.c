@@ -67,12 +67,19 @@ srs_ind_msg_t srs_dec_ind_msg_plain(size_t len, uint8_t const ind_msg[len])
   
   void* ptr = (void*)&ind_msg[len_sizeof];
   for(uint32_t i = 0; i < ret.len; ++i){
-    memcpy(&ret.indication_stats[i], ptr, sizeof( srs_indication_stats_impl_t) );
-    ptr += sizeof( srs_indication_stats_impl_t); 
+    srs_indication_stats_impl_t* ret_stats = &ret.indication_stats[i];
+
+    memcpy(&ret_stats->rnti, ptr, sizeof(ret_stats->rnti));
+    ptr += sizeof(ret_stats->rnti);
+
+    memcpy(&ret_stats->srs_unpacked_pdu.len, ptr, sizeof(ret_stats->srs_unpacked_pdu.len));
+    ptr += sizeof(ret_stats->srs_unpacked_pdu.len);
+    ret_stats->srs_unpacked_pdu.buf = malloc(ret_stats->srs_unpacked_pdu.len);
+    memcpy(ret_stats->srs_unpacked_pdu.buf, ptr, ret_stats->srs_unpacked_pdu.len);
+    ptr += ret_stats->srs_unpacked_pdu.len;
   }
 
   memcpy(&ret.tstamp, ptr, sizeof(ret.tstamp));
-
   ptr += sizeof(ret.tstamp);
   assert(ptr == ind_msg + len && "data layout mismatch");
 
