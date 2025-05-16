@@ -32,6 +32,8 @@
 #include <unistd.h>
 #include "srs_fapi/nfapi.h"
 
+#define NR_NB_SC_PER_RB 12
+
 typedef struct {
   uint16_t tag;                         // 0: Report is carried directly in the value field; 3: The offset from the end of the control portion of the message to the beginning of the report. Other values are reserved.
   uint32_t length;                      // Length of the actual report in bytes, without the padding bytes.
@@ -54,7 +56,7 @@ typedef struct {
   uint16_t num_ue_srs_ports;            // Nu: Number of sampled UE SRS ports. Value: 07
   uint16_t prg_size;                    // Size in RBs of a precoding resource block group (PRG) – to which the same digital beamforming gets applied. Value: 1->272
   uint16_t num_prgs;                    // Number of PRGs Np to be reported for this SRS PDU. Value: 0-> 272
-  uint8_t channel_matrix[272*2*8*4];    // Array of (numPRGs*Nu*Ng) entries of the type denoted by iqRepresentation H{PRG pI} [ueAntenna uI, gNB antenna gI] = array[uI*Ng*Np + gI*Np + pI]; uI: 0…Nu-1 (UE antenna index); gI: 0…Ng-1 (gNB antenna index); pI: 0…Np-1 (PRG index)
+  uint8_t channel_matrix[12*272*2*8*4];    // Array of (numPRGs*Nu*Ng) entries of the type denoted by iqRepresentation H{PRG pI} [ueAntenna uI, gNB antenna gI] = array[uI*Ng*Np + gI*Np + pI]; uI: 0…Nu-1 (UE antenna index); gI: 0…Ng-1 (gNB antenna index); pI: 0…Np-1 (PRG index)
 } nfapi_nr_srs_normalized_channel_iq_matrix_t;
 
 static void dump_srs_report(nfapi_srs_report_tlv_t* report_tlv, const char* filename) {
@@ -89,12 +91,10 @@ static void dump_srs_channel_iq_matrix(nfapi_nr_srs_normalized_channel_iq_matrix
   // uint16_t prg_size = channel_iq_matrix->prg_size;
   uint16_t num_prgs = channel_iq_matrix->num_prgs;
 
-  // Could be a csv file header
-  //fprintf(f, "Num gNB antennas, Num UE SRS Ports, PRG size, Num of PRG");
 
   printf("Ng = %u\t ,Nu = %u\t, Np = %u\n", Ng, Nu, num_prgs);
 
-  uint32_t total = Nu * Ng * num_prgs;
+  uint16_t total = NR_NB_SC_PER_RB* Nu * Ng * num_prgs;
 
   const c16_t *channel = (const c16_t*)channel_iq_matrix->channel_matrix;
   fwrite(channel, sizeof(c16_t), total, f);
@@ -133,6 +133,11 @@ static int unpack_nr_srs_normalized_channel_iq_matrix(void *pMessageBuf,
   uint16_t channel_matrix_size = nr_srs_normalized_channel_iq_matrix->num_prgs
                                  * nr_srs_normalized_channel_iq_matrix->num_ue_srs_ports
                                  * nr_srs_normalized_channel_iq_matrix->num_gnb_antenna_elements;
+
+  if (nr_srs_normalized_channel_iq_matrix->prg_size == 0){
+    // (Not definde by FAPI) used for E2AP SRS-SM to send the full channel estimates to the RIC
+    channel_matrix_size = NR_NB_SC_PER_RB * channel_matrix_size;
+  }
   if (nr_srs_normalized_channel_iq_matrix->normalized_iq_representation == 0) {
     // 0: 16-bit normalized complex number (iqSize = 2) so multiplies the size by 2
     channel_matrix_size <<= 1;
