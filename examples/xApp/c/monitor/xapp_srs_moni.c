@@ -31,33 +31,11 @@
 #include <time.h>
 #include <unistd.h>
 #include "srs_fapi/nfapi.h"
+#include "srs_fapi/nfapi_srs_data.h"
+#include "srs_fapi/srs_fapi_p7.h"
 
-#define NR_NB_SC_PER_RB 12
-
-typedef struct {
-  uint16_t tag;                         // 0: Report is carried directly in the value field; 3: The offset from the end of the control portion of the message to the beginning of the report. Other values are reserved.
-  uint32_t length;                      // Length of the actual report in bytes, without the padding bytes.
-  uint32_t value[16384];                // tag=0: Only the most significant bytes of the size indicated by ‘length’ field are valid. Remaining bytes are zero padded to the nearest 32-bit bit boundary; Tag=2 Offset from the end of the control portion of the message to the payload is in the value field. Occupies 32-bits.
-} nfapi_srs_report_tlv_t;
-
-typedef struct {
-  uint32_t handle;                      // The handle passed to the PHY in the the UL_TTI.request SRS PDU.
-  uint16_t rnti;                        // The RNTI passed to the PHY in the UL_TTI.request SRS PDU. Value: 1 -> 65535.
-  uint16_t timing_advance_offset;       // Timing advance TA measured for the UE in multiples of 16 * 64 * Tc / (2^u) [TS 38.213, Section 4.2]. Value: 0 -> 63. 0xffff will be set if this field is invalid.
-  int16_t timing_advance_offset_nsec;   // Timing advance measured for the UE between the reference uplink time and the observed arrival time for the UE. Value: -16800 … +16800 nanoseconds. 0xffff should be set if this field is invalid.
-  uint8_t srs_usage;                    // 0 – beamManagement; 1 – codebook; 2 – nonCodebook; 3 – antennaSwitching; 4 – 255: reserved; Note: This field matches the SRS usage field of the SRS PDU to which this report is linked.
-  uint8_t report_type;                  // The type of report included in or pointed to by Report TLV depends on the SRS usage: Beam management (1: Beamforming report); Codebook (1: Normalized Channel I/Q Matrix); nonCodebook (1: Normalized Channel I/Q Matrix); antennaSwitch (1: Channel SVD Representation); all (0: null report)
-  nfapi_srs_report_tlv_t report_tlv;
-} nfapi_nr_srs_indication_pdu_t;
-
-typedef struct {
-  uint8_t normalized_iq_representation; // 0: 16-bit normalized complex number (iqSize = 2); 1: 32-bit normalized complex number (iqSize = 4)
-  uint16_t num_gnb_antenna_elements;    // Ng: Number of gNB antenna elements. Value: 0511
-  uint16_t num_ue_srs_ports;            // Nu: Number of sampled UE SRS ports. Value: 07
-  uint16_t prg_size;                    // Size in RBs of a precoding resource block group (PRG) – to which the same digital beamforming gets applied. Value: 1->272
-  uint16_t num_prgs;                    // Number of PRGs Np to be reported for this SRS PDU. Value: 0-> 272
-  uint8_t channel_matrix[12*272*2*8*4];    // Array of (numPRGs*Nu*Ng) entries of the type denoted by iqRepresentation H{PRG pI} [ueAntenna uI, gNB antenna gI] = array[uI*Ng*Np + gI*Np + pI]; uI: 0…Nu-1 (UE antenna index); gI: 0…Ng-1 (gNB antenna index); pI: 0…Np-1 (PRG index)
-} nfapi_nr_srs_normalized_channel_iq_matrix_t;
+typedef uint32_t frame_t;
+typedef uint32_t slot_t;
 
 static void dump_srs_report(nfapi_srs_report_tlv_t* report_tlv, const char* filename) {
   FILE* f = fopen(filename, "w");
@@ -75,10 +53,7 @@ static void dump_srs_report(nfapi_srs_report_tlv_t* report_tlv, const char* file
   return;
 }
 
-typedef struct complex16 {
-  int16_t r;
-  int16_t i;
-} c16_t;
+
 
 static void dump_srs_channel_iq_matrix(nfapi_nr_srs_normalized_channel_iq_matrix_t* channel_iq_matrix, const char* filename) {
   FILE* f = fopen(filename, "wb");
@@ -88,7 +63,6 @@ static void dump_srs_channel_iq_matrix(nfapi_nr_srs_normalized_channel_iq_matrix
   }
   uint16_t Ng = channel_iq_matrix->num_gnb_antenna_elements;
   uint16_t Nu = channel_iq_matrix->num_ue_srs_ports;
-  // uint16_t prg_size = channel_iq_matrix->prg_size;
   uint16_t num_prgs = channel_iq_matrix->num_prgs;
 
 
@@ -104,108 +78,43 @@ static void dump_srs_channel_iq_matrix(nfapi_nr_srs_normalized_channel_iq_matrix
   return;
 }
 
-/*
-static uint8_t get_tlv_padding(uint16_t tlv_length)
+void log_ric_indication(const srs_ind_msg_t* msg)
 {
-  return (4 - (tlv_length % 4)) % 4;
-}*/
+    srs_indication_stats_impl_t* srs_stats = msg->indication_stats;
+    uint16_t rnti = srs_stats->rnti;
+    printf("SRS RNTI = %u\n", rnti);
 
-static int unpack_nr_srs_normalized_channel_iq_matrix(void *pMessageBuf,
-                                               uint32_t messageBufLen,
-                                               void *pUnpackedBuf,
-                                               uint32_t unpackedBufLen)
-{
-  nfapi_nr_srs_normalized_channel_iq_matrix_t *nr_srs_normalized_channel_iq_matrix =
-      (nfapi_nr_srs_normalized_channel_iq_matrix_t *)pUnpackedBuf;
-  uint8_t *pReadPackedMessage = pMessageBuf;
-  uint8_t *end = pMessageBuf + messageBufLen;
+    size_t packedBufLen = srs_stats->srs_unpacked_pdu.len;
+    uint8_t *pReadPackedMessage = srs_stats->srs_unpacked_pdu.buf;
+    uint8_t *pUnpackMessageEnd = pReadPackedMessage + packedBufLen;
 
-  memset(pUnpackedBuf, 0, unpackedBufLen);
+    nfapi_nr_srs_indication_t srs_ind = {0};
+    if(unpack_nr_srs_indication(&pReadPackedMessage, pUnpackMessageEnd, &srs_ind)){
+      const frame_t frame = srs_ind.sfn;
+      const slot_t slot = srs_ind.slot;
+      const int num_srs = srs_ind.number_of_pdus;
+      printf("xApp Unpacked SFN:%u\n", frame);
+      printf("xApp Unpacked Slot:%u\n", slot);
+      printf("xApp Unpacked Num of SRS PDUs:%d\n", num_srs);
+      nfapi_nr_srs_indication_pdu_t *srs_list = srs_ind.pdu_list;
+      for (int i = 0; i < num_srs; i++) {
+        nfapi_nr_srs_indication_pdu_t *srs_ind_pdu = &srs_list[i];
+        printf("xApp Unpacked RNTI:%u\n", srs_ind_pdu->rnti);
+        printf("xApp Unpacked TA Offset:%u\n", srs_ind_pdu->timing_advance_offset);
+        printf("xApp Unpacked TA Offset nsec:%u\n", srs_ind_pdu->timing_advance_offset_nsec);
+        printf("xApp Unpacked SRS Usage:%u\n", srs_ind_pdu->srs_usage);
+        printf("xApp Unpacked Report type:%u\n", srs_ind_pdu->report_type);
+        dump_srs_report(&srs_ind_pdu->report_tlv, "report_tlv_xapp.csv");
+        // extract the UL Channel
+        nfapi_nr_srs_normalized_channel_iq_matrix_t nr_srs_channel_iq_matrix;
+        unpack_nr_srs_normalized_channel_iq_matrix(&srs_ind_pdu->report_tlv.value,
+                                                    srs_ind_pdu->report_tlv.length,
+                                                    &nr_srs_channel_iq_matrix,
+                                                    sizeof(nfapi_nr_srs_normalized_channel_iq_matrix_t));
 
-  if (!(pull8(&pReadPackedMessage, &nr_srs_normalized_channel_iq_matrix->normalized_iq_representation, end)
-        && pull16(&pReadPackedMessage, &nr_srs_normalized_channel_iq_matrix->num_gnb_antenna_elements, end)
-        && pull16(&pReadPackedMessage, &nr_srs_normalized_channel_iq_matrix->num_ue_srs_ports, end)
-        && pull16(&pReadPackedMessage, &nr_srs_normalized_channel_iq_matrix->prg_size, end)
-        && pull16(&pReadPackedMessage, &nr_srs_normalized_channel_iq_matrix->num_prgs, end))) {
-    return -1;
-  }
-
-  uint16_t channel_matrix_size = nr_srs_normalized_channel_iq_matrix->num_prgs
-                                 * nr_srs_normalized_channel_iq_matrix->num_ue_srs_ports
-                                 * nr_srs_normalized_channel_iq_matrix->num_gnb_antenna_elements;
-
-  if (nr_srs_normalized_channel_iq_matrix->prg_size == 0){
-    // (Not definde by FAPI) used for E2AP SRS-SM to send the full channel estimates to the RIC
-    channel_matrix_size = NR_NB_SC_PER_RB * channel_matrix_size;
-  }
-  if (nr_srs_normalized_channel_iq_matrix->normalized_iq_representation == 0) {
-    // 0: 16-bit normalized complex number (iqSize = 2) so multiplies the size by 2
-    channel_matrix_size <<= 1;
-  } else {
-    // 1: 32-bit normalized complex number (iqSize = 4)
-    channel_matrix_size <<= 2;
-  }
-
-  for (int i = 0; i < channel_matrix_size; i++) {
-    if (!pull8(&pReadPackedMessage, &nr_srs_normalized_channel_iq_matrix->channel_matrix[i], end)) {
-      return 0;
+        dump_srs_channel_iq_matrix(&nr_srs_channel_iq_matrix, "xapp_channel_rfsim.iq");
+      }
     }
-  }
-
-  return 1;
-}
-
-static uint8_t unpack_nr_srs_report_tlv_value(nfapi_srs_report_tlv_t *report_tlv, uint8_t **ppReadPackedMsg, uint8_t *end)
-{
-// #ifndef ENABLE_AERIAL
-//   for (int i = 0; i < (report_tlv->length + 3) / 4; i++) {
-//     if (!pull32(ppReadPackedMsg, &report_tlv->value[i], end)) {
-//       return 0;
-//     }
-//   }
-// #else
-  const uint16_t last_idx = ((report_tlv->length + 3) / 4) - 1;
-  for (int i = 0; i < last_idx; i++) {
-    if (!pull32(ppReadPackedMsg, &report_tlv->value[i], end)) {
-      return 0;
-    }
-  }
-  // Pull last bytes according to how much padding it would need to be 32-bit aligned
-  const uint8_t padding = (4 - (report_tlv->length% 4)) % 4;// get_tlv_padding(report_tlv->length);
-  pullx32(4 - padding, ppReadPackedMsg, &report_tlv->value[last_idx], end);
-//#endif
-  return 1;
-}
-
-
-static uint8_t unpack_nr_srs_report_tlv(nfapi_srs_report_tlv_t *report_tlv, uint8_t **ppReadPackedMsg, uint8_t *end) {
-
-  if(!(pull16(ppReadPackedMsg, &report_tlv->tag, end) &&
-        pull32(ppReadPackedMsg, &report_tlv->length, end))) {
-    return 0;
-  }
-  if (!unpack_nr_srs_report_tlv_value(report_tlv, ppReadPackedMsg, end)) {
-    return 0;
-  }
-  return 1;
-}
-
-static uint8_t unpack_nr_srs_indication_body(nfapi_nr_srs_indication_pdu_t *value, uint8_t **ppReadPackedMsg, uint8_t *end) {
-
-  if(!(pull32(ppReadPackedMsg, &value->handle, end) &&
-        pull16(ppReadPackedMsg, &value->rnti, end) &&
-        pull16(ppReadPackedMsg, &value->timing_advance_offset, end) &&
-        pulls16(ppReadPackedMsg, &value->timing_advance_offset_nsec, end) &&
-        pull8(ppReadPackedMsg, &value->srs_usage, end) &&
-        pull8(ppReadPackedMsg, &value->report_type, end))) {
-    return 0;
-  }
-
-  if (!unpack_nr_srs_report_tlv(&value->report_tlv, ppReadPackedMsg, end)) {
-    return 0;
-  }
-
-  return 1;
 }
 
 static
@@ -222,43 +131,9 @@ void sm_cb_srs(sm_ag_if_rd_t const* rd)
   int64_t now = time_now_us();
   if(true){
     printf("Received RIC indication message number: %ld\n", cnt_srs);
-    srs_indication_stats_impl_t* srs_stats = rd->ind.srs.msg.indication_stats;
-    uint16_t rnti = srs_stats->rnti;
     printf("SRS ind_msg latency = %ld μs\n", now - rd->ind.srs.msg.tstamp);
-    printf("SRS RNTI = %u\n", rnti);
-    /*DEBUG INFO
-    printf("buf=%p  len=%lu\n",
-      (void*)srs_stats->srs_unpacked_pdu.buf,
-      srs_stats->srs_unpacked_pdu.len);
-    */
-    size_t packedBufLen = srs_stats->srs_unpacked_pdu.len;
+    log_ric_indication(&rd->ind.srs.msg);
 
-    uint8_t *pReadPackedMessage = srs_stats->srs_unpacked_pdu.buf;
-    uint8_t *pUnpackMessageEnd = pReadPackedMessage + packedBufLen;
-    /*
-    printf("DEBUG (recv): buf start         = %p\n", (void*)pReadPackedMessage);
-    printf("DEBUG (recv): unpack end        = %p  (buf + %zu)\n",
-           (void*)pUnpackMessageEnd, packedBufLen);
-    printf("DEBUG (recv): reported len      = %zu\n", packedBufLen);*/
-    nfapi_nr_srs_indication_pdu_t srs_ind_pdu = {0};
-
-    if(unpack_nr_srs_indication_body(&srs_ind_pdu, &pReadPackedMessage, pUnpackMessageEnd)){
-      printf("xApp Unpacked RNTI:%u\n", srs_ind_pdu.rnti);
-      printf("xApp Unpacked TA Offset:%u\n", srs_ind_pdu.timing_advance_offset);
-      printf("xApp Unpacked TA Offset nsec:%u\n", srs_ind_pdu.timing_advance_offset_nsec);
-      printf("xApp Unpacked SRS Usage:%u\n", srs_ind_pdu.srs_usage);
-      printf("xApp Unpacked Report type:%u\n", srs_ind_pdu.report_type);
-      dump_srs_report(&srs_ind_pdu.report_tlv, "report_tlv_xapp.csv");
-
-      // extract the UL Channel
-      nfapi_nr_srs_normalized_channel_iq_matrix_t nr_srs_channel_iq_matrix;
-      unpack_nr_srs_normalized_channel_iq_matrix(&srs_ind_pdu.report_tlv.value,
-                                                  srs_ind_pdu.report_tlv.length,
-                                                  &nr_srs_channel_iq_matrix,
-                                                  sizeof(nfapi_nr_srs_normalized_channel_iq_matrix_t));
-
-      dump_srs_channel_iq_matrix(&nr_srs_channel_iq_matrix, "xapp_channel_rfsim.iq");
-    }
   }
   cnt_srs++;
 }

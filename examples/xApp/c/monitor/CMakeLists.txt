@@ -31,6 +31,7 @@ add_executable(xapp_srs_moni
                 ../../../../src/util/alg_ds/alg/defer.c
                 srs_fapi/debug.c
                 srs_fapi/nfapi.c
+                srs_fapi/srs_fapi_p7.c
               )
 
  target_link_libraries(xapp_srs_moni
