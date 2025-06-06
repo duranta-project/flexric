@@ -42,8 +42,20 @@ add_executable(xapp_srs_moni
                       -ldl
                       )
 
-add_executable(xapp_srs_moni_cpp xapp_srs_moni.cpp)
-target_link_libraries(xapp_srs_moni_cpp PUBLIC e42_xapp pthread sctp dl)
+add_executable(xapp_srs_moni_cpp
+                xapp_srs_moni.cpp
+                srs_fapi/debug.c
+                srs_fapi/nfapi.c
+                srs_fapi/srs_fapi_p7.c
+              )
+
+target_link_libraries(xapp_srs_moni_cpp
+                      PUBLIC
+                      e42_xapp
+                      -pthread
+                      -lsctp
+                      -ldl
+                     )
 
 set(UE_ID_COMMON_E2SM_SRCS
   ../../../../src/sm/rc_sm/ie/asn/AMFPointer.c
