@@ -23,6 +23,10 @@
 #ifndef SRS_FAPI_P7_H
 #define SRS_FAPI_P7_H
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 #include "nfapi_srs_data.h"
 #include "nfapi.h"
 #include "debug.h"
@@ -41,4 +45,9 @@ int fapi_nr_p7_message_unpack(void *pMessageBuf,
                               uint32_t messageBufLen,
                               void *pUnpackedBuf,
                               uint32_t unpackedBufLen);
+
+#if defined(__cplusplus)
+}
+#endif
+
 #endif // FAPI_P7_H
