@@ -1,3 +1,5 @@
+find_package(Torch REQUIRED)
+
 add_executable(xapp_srs_ind
 		xapp_srs_indication.c
                 ../../../../src/util/alg_ds/alg/defer.c
@@ -22,9 +24,11 @@ add_executable(xapp_srs_pos_cpp
               )
 
  target_link_libraries(xapp_srs_pos_cpp
+                      PRIVATE
+                        "${TORCH_LIBRARIES}"
                       PUBLIC
-                      e42_xapp
-                      -pthread
-                      -lsctp
-                      -ldl
+                        e42_xapp
+                        -pthread
+                        -lsctp
+                        -ldl
                      )
