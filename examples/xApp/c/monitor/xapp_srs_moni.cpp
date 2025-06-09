@@ -70,7 +70,7 @@ static void dump_srs_channel_iq_matrix(nfapi_nr_srs_normalized_channel_iq_matrix
 
   printf("Ng = %u\t ,Nu = %u\t, Np = %u\n", Ng, Nu, num_prgs);
 
-  uint16_t total = NR_NB_SC_PER_RB* Nu * Ng * num_prgs;
+  uint16_t total = Nu * Ng * num_prgs;// NR_NB_SC_PER_RB* Nu * Ng * num_prgs;
 
   const c16_t *channel = (const c16_t*)channel_iq_matrix->channel_matrix;
   fwrite(channel, sizeof(c16_t), total, f);

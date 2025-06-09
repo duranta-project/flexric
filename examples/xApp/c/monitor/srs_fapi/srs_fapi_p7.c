@@ -54,10 +54,10 @@ int unpack_nr_srs_normalized_channel_iq_matrix(void *pMessageBuf,
                                  * nr_srs_normalized_channel_iq_matrix->num_ue_srs_ports
                                  * nr_srs_normalized_channel_iq_matrix->num_gnb_antenna_elements;
 
-  if (nr_srs_normalized_channel_iq_matrix->prg_size == 0){
-    // (Not definde by FAPI) used for E2AP SRS-SM to send the full channel estimates to the RIC
-    channel_matrix_size = NR_NB_SC_PER_RB * channel_matrix_size;
-  }
+  // if (nr_srs_normalized_channel_iq_matrix->prg_size == 0){
+  //   // (Not definde by FAPI) used for E2AP SRS-SM to send the full channel estimates to the RIC
+  //   channel_matrix_size = NR_NB_SC_PER_RB * channel_matrix_size;
+  // }
   if (nr_srs_normalized_channel_iq_matrix->normalized_iq_representation == 0) {
     // 0: 16-bit normalized complex number (iqSize = 2) so multiplies the size by 2
     channel_matrix_size <<= 1;
