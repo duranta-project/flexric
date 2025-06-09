@@ -36,6 +36,9 @@
 #include "srs_fapi/nfapi_srs_data.h"
 #include "srs_fapi/srs_fapi_p7.h"
 
+#include <torch/torch.h>
+
+//#define SRS_LOG
 typedef uint32_t frame_t;
 typedef uint32_t slot_t;
 
@@ -95,18 +98,22 @@ void log_ric_indication(const srs_ind_msg_t* msg)
       const frame_t frame = srs_ind.sfn;
       const slot_t slot = srs_ind.slot;
       const int num_srs = srs_ind.number_of_pdus;
+#ifdef SRS_LOG
       printf("xApp Unpacked SFN:%u\n", frame);
       printf("xApp Unpacked Slot:%u\n", slot);
       printf("xApp Unpacked Num of SRS PDUs:%d\n", num_srs);
+#endif
       nfapi_nr_srs_indication_pdu_t *srs_list = srs_ind.pdu_list;
       for (int i = 0; i < num_srs; i++) {
         nfapi_nr_srs_indication_pdu_t *srs_ind_pdu = &srs_list[i];
+#ifdef SRS_LOG
         printf("xApp Unpacked RNTI:%u\n", srs_ind_pdu->rnti);
         printf("xApp Unpacked TA Offset:%u\n", srs_ind_pdu->timing_advance_offset);
         printf("xApp Unpacked TA Offset nsec:%u\n", srs_ind_pdu->timing_advance_offset_nsec);
         printf("xApp Unpacked SRS Usage:%u\n", srs_ind_pdu->srs_usage);
         printf("xApp Unpacked Report type:%u\n", srs_ind_pdu->report_type);
         dump_srs_report(&srs_ind_pdu->report_tlv, "report_tlv_xapp_cpp.csv");
+#endif
         // extract the UL Channel
         nfapi_nr_srs_normalized_channel_iq_matrix_t nr_srs_channel_iq_matrix;
         unpack_nr_srs_normalized_channel_iq_matrix(&srs_ind_pdu->report_tlv.value,
@@ -135,7 +142,9 @@ void sm_cb_srs(sm_ag_if_rd_t const* rd)
     printf("Received RIC indication message number: %ld\n", cnt_srs);
     printf("SRS ind_msg latency = %ld μs\n", now - rd->ind.srs.msg.tstamp);
     log_ric_indication(&rd->ind.srs.msg);
-
+    torch::Tensor tensor = torch::rand({2, 3});
+    std::cout << "Random Torch tensor" << std::endl;
+    std::cout << tensor << std::endl;
   }
   cnt_srs++;
 }
