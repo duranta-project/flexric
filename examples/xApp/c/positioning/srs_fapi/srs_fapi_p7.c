@@ -207,4 +207,10 @@ int fapi_nr_p7_message_unpack(void *pMessageBuf,
   }
   return 0;
 }
-
+// from nr_fapi_p7_utils.c
+void free_srs_indication(nfapi_nr_srs_indication_t *msg)
+{
+  if (msg->pdu_list) {
+    free(msg->pdu_list);
+  }
+}
