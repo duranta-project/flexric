@@ -113,8 +113,10 @@ void log_ric_indication(const srs_ind_msg_t* msg)
                                                     sizeof(nfapi_nr_srs_normalized_channel_iq_matrix_t));
 
         dump_srs_channel_iq_matrix(&nr_srs_channel_iq_matrix, "xapp_channel_rfsim.iq");
+
       }
     }
+    free_srs_indication(&srs_ind);
 }
 
 static

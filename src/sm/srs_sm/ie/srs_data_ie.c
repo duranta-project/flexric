@@ -68,7 +68,7 @@ bool eq_srs_event_trigger(srs_event_trigger_t const* m0, srs_event_trigger_t con
 void free_srs_action_def(srs_action_def_t* src)
 {
   assert(src != NULL);
-  (void)src;
+  free(src);
 }
 
 srs_action_def_t cp_srs_action_def(srs_action_def_t const* src)

@@ -46,6 +46,7 @@ int fapi_nr_p7_message_unpack(void *pMessageBuf,
                               void *pUnpackedBuf,
                               uint32_t unpackedBufLen);
 
+void free_srs_indication(nfapi_nr_srs_indication_t *msg);
 #if defined(__cplusplus)
 }
 #endif
