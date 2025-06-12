@@ -1,5 +1,7 @@
 find_package(Torch REQUIRED)
 
+add_subdirectory(ai_ml)
+
 add_executable(xapp_srs_ind
 		xapp_srs_indication.c
                 ../../../../src/util/alg_ds/alg/defer.c
