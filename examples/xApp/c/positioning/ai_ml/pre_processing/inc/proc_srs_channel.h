@@ -28,49 +28,50 @@ extern "C" {
 
 #include "../../../srs_fapi/nfapi_srs_data.h"
 
-typedef struct {
-    int16_t  antenna_index;
-    int32_t *cir_shifted;
-    size_t   cir_shifted_len; 
-    int16_t  peak_value;
-    int16_t  peak_index;
-} srs_cir_proc_t;
+// typedef struct {
+//     int16_t  antenna_index;
+//     int32_t *cir_shifted;
+//     size_t   cir_shifted_len; 
+//     int16_t  peak_value;
+//     int16_t  peak_index;
+// } srs_cir_proc_t;
 
 
-typedef struct{
-    srs_cir_proc_t* cir_data;
-    size_t len;
-}srs_cir_proc_array_t;
+// typedef struct{
+//     srs_cir_proc_t* cir_data;
+//     size_t len;
+// }srs_cir_proc_array_t;
 
-typedef struct
-{
-    int32_t *cir_shifted_concat[n_antennas];// holds num antenna pointers to cir_ant //len num_ue_ports*num_antennas, cir_shifted_len
-    int16_t *peak_values_concat; // len num_ue_ports * num_antennas
-    int16_t *peak_ind_concat; // len num_ue_ports * num_antennas
-} model_input_arrays_t;
+// typedef struct
+// {
+//     int32_t *cir_shifted_concat[n_antennas];// holds num antenna pointers to cir_ant //len num_ue_ports*num_antennas, cir_shifted_len
+//     int16_t *peak_values_concat; // len num_ue_ports * num_antennas
+//     int16_t *peak_ind_concat; // len num_ue_ports * num_antennas
+// } model_input_arrays_t;
 
-// add functions cp/free/ cp_to
+// // add functions cp/free/ cp_to
 int fill_srs_channel_array(
     const nfapi_nr_srs_normalized_channel_iq_matrix_t* channel_iq_matrix,
+    const uint16_t num_ue_srs_ports, const uint16_t ofdm_symbol_size,
     c16_t srs_estimated_channel_freq[][channel_iq_matrix->num_ue_srs_ports][channel_iq_matrix->num_prgs]);
 
 
-// int srs_channel_cfr2cir(const uint16_t num_gnb_antenna_elements,
-//                                        const uint16_t num_ue_srs_ports,
-//                                        const uint16_t ofdm_symbol_size,
-//                                        c16_t srs_estimated_channel_freq[][num_ue_srs_ports][ofdm_symbol_size],
-//                                        c16_t srs_estimated_channel_time[][num_ue_srs_ports][ofdm_symbol_size],
-//                                        c16_t srs_estimated_channel_time_shifted[][num_ue_srs_ports][ofdm_symbol_size]);
+// // int srs_channel_cfr2cir(const uint16_t num_gnb_antenna_elements,
+// //                                        const uint16_t num_ue_srs_ports,
+// //                                        const uint16_t ofdm_symbol_size,
+// //                                        c16_t srs_estimated_channel_freq[][num_ue_srs_ports][ofdm_symbol_size],
+// //                                        c16_t srs_estimated_channel_time[][num_ue_srs_ports][ofdm_symbol_size],
+// //                                        c16_t srs_estimated_channel_time_shifted[][num_ue_srs_ports][ofdm_symbol_size]);
 
 
 
 
-void pre_process_cir(const uint16_t num_gnb_antenna_elements,
-                    const uint16_t num_ue_srs_ports,
-                    const uint16_t ofdm_symbol_size,
-                    c16_t srs_estimated_channel_time[][num_ue_srs_ports][ofdm_symbol_size],
-                    c16_t srs_estimated_channel_time_shifted[][num_ue_srs_ports][ofdm_symbol_size],
-                    srs_cir_proc_array_t* srs_cir_concat);
+// void pre_process_cir(const uint16_t num_gnb_antenna_elements,
+//                     const uint16_t num_ue_srs_ports,
+//                     const uint16_t ofdm_symbol_size,
+//                     c16_t srs_estimated_channel_time[][num_ue_srs_ports][ofdm_symbol_size],
+//                     c16_t srs_estimated_channel_time_shifted[][num_ue_srs_ports][ofdm_symbol_size],
+//                     srs_cir_proc_array_t* srs_cir_concat);
 
 #if defined(__cplusplus)
 }
