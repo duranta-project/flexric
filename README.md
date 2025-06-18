@@ -157,7 +157,7 @@ However, please be aware that not all of them are supported with OAI RAN, and wr
 Optionally run Wireshark and capture E2AP traffic.
 
 * Start the nearRT-RIC
-Please make sure to set the desired nearRT-RIC IP address `NEAR_RIC_IP` in `/usr/local/etc/flexric/flexric.conf`.
+Please make sure to set the desired nearRT-RIC IP address `NEAR_RIC_IP` in `/usr/local/etc/flexric/flexric.conf`, or feel free to overwrite it with option `-a`.
 ```bash
 ./build/examples/ric/nearRT-RIC
 ```
@@ -189,6 +189,11 @@ Within E2 Setup Request message, E2 node sends the list of supported service mod
 As this section is dedicated for testing with E2 agent emulators, **all RIC INDICATION messages contain random data, as there is no UE connected**.
 
 `XAPP_DURATION` environment variable overwrites the default xApp duration of 20s. If the negative value used, the xApp duration is considered to be infinite.
+
+At runtime, the xApp loads its default configuration from `/usr/local/etc/flexric/flexric.conf`.
+To override specific default value, you can use the following command-line option:
+* `-a`: overrides the `NEAR_RIC_IP`
+
 * Start different C xApps
   * start the E2SM-KPM monitor xApp - fetch UE-level measurements based on S-NSSAI `(1, 0xffffff)` condition; `O-RAN.WG3.E2SM-KPM-version` section 7.4.5 - REPORT Service Style 4 ("Common condition-based, UE-level")
   ```bash

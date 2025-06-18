@@ -5,8 +5,8 @@
 #define FR_CONF_FILE_LEN 128
 
 typedef struct {
-  // Option 1: directly pass IP argument 
-  const char *ip;
+  // Option 1: overwrite the default values at run time
+  char *ip;
 
   // Option 2: read from file
   char conf_file[FR_CONF_FILE_LEN];
