@@ -298,9 +298,10 @@ void print_usage(void)
   printf("  -h         : print usage\n");
   printf("  -c         : path to the config file\n");
   printf("  -p         : path to the shared libs \n");
+  printf("  -a         : nearRT-RIC IP address\n");
   printf(
       "\n");
-  printf("Ex. -p /usr/local/lib/flexric/ -c /usr/local/etc/flexric/flexric.conf \n");
+  printf("Ex. -p /usr/local/lib/flexric/ -c /usr/local/etc/flexric/flexric.conf -a 127.0.0.1\n");
 } 
 
 static
@@ -311,7 +312,7 @@ void parse_args(int argc, char* const* argv, fr_args_t* args)
   assert(args != NULL);
 
   int opt = '?';
-  const char *optstring = "hc:p:";
+  const char *optstring = "hc:p:a:";
   while((opt = getopt(argc, argv, optstring)) != -1) {
     switch(opt) {
       case 'h':{
@@ -351,6 +352,20 @@ void parse_args(int argc, char* const* argv, fr_args_t* args)
 
                  break;
                }
+      case 'a':{
+                 int const len = strlen(optarg);
+                 assert(len < FR_CONF_FILE_LEN - 1 );
+
+                 if (valid_ip(optarg) == false) {
+                   printf("IP address string invalid = %s.\n", optarg);
+                   exit(EXIT_FAILURE);
+                 }
+
+                 args->ip = calloc(len + 1, sizeof(char));
+                 strncpy(args->ip, optarg, len);
+
+                 break;
+                }
       case '?':{
                  printf("Error: unknown flag %c ??\n ",optopt);
                  print_usage();
@@ -385,7 +400,7 @@ fr_args_t init_fr_args(int argc, char* argv[])
   load_default_val(&args);
   
   if(argc > 1){
-    assert(argc < 6 && "Only -h -c -p flags supported");
+    assert(argc < 8 && "Supported flags: -h -c -p -a");
     assert(argv != NULL);
     parse_args(argc, argv, &args);
   }
