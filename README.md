@@ -189,7 +189,7 @@ Within E2 Setup Request message, E2 node sends the list of supported service mod
 As this section is dedicated for testing with E2 agent emulators, **all RIC INDICATION messages contain random data, as there is no UE connected**.
 
 `XAPP_DURATION` environment variable overwrites the default xApp duration of 20s. If the negative value used, the xApp duration is considered to be infinite.
-* Start different C xApps with option `-a` (overwrites the `NEAR_RIC_IP`)
+* Start different C xApps with options `-a` (overwrites the `NEAR_RIC_IP`), `-d` (overwrites the `DB_DIR`), `-n` (overwrites the `DB_NAME`)
   * start the E2SM-KPM monitor xApp - fetch UE-level measurements based on S-NSSAI `(1, 0xffffff)` condition; `O-RAN.WG3.E2SM-KPM-version` section 7.4.5 - REPORT Service Style 4 ("Common condition-based, UE-level")
   ```bash
   XAPP_DURATION=20 ./build/examples/xApp/c/monitor/xapp_kpm_moni # not supported by emu_agent_enb
