@@ -7,6 +7,8 @@
 typedef struct {
   // Option 1: overwrite the default values at run time
   char *ip;
+  char *db_dir;
+  char *db_name;
 
   // Option 2: read from file
   char conf_file[FR_CONF_FILE_LEN];

@@ -191,13 +191,15 @@ As this section is dedicated for testing with E2 agent emulators, **all RIC INDI
 `XAPP_DURATION` environment variable overwrites the default xApp duration of 20s. If the negative value used, the xApp duration is considered to be infinite.
 
 At runtime, the xApp loads its default configuration from `/usr/local/etc/flexric/flexric.conf`.
-To override specific default value, you can use the following command-line option:
+To override specific default values, you can use the following command-line options:
 * `-a`: overrides the `NEAR_RIC_IP`
+* `-d`: overrides the `DB_DIR`
+* `-n`: overrides the `DB_NAME`
 
 * Start different C xApps
   * start the E2SM-KPM monitor xApp - fetch UE-level measurements based on S-NSSAI `(1, 0xffffff)` condition; `O-RAN.WG3.E2SM-KPM-version` section 7.4.5 - REPORT Service Style 4 ("Common condition-based, UE-level")
   ```bash
-  XAPP_DURATION=20 ./build/examples/xApp/c/monitor/xapp_kpm_moni # not supported by emu_agent_enb
+  XAPP_DURATION=20 ./build/examples/xApp/c/monitor/xapp_kpm_moni -d /flexric/ -n xapp_db # not supported by emu_agent_enb; values for options `-d` and `-n` represent an example for shared volume with Grafana
   ```
 
   * start the E2SM-RC monitor xApp - based on `ORAN.WG3.E2SM-RC-v01.03` specification, aperiodic subscriptions to:

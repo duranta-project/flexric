@@ -299,9 +299,11 @@ void print_usage(void)
   printf("  -c         : path to the config file\n");
   printf("  -p         : path to the shared libs \n");
   printf("  -a         : nearRT-RIC IP address\n");
+  printf("  -d         : DB_DIR\n");
+  printf("  -n         : DB_NAME\n");
   printf(
       "\n");
-  printf("Ex. -p /usr/local/lib/flexric/ -c /usr/local/etc/flexric/flexric.conf -a 127.0.0.1\n");
+  printf("Ex. -p /usr/local/lib/flexric/ -c /usr/local/etc/flexric/flexric.conf -a 127.0.0.1 -d /flexric/ -n xapp_db\n");
 } 
 
 static
@@ -312,7 +314,7 @@ void parse_args(int argc, char* const* argv, fr_args_t* args)
   assert(args != NULL);
 
   int opt = '?';
-  const char *optstring = "hc:p:a:";
+  const char *optstring = "hc:p:a:d:n:";
   while((opt = getopt(argc, argv, optstring)) != -1) {
     switch(opt) {
       case 'h':{
@@ -366,6 +368,33 @@ void parse_args(int argc, char* const* argv, fr_args_t* args)
 
                  break;
                 }
+      case 'd':{
+                 int const len = strlen(optarg);
+                 assert(len < FR_CONF_FILE_LEN - 1 );
+
+                 if (!is_directory(optarg)) {
+                   printf("Error: %s is not a directory \n", optarg);
+                   exit(EXIT_FAILURE);
+                 }
+                 if (optarg[len - 1] != '/') {
+                   printf("Error: %s directory should finish with a `/` , e.g. /tmp/.\n", optarg);
+                   exit(EXIT_FAILURE);
+                 }
+
+                 args->db_dir = calloc(len + 1, sizeof(char));
+                 strncpy(args->db_dir, optarg, len);
+
+                 break;
+               }
+      case 'n':{
+                 int const len = strlen(optarg);
+                 assert(len < FR_CONF_FILE_LEN - 1 );
+
+                 args->db_name = calloc(len + 1, sizeof(char));
+                 strncpy(args->db_name, optarg, len);
+
+                 break;
+               }
       case '?':{
                  printf("Error: unknown flag %c ??\n ",optopt);
                  print_usage();
@@ -400,7 +429,7 @@ fr_args_t init_fr_args(int argc, char* argv[])
   load_default_val(&args);
   
   if(argc > 1){
-    assert(argc < 8 && "Supported flags: -h -c -p -a");
+    assert(argc < 12 && "Supported flags: -h -c -p -a -d -n");
     assert(argv != NULL);
     parse_args(argc, argv, &args);
   }
@@ -458,6 +487,9 @@ char* get_near_ric_ip(fr_args_t const* args)
 
 char* get_conf_db_dir(fr_args_t const* args)
 {
+  if(args->db_dir != NULL)
+    return strdup(args->db_dir);
+
   char* line = NULL;
   defer({free(line);});
   size_t len = 0;
@@ -493,6 +525,9 @@ char* get_conf_db_dir(fr_args_t const* args)
 
 char* get_conf_db_name(fr_args_t const* args)
 {
+  if(args->db_name != NULL)
+    return strdup(args->db_name);
+
   char* line = NULL;
   defer({free(line);});
   size_t len = 0;
