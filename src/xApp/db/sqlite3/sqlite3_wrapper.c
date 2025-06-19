@@ -33,7 +33,10 @@ void create_table(sqlite3* db, char* sql)
 {
   char* err_msg = NULL;
   int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
-  assert(rc == SQLITE_OK && "Error while creating the DB. Check the err_msg string for further info" );
+  if (rc != SQLITE_OK) {
+    printf("SQLite database creation failed: %s.\n", err_msg);
+    assert(false);
+  }
 }
 
 static
