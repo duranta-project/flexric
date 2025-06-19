@@ -1,4 +1,22 @@
 services:
+    grafana:
+        image: grafana/grafana-oss:latest
+        container_name: grafana
+        environment:
+            - TZ=Europe/Paris
+            - GF_INSTALL_PLUGINS=frser-sqlite-datasource
+            - GF_DASHBOARDS_MIN_REFRESH_INTERVAL=1s
+        volumes:
+            - ../grafana/datasources/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
+            - ../grafana/dashboards/dashboard.yml:/etc/grafana/provisioning/dashboards/dashboard.yml
+            - ../grafana/dashboards/grafana-dashboard.json:/var/lib/grafana/dashboards/dashboard.json
+            - flexric:/var/lib/grafana/
+        networks:
+            e2_net:
+                ipv4_address: 192.168.72.158
+        ports:
+            - "3000:3000"
+
     emu-gnb-mono:
         image: oai-flexric:dev
         command: "stdbuf -o0 /usr/local/flexric/emulator/agent/emu_agent_gnb"
@@ -47,7 +65,7 @@ services:
 
     xapp-kpm-moni:
         image: oai-flexric:dev
-        command: "stdbuf -o0 /usr/local/flexric/xApp/c/monitor/xapp_kpm_moni"
+        command: "stdbuf -o0 /usr/local/flexric/xApp/c/monitor/xapp_kpm_moni -d /flexric/ -n xapp_db"
         container_name: xapp-kpm-moni
         environment:
             - XAPP_DURATION=20
@@ -61,6 +79,7 @@ services:
                 ipv4_address: 192.168.72.155
         volumes:
             - ./flexric.conf:/usr/local/etc/flexric/flexric.conf
+            - flexric:/flexric
 
     xapp-rc-moni:
         image: oai-flexric:dev
@@ -105,3 +124,6 @@ networks:
                 - subnet: 192.168.72.0/24
         driver_opts:
             com.docker.network.bridge.name: "e2"
+
+volumes:
+  flexric:
