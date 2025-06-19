@@ -292,6 +292,9 @@ cd docker
 docker compose up -d
 ```
 
+### 4.2.1 Grafana
+The Grafana application is implemented in the docker container. In order to visualize real time E2SM-KPM data, open Grafana in your web browser `http://localhost:3000`.
+
 # 5. Integration with RAN and example of deployment
 
 ## 5.1 Integration with OpenAirInterface 5G RAN
