@@ -256,8 +256,24 @@ At this point, FlexRIC is working correctly in your computer and you have alread
 
 The latency that you observe in your monitor xApp is the latency from the E2 Agent to the nearRT-RIC and xApp. In modern computers the latency should be less than 200 microseconds or 50x faster than the O-RAN specified minimum nearRT-RIC latency i.e., (10 ms - 1 sec) range.
 Therefore, FlexRIC is well suited for use cases with ultra low-latency requirements.
-Additionally, all the data received in the xApp is also written to `/tmp/xapp_db` in case that offline data processing is wanted (e.g., Machine Learning/Artificial Intelligence applications). You browse the data using e.g., sqlitebrowser. 
-Please, check the example folder for other working xApp use cases.
+
+Additionally, all the data received in the xApp is also written to `DB_DIR/DB_NAME` or `/tmp/xapp_db_<random-numbers>` (if `DB_DIR=/tmp/`) in case that offline data processing is wanted (e.g., Machine Learning/Artificial Intelligence applications). You browse the data using e.g., sqlitebrowser.
+
+### 4.1.1 Grafana
+[The official Grafana installation instructions](https://grafana.com/docs/grafana/latest/setup-grafana/installation/).
+
+At the moment, we support real time monitoring for E2SM-KPM Service Model in Grafana. After the Grafana installation, please follow the additional steps: 
+```bash
+sudo grafana-cli plugins install frser-sqlite-datasource
+sudo vi /etc/grafana/grafana.ini # set the min_refresh_interval to 1s
+sudo systemctl start grafana-server
+DB_DIR=/flexric/ && sudo mkdir $DB_DIR && sudo chown -R "$USER":"$USER" $DB_DIR
+```
+
+Import the Grafana configuration:
+- Open Grafana in your web browser `http://localhost:3000`
+- In `Configuration > Data Sources`, click "Add data source" and choose "SQLite"; set the path to `DB_DIR/DB_NAME`; save and test the connection
+- In `Dashboards > New > Import` upload the `grafana-dashboard.json` from `grafana/dashboards/` directory in FlexRIC repository; select the SQLite data source you just created
 
 ## 4.2 (opt.) Docker testbed
 FlexRIC is supported on the following distributions: Ubuntu, Red Hat, and Rocky Linux. You can build the images as:
