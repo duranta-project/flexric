@@ -50,7 +50,7 @@ int unpack_nr_srs_normalized_channel_iq_matrix(void *pMessageBuf,
     return -1;
   }
 
-  uint16_t channel_matrix_size = nr_srs_normalized_channel_iq_matrix->num_prgs
+  uint32_t channel_matrix_size = nr_srs_normalized_channel_iq_matrix->num_prgs
                                  * nr_srs_normalized_channel_iq_matrix->num_ue_srs_ports
                                  * nr_srs_normalized_channel_iq_matrix->num_gnb_antenna_elements;
 
@@ -66,7 +66,7 @@ int unpack_nr_srs_normalized_channel_iq_matrix(void *pMessageBuf,
     channel_matrix_size <<= 2;
   }
 
-  for (int i = 0; i < channel_matrix_size; i++) {
+  for (size_t i = 0; i < channel_matrix_size; i++) {
     if (!pull8(&pReadPackedMessage, &nr_srs_normalized_channel_iq_matrix->channel_matrix[i], end)) {
       return 0;
     }

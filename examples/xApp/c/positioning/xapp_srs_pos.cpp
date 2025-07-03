@@ -143,9 +143,7 @@ void sm_cb_srs(sm_ag_if_rd_t const* rd)
     printf("Received RIC indication message number: %ld\n", cnt_srs);
     printf("SRS ind_msg latency = %ld μs\n", now - rd->ind.srs.msg.tstamp);
     log_ric_indication(&rd->ind.srs.msg);
-    torch::Tensor tensor = torch::rand({2, 3});
-    std::cout << "Random Torch tensor" << std::endl;
-    std::cout << tensor << std::endl;
+
   }
   cnt_srs++;
 }

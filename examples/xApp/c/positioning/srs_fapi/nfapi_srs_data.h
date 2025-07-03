@@ -40,7 +40,7 @@ typedef struct {
 typedef struct {
   uint16_t tag;                         // 0: Report is carried directly in the value field; 3: The offset from the end of the control portion of the message to the beginning of the report. Other values are reserved.
   uint32_t length;                      // Length of the actual report in bytes, without the padding bytes.
-  uint32_t value[16384];                // tag=0: Only the most significant bytes of the size indicated by ‘length’ field are valid. Remaining bytes are zero padded to the nearest 32-bit bit boundary; Tag=2 Offset from the end of the control portion of the message to the payload is in the value field. Occupies 32-bits.
+  uint32_t value[4*16384];                // tag=0: Only the most significant bytes of the size indicated by ‘length’ field are valid. Remaining bytes are zero padded to the nearest 32-bit bit boundary; Tag=2 Offset from the end of the control portion of the message to the payload is in the value field. Occupies 32-bits.
 } nfapi_srs_report_tlv_t;
 
 typedef struct {
