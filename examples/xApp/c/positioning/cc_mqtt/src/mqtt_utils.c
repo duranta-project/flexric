@@ -56,57 +56,30 @@ void disconnect_mqtt(void) {
     printf("MQTT Disconnected.\n");
 }
 
+static void channel_amp2(const c16_t *srs_cir, uint16_t Nfft, uint32_t cir_amp2[Nfft])
+{
+  for(size_t i = 0; i < Nfft; i++){
+    cir_amp2[i] = c16amp2(srs_cir[i]);
+  }
+}
+
 void srs_cir_mqtt(c16_t *buffer, uint16_t buf_len, uint16_t xapp_mqtt_id, uint16_t ant_idx)
 {
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
     int rc;
-    uint32_t peak_idx = 0;
-    uint32_t peak_val = 0;
 
     cJSON *mqtt_payload = cJSON_CreateObject();
-    cJSON_AddNumberToObject(mqtt_payload, "peak_index", peak_idx);
-    cJSON_AddNumberToObject(mqtt_payload, "peak_val", peak_val);
     cJSON_AddNumberToObject(mqtt_payload, "source", xapp_mqtt_id);
     cJSON_AddNumberToObject(mqtt_payload, "antenna_index", ant_idx);
 
-    cJSON *chest_json = cJSON_AddArrayToObject(mqtt_payload, "shifted_cir");
+    cJSON *channel_meas_json = cJSON_AddArrayToObject(mqtt_payload, "srs_cir");
 
-    // Temporary array to hold channel estimation values
-    int32_t chest_tmp[buf_len];
+    uint32_t cir_amp2[buf_len];
+    channel_amp2(buffer, buf_len, cir_amp2);
 
-    // Peak calculation
-    uint32_t max_val = 0, max_idx = 0, abs_val = 0;
-    for (int k = 0; k < buf_len; k++) {
-        abs_val = c16amp2(buffer[k])/2;
-
-        if (abs_val > max_val) {
-            max_val = abs_val;
-            max_idx = k;
-        }
-
-        chest_tmp[k] = abs_val;  // Save to temp array
-    }
-
-    peak_idx = max_idx;
-    peak_val = max_val;
-    printf("peak val=%u\t peak idx=%u\n" , peak_val, peak_idx);
-
-    cJSON_SetIntValue(cJSON_GetObjectItem(mqtt_payload, "peak_index"), peak_idx);
-    cJSON_SetIntValue(cJSON_GetObjectItem(mqtt_payload, "peak_val"), peak_val);
-
-    // Circular shift of chest_tmp
-    int shift = 2098; 
-    int real_size = buf_len; 
-    int32_t chest_shifted[real_size];
-
-    for (int i = 0; i < real_size; i++) {
-        chest_shifted[i] = chest_tmp[(i - shift + real_size) % real_size];
-    }
-
-    int chest_size = 100;
-    for (int i = 0; i < chest_size; i++) {
-        cJSON_AddItemToArray(chest_json, cJSON_CreateNumber(chest_shifted[i]));
+    for (int i = 0; i < buf_len; i++) {
+        cJSON_AddItemToArray(channel_meas_json, cJSON_CreateNumber(cir_amp2[i]));
     }
 
     pubmsg.payload = cJSON_PrintUnformatted(mqtt_payload);
@@ -115,7 +88,7 @@ void srs_cir_mqtt(c16_t *buffer, uint16_t buf_len, uint16_t xapp_mqtt_id, uint16
     pubmsg.retained = 0;
 
     if ((rc = MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token)) != MQTTCLIENT_SUCCESS) {
-        printf("Failed to publish \"SRS CIR measurements\" MQTT message, return code %d\n", rc);
+        printf("Failed to publish \"SRS Channel measurements\" MQTT message, return code %d\n", rc);
     }
     printf("MQTT published meas\n");
     cJSON_Delete(mqtt_payload);
