@@ -19,15 +19,27 @@
  *      contact@openairinterface.org
  */
 
-// input is fixed to 8 by 100
-#include <torch/torch.h>
+#ifndef PROC_SRS_CH_H
+#define PROC_SRS_CH_H
 
-// returns channel charting predictions
-int predict_cc_embedding()
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
-int main(int arcg, char* argv[])
-{
-   // runs inference and saves output in a csv file
+#include "../../srs_fapi/nfapi_srs_data.h"
+#include "../../common.h"
 
-    return 0;
+
+int fill_srs_channel_array(const nfapi_nr_srs_normalized_channel_iq_matrix_t* channel_iq_matrix,
+                           const uint16_t num_ue_srs_ports, const uint16_t ofdm_symbol_size,
+                           c16_t srs_estimated_channel_freq[][channel_iq_matrix->num_ue_srs_ports][channel_iq_matrix->num_prgs]);
+
+void preprocess_cir(const uint16_t ofdm_symbol_size, const uint16_t num_antennas, const c16_t srs_data[num_antennas][ofdm_symbol_size],
+                    uint32_t srs_cir[num_antennas][ofdm_symbol_size], uint32_t cir_shifted[num_antennas][N_SHIFT]);
+
+
+#if defined(__cplusplus)
 }
+#endif
+
+#endif // PROC_SRS_CH_H

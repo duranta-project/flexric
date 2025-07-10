@@ -19,6 +19,21 @@ add_executable(xapp_srs_ind
                       -ldl
                       )
 
+add_executable(xapp_srs_channel
+                xapp_srs_channel.cpp
+                srs_fapi/debug.c
+                srs_fapi/nfapi.c
+                srs_fapi/srs_fapi_p7.c
+              )
+
+ target_link_libraries(xapp_srs_channel
+                      PUBLIC
+                        e42_xapp
+                        -pthread
+                        -lsctp
+                        -ldl
+                     )
+
 add_executable(xapp_srs_pos_cpp
                 xapp_srs_pos.cpp
                 srs_fapi/debug.c
@@ -41,7 +56,7 @@ add_executable(xapp_cc_mqtt
                 srs_fapi/debug.c
                 srs_fapi/nfapi.c
                 srs_fapi/srs_fapi_p7.c
-                ai_ml/pre_processing/src/proc_srs_channel.c
+                ai_ml/src/proc_srs_channel.c
                 cc_mqtt/src/mqtt_utils.c
               )
 
@@ -54,4 +69,5 @@ add_executable(xapp_cc_mqtt
                         -pthread
                         -lsctp
                         -ldl
+                        m
                      )

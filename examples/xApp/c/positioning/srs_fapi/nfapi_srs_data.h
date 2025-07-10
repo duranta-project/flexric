@@ -5,14 +5,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-
-#define NR_NB_SC_PER_RB 12
+#include "../common.h"
 #define NFAPI_HEADER_LENGTH 8
-
-typedef struct complex16 {
-  int16_t r;
-  int16_t i;
-} c16_t;
 
 typedef struct {
   uint16_t phy_id;

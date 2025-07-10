@@ -19,33 +19,27 @@
  *      contact@openairinterface.org
  */
 
+#include <iostream>
+#include <chrono>
+#include <thread>
+#include <cstdlib>
+#include <cstdio> // will change later to <fstream>
+#include <cstddef>
+#include <csignal>
+#include <ctime>
+
 #include "../../../../src/xApp/e42_xapp_api.h"
-#include "../../../../src/util/alg_ds/alg/defer.h"
 #include "../../../../src/util/time_now_us.h"
 #include "../../../../src/util/byte_array.h"
 
-#include <pthread.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <signal.h>
-#include <time.h>
-#include <unistd.h>
 #include "srs_fapi/nfapi.h"
 #include "srs_fapi/nfapi_srs_data.h"
 #include "srs_fapi/srs_fapi_p7.h"
 
-#include "cc_mqtt/inc/mqtt_paramdef.h"
-#include "cc_mqtt/inc/mqtt_utils.h"
-#include "MQTTClient.h"
-#include "cjson/cJSON.h"
-
-#include "ai_ml/inc/proc_srs_channel.h"
 
 //#define SRS_LOG
-
 typedef uint32_t frame_t;
 typedef uint32_t slot_t;
-extern MQTTClient client;
 
 static void dump_srs_report(nfapi_srs_report_tlv_t* report_tlv, const char* filename) {
   FILE* f = fopen(filename, "w");
@@ -78,24 +72,10 @@ static void dump_srs_channel_iq_matrix(nfapi_nr_srs_normalized_channel_iq_matrix
 
   printf("Ng = %u\t ,Nu = %u\t, Np = %u\n", Ng, Nu, num_prgs);
 
-  uint16_t total = Nu * Ng * num_prgs;//NR_NB_SC_PER_RB* Nu * Ng * num_prgs;
+  uint16_t total = Nu * Ng * num_prgs;// NR_NB_SC_PER_RB* Nu * Ng * num_prgs;
 
   const c16_t *channel = (const c16_t*)channel_iq_matrix->channel_matrix;
   fwrite(channel, sizeof(c16_t), total, f);
-
-  fclose(f);
-
-  return;
-}
-
-
-static void dump_srs_channel_array(c16_t* channel, uint16_t len, const char* filename) {
-  FILE* f = fopen(filename, "wb");
-  if (!f) {
-    perror("Failed to open file");
-    return;
-  }
-  fwrite(channel, sizeof(c16_t), len, f);
 
   fclose(f);
 
@@ -106,8 +86,6 @@ void log_ric_indication(const srs_ind_msg_t* msg)
 {
     srs_indication_stats_impl_t* srs_stats = msg->indication_stats;
     uint16_t rnti = srs_stats->rnti;
-    printf("SRS RNTI = %u\n", rnti);
-
     size_t packedBufLen = srs_stats->srs_unpacked_pdu.len;
     uint8_t *pReadPackedMessage = srs_stats->srs_unpacked_pdu.buf;
     uint8_t *pUnpackMessageEnd = pReadPackedMessage + packedBufLen;
@@ -118,20 +96,20 @@ void log_ric_indication(const srs_ind_msg_t* msg)
       const slot_t slot = srs_ind.slot;
       const int num_srs = srs_ind.number_of_pdus;
 #ifdef SRS_LOG
-      printf("xApp Unpacked SFN:%u\n", frame);
-      printf("xApp Unpacked Slot:%u\n", slot);
-      printf("xApp Unpacked Num of SRS PDUs:%d\n", num_srs);
+      std::cout << "xApp Unpacked SFN:" << frame << std::endl;
+      std::cout << "xApp Unpacked Slot:"<< slot << std::endl;
+      std::cout << "xApp Unpacked Num of SRS PDUs:"<< num_srs << std::endl;
 #endif
       nfapi_nr_srs_indication_pdu_t *srs_list = srs_ind.pdu_list;
       for (int i = 0; i < num_srs; i++) {
         nfapi_nr_srs_indication_pdu_t *srs_ind_pdu = &srs_list[i];
 #ifdef SRS_LOG
-        printf("xApp Unpacked RNTI:%u\n", srs_ind_pdu->rnti);
-        printf("xApp Unpacked TA Offset:%u\n", srs_ind_pdu->timing_advance_offset);
-        printf("xApp Unpacked TA Offset nsec:%u\n", srs_ind_pdu->timing_advance_offset_nsec);
-        printf("xApp Unpacked SRS Usage:%u\n", srs_ind_pdu->srs_usage);
-        printf("xApp Unpacked Report type:%u\n", srs_ind_pdu->report_type);
-        dump_srs_report(&srs_ind_pdu->report_tlv, "report_tlv_xapp.csv");
+        std::cout << "xApp Unpacked RNTI:"<< srs_ind_pdu->rnti << std::endl;
+        std::cout << "xApp Unpacked TA Offset:"<< srs_ind_pdu->timing_advance_offset << std::endl;
+        std::cout << "xApp Unpacked TA Offset nsec:"<< srs_ind_pdu->timing_advance_offset_nsec << std::endl;
+        std::cout << "xApp Unpacked SRS Usage:"<< srs_ind_pdu->srs_usage << std::endl;
+        std::cout << "xApp Unpacked Report type:"<< srs_ind_pdu->report_type << std::endl;
+        dump_srs_report(&srs_ind_pdu->report_tlv, "report_tlv_xapp_cpp.csv");
 #endif
         // extract the UL Channel
         nfapi_nr_srs_normalized_channel_iq_matrix_t nr_srs_channel_iq_matrix;
@@ -139,24 +117,10 @@ void log_ric_indication(const srs_ind_msg_t* msg)
                                                     srs_ind_pdu->report_tlv.length,
                                                     &nr_srs_channel_iq_matrix,
                                                     sizeof(nfapi_nr_srs_normalized_channel_iq_matrix_t));
-        
 
-        dump_srs_channel_iq_matrix(&nr_srs_channel_iq_matrix, "xapp_channel.iq");
-        // prepare for inference
-        const uint16_t num_ue_srs_ports = nr_srs_channel_iq_matrix.num_ue_srs_ports;
-        const uint16_t ofdm_symbol_size = nr_srs_channel_iq_matrix.num_prgs;
-        printf("OFDM size %u\n", ofdm_symbol_size);
-        c16_t srs_estimated_channel_time_shifted[nr_srs_channel_iq_matrix.num_gnb_antenna_elements][nr_srs_channel_iq_matrix.num_ue_srs_ports][nr_srs_channel_iq_matrix.num_prgs];
-        fill_srs_channel_array(&nr_srs_channel_iq_matrix,num_ue_srs_ports, ofdm_symbol_size, srs_estimated_channel_time_shifted);
-        // send over MQTT
-        dump_srs_channel_array(&srs_estimated_channel_time_shifted[0][0], nr_srs_channel_iq_matrix.num_prgs, "xapp_shifted_cir.iq");
-         for (int ant=0;ant<nr_srs_channel_iq_matrix.num_gnb_antenna_elements;ant++){
-           srs_cir_mqtt(srs_estimated_channel_time_shifted[ant][0], nr_srs_channel_iq_matrix.num_prgs, 1, ant);
-         }
-
+        dump_srs_channel_iq_matrix(&nr_srs_channel_iq_matrix, "xapp_cpp_channel_rfsim.iq");
       }
     }
-
     free_srs_indication(&srs_ind);
 }
 
@@ -167,20 +131,18 @@ uint64_t cnt_srs; // RIC indication message counter
 static
 void sm_cb_srs(sm_ag_if_rd_t const* rd)
 {
-
   assert(rd != NULL);
   assert(rd->type ==INDICATION_MSG_AGENT_IF_ANS_V0);
   assert(rd->ind.type == SRS_STATS_V0);
 
   int64_t now = time_now_us();
   if(true){
-    printf("Received RIC indication message number: %ld\n", cnt_srs);
-    printf("SRS ind_msg latency = %ld μs\n", now - rd->ind.srs.msg.tstamp);
+    std::cout << "Received RIC indication message number: " << cnt_srs << std::endl;
+    std::cout << "SRS ind_msg latency = " << (now - rd->ind.srs.msg.tstamp) << "μs" << std::endl;
     log_ric_indication(&rd->ind.srs.msg);
 
   }
   cnt_srs++;
-
 }
 
 static
@@ -205,23 +167,22 @@ int main(int argc, char *argv[])
 
     // init the xApp
     init_xapp_api(&args);
-    sleep(1); // wait after the xApp is initialized
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(1000ms); // wait after the xApp is initialized
     // see how many E2 nodes are connected
 
     e2_node_arr_xapp_t nodes = e2_nodes_xapp_api();
-    defer({ free_e2_node_arr_xapp(&nodes); });
-  
+
+
     assert(nodes.len > 0);
 
-    printf("Connected E2 nodes = %d\n", nodes.len);
-    // cc inference
-    connect_mqtt();
+    std::cout << "Connected E2 nodes = " <<  nodes.len << std::endl;
 
     // SRS REPORT handle
     sm_ans_xapp_t* srs_handle = NULL;
 
     if(nodes.len > 0){
-        srs_handle = calloc( nodes.len, sizeof(sm_ans_xapp_t) ); 
+        srs_handle = (sm_ans_xapp_t*)calloc( nodes.len, sizeof(sm_ans_xapp_t) );
         assert(srs_handle  != NULL);
     }
 
@@ -230,26 +191,26 @@ int main(int argc, char *argv[])
     for (int i = 0; i < nodes.len; i++) {
         e2_node_connected_xapp_t* n = &nodes.n[i];
         for (size_t j = 0; j < n->len_rf; j++) {
-          printf("Registered node %d ran func id = %d \n ", i, n->rf[j].id);
+          std::cout << "Registered node" << i <<  "ran func id =  " << n->rf[j].id << std::endl;
         }
     // SRS SM Subscription
     srs_sub_data_t srs_sub = {0};
-    defer({ free_srs_sub_data(&srs_sub); });
 
     srs_sub.et = fill_srs_event_trigger();
     // problem here
-    srs_sub.ad = calloc(1,sizeof(srs_action_def_t));
+    srs_sub.ad = (srs_action_def_t*)calloc(1,sizeof(srs_action_def_t));
     assert(srs_sub.ad != NULL && "Memory exhausted");
     srs_sub.ad[0] = fill_srs_action_definition();
 
 
     srs_handle[i] = report_sm_xapp_api(&nodes.n[i].id, SRS_ran_function, &srs_sub, sm_cb_srs);
     assert(srs_handle[i].success == true);
+    free_srs_sub_data(&srs_sub);
     }
 
     sleep(10);
 
-    // Remove the handle 
+    // Remove the handle
     for(int i = 0; i < nodes.len; ++i){
         if(srs_handle[i].u.handle != 0 )
           rm_report_sm_xapp_api(srs_handle[i].u.handle);
@@ -257,11 +218,12 @@ int main(int argc, char *argv[])
 
     if(nodes.len > 0)
       free(srs_handle);
-    disconnect_mqtt();
+
     //Stop the xApp
     while(try_stop_xapp_api() == false)
-      usleep(1000);
+      std::this_thread::sleep_for(1000ms);
 
-    printf("Test xApp run SUCCESSFULLY\n");
+    free_e2_node_arr_xapp(&nodes);
+    std::cout << "Test C++ xApp run Successfully" << std::endl;
+    return 0;
 }
-

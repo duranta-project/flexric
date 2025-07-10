@@ -31,8 +31,9 @@ extern "C" {
 #include "mqtt_paramdef.h"
 #include "MQTTClient.h"
 #include "cjson/cJSON.h"
-
+#include "../../common.h"
 #include "../../srs_fapi/nfapi_srs_data.h"
+
 #define ADDRESS "tcp://localhost:1883" //"tcp://172.21.16.204:1883"
 #define CLIENTID    "xApp"
 #define TOPIC       "cc_xapp"
@@ -46,9 +47,6 @@ typedef struct {
     uint32_t  MqttTrpId;
 } mqtt_cfg_t;
 
-__attribute__((always_inline)) inline uint32_t c16amp2(const c16_t a) {
-    return a.r * a.r + a.i * a.i;
-}
 void connect_mqtt(void);
 
 void disconnect_mqtt(void);
