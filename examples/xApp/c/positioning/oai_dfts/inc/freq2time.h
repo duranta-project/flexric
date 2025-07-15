@@ -19,28 +19,22 @@
  *      contact@openairinterface.org
  */
 
-#ifndef PROC_SRS_CH_H
-#define PROC_SRS_CH_H
+#ifndef FREQ2TIME_H
+#define FREQ2TIME_H
 
-#if defined(__cplusplus)
+#ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "../../srs_fapi/nfapi_srs_data.h"
-#include "../../common.h"
+
+#include <stdint.h>
+#include "tools_defs.h"
+
+void freq2time(uint16_t ofdm_symbol_size, int16_t *freq_signal, int16_t *time_signal);
 
 
-int fill_srs_channel_array(const nfapi_nr_srs_normalized_channel_iq_matrix_t* channel_iq_matrix,
-                           const uint16_t num_ue_srs_ports, const uint16_t ofdm_symbol_size,
-                           c16_t srs_estimated_channel_freq[][1][N_FFT]);
-
-
-void preprocess_cir(const uint16_t ofdm_symbol_size, const uint16_t num_antennas, const c16_t srs_data[][1][N_FFT],
-                    uint32_t srs_cir[][N_FFT], uint32_t cir_shifted[][N_SHIFT]);
-
-
-#if defined(__cplusplus)
+#ifdef __cplusplus
 }
 #endif
 
-#endif // PROC_SRS_CH_H
+#endif

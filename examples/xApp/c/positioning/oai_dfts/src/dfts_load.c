@@ -19,28 +19,37 @@
  *      contact@openairinterface.org
  */
 
-#ifndef PROC_SRS_CH_H
-#define PROC_SRS_CH_H
+/*! \file dfts_load.c
+ * \brief: load library implementing coding/decoding algorithms
+ * \author Francois TABURET
+ * \date 2020
+ * \version 0.1
+ * \company NOKIA BellLabs France
+ * \email: francois.taburet@nokia-bell-labs.com
+ * \note
+ * \warning
+ */
+#define _GNU_SOURCE 
+#include <sys/types.h>
+#include <stdlib.h>
+#include <malloc.h>
+#include <assert.h>
+#define OAIDFTS_LOADER
+#include "tools_defs.h"
+#include "load_module_shlib.h" 
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
 
-#include "../../srs_fapi/nfapi_srs_data.h"
-#include "../../common.h"
-
-
-int fill_srs_channel_array(const nfapi_nr_srs_normalized_channel_iq_matrix_t* channel_iq_matrix,
-                           const uint16_t num_ue_srs_ports, const uint16_t ofdm_symbol_size,
-                           c16_t srs_estimated_channel_freq[][1][N_FFT]);
-
-
-void preprocess_cir(const uint16_t ofdm_symbol_size, const uint16_t num_antennas, const c16_t srs_data[][1][N_FFT],
-                    uint32_t srs_cir[][N_FFT], uint32_t cir_shifted[][N_SHIFT]);
-
-
-#if defined(__cplusplus)
+/* function description array, to be used when loading the dfts/idfts lib */
+static loader_shlibfunc_t shlib_fdesc[2];
+dftfunc_t dft;
+idftfunc_t idft;
+int load_dftslib(void)
+{
+  shlib_fdesc[0].fname = "dft_implementation";
+  shlib_fdesc[1].fname = "idft_implementation";
+  int ret = load_module_shlib("dfts", shlib_fdesc, sizeof(shlib_fdesc) / sizeof(loader_shlibfunc_t), NULL);
+  assert((ret >= 0));
+  dft = (dftfunc_t)shlib_fdesc[0].fptr;
+  idft = (idftfunc_t)shlib_fdesc[1].fptr;
+  return 0;
 }
-#endif
-
-#endif // PROC_SRS_CH_H

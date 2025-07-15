@@ -6,8 +6,9 @@
 #define N_SHIFT 100
 #define NORM_FACTOR  23156
 #define THRESHOLD  0.3
-
-#define NR_NB_SC_PER_RB 12
+#define N_FFT 2048
+#define N_rx  8
+#define NR_NB_SC_PER_RB  12
 
 typedef struct complex16 {
   int16_t r;

@@ -28,7 +28,7 @@
 
 int fill_srs_channel_array(const nfapi_nr_srs_normalized_channel_iq_matrix_t* channel_iq_matrix,
                            const uint16_t num_ue_srs_ports, const uint16_t ofdm_symbol_size,
-                           c16_t srs_estimated_channel_freq[][channel_iq_matrix->num_ue_srs_ports][channel_iq_matrix->num_prgs])
+                           c16_t srs_estimated_channel_freq[][1][N_FFT])
 {
   // For E2, prg_size=0, so we always have subcarrier_offset=0 and n_prg = ofdm_symbol_size:
 
@@ -62,20 +62,20 @@ int fill_srs_channel_array(const nfapi_nr_srs_normalized_channel_iq_matrix_t* ch
   return 0;
 }
 
-/* 
-computes the amplitude of the signal, truncates it and performs a right shift
-*/
-void preprocess_cir(const uint16_t ofdm_symbol_size, const uint16_t num_antennas, const c16_t srs_data[num_antennas][ofdm_symbol_size],
-                    uint32_t srs_cir[num_antennas][ofdm_symbol_size], uint32_t cir_shifted[num_antennas][N_SHIFT])
+ 
+//computes the amplitude of the signal, truncates it and performs a right shift
+
+void preprocess_cir(const uint16_t ofdm_symbol_size, const uint16_t num_antennas, const c16_t srs_data[][1][N_FFT],
+                    uint32_t srs_cir[][N_FFT], uint32_t cir_shifted[][N_SHIFT])
 {
 
   for(size_t i = 0; i < num_antennas; i++){
     for(size_t j = 0; j < ofdm_symbol_size; j++){
-      srs_cir[i][j] = sqrt(c16amp2(srs_data[i][j]));
+      srs_cir[i][j] = sqrt(c16amp2(srs_data[0][0][j])); // RFSim: copying from 1 antenna only, and we are only considering 1 antenna port, no sqrt
     }
   }
 
-  uint32_t shift = 2064;
+  uint32_t shift = 538; //2064; // RFSim: changing the shift for different FFT size(2048)
 
   for(size_t i = 0; i < num_antennas; i++){
     for (size_t j = 0; j < N_SHIFT; j++){

@@ -15,16 +15,26 @@
 #include <fstream>
 #include <string>
 
-#define Nfft 4096
-#define N_SHIFT 100
-#define N_rx 8
-#define NORM_FACTOR  23156
-#define THRESHOLD  0.3
-
-/* Loads Torchscript model, performs channel charting inference and writes predictions to a csv file*/
-int cc_inference(const char* torchscript_path, uint32_t cir_shifted[N_rx][N_SHIFT])
+torch::jit::script::Module load_torchscript_model(const char* torchscript_path)
 {
 
+  torch::jit::script::Module module;
+  try {
+    // Deserialize the ScriptModule from a file using torch::jit::load().
+    module = torch::jit::load(torchscript_path);
+  }
+  catch (const c10::Error& e) {
+    std::cerr << "error loading the model\n";
+  }
+
+  std::cout << "loading script ok\n";
+  return module;
+}
+
+/* Loads Torchscript model, performs channel charting inference and writes predictions to a csv file*/
+int cc_inference(torch::jit::script::Module& module, uint32_t cir_shifted[][N_SHIFT], std::vector<float>& prediction)
+{
+ /*
   torch::jit::script::Module module;
   try {
     // Deserialize the ScriptModule from a file using torch::jit::load().
@@ -36,6 +46,7 @@ int cc_inference(const char* torchscript_path, uint32_t cir_shifted[N_rx][N_SHIF
   }
 
   std::cout << "loading script ok\n";
+  */
 
   // inference, which datatype is the best, float seems to be the defacto type 
   // need to flatten first
@@ -70,7 +81,7 @@ int cc_inference(const char* torchscript_path, uint32_t cir_shifted[N_rx][N_SHIF
     at::Tensor output = module.forward({input_tensor}).toTensor();
 
     output = output.squeeze(0);
-    std::vector<float> prediction(output.data_ptr<float>(), output.data_ptr<float>() + output.numel());
+    prediction.assign(output.data_ptr<float>(), output.data_ptr<float>() + output.numel());
 
     // Print predictions
     std::cout << "Predictions: [";
@@ -79,6 +90,7 @@ int cc_inference(const char* torchscript_path, uint32_t cir_shifted[N_rx][N_SHIF
       if (i + 1 < prediction.size()) std::cout << ", ";
     }
     std::cout << "]\n";
+  /*
     // Write to a CSV file for plotting
     std::string csv_file = "cc_predictions.csv";
 
@@ -103,7 +115,7 @@ int cc_inference(const char* torchscript_path, uint32_t cir_shifted[N_rx][N_SHIF
         std::cerr << "Error opening file" << std::endl;
         return 1;
     }
-
+  */
   }
 
   return 0;

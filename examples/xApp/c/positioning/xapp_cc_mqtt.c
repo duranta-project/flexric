@@ -89,7 +89,7 @@ static void dump_srs_channel_iq_matrix(nfapi_nr_srs_normalized_channel_iq_matrix
 }
 
 
-static void dump_srs_channel_array(c16_t* channel, uint16_t len, const char* filename) {
+/*static void dump_srs_channel_array(c16_t* channel, uint16_t len, const char* filename) {
   FILE* f = fopen(filename, "wb");
   if (!f) {
     perror("Failed to open file");
@@ -100,7 +100,7 @@ static void dump_srs_channel_array(c16_t* channel, uint16_t len, const char* fil
   fclose(f);
 
   return;
-}
+}*/
 
 void log_ric_indication(const srs_ind_msg_t* msg)
 {
@@ -147,9 +147,10 @@ void log_ric_indication(const srs_ind_msg_t* msg)
         const uint16_t ofdm_symbol_size = nr_srs_channel_iq_matrix.num_prgs;
         printf("OFDM size %u\n", ofdm_symbol_size);
         c16_t srs_estimated_channel_time_shifted[nr_srs_channel_iq_matrix.num_gnb_antenna_elements][nr_srs_channel_iq_matrix.num_ue_srs_ports][nr_srs_channel_iq_matrix.num_prgs];
+        
         fill_srs_channel_array(&nr_srs_channel_iq_matrix,num_ue_srs_ports, ofdm_symbol_size, srs_estimated_channel_time_shifted);
         // send over MQTT
-        dump_srs_channel_array(&srs_estimated_channel_time_shifted[0][0], nr_srs_channel_iq_matrix.num_prgs, "xapp_shifted_cir.iq");
+        //dump_srs_channel_array(&srs_estimated_channel_time_shifted[0][0], nr_srs_channel_iq_matrix.num_prgs, "xapp_shifted_cir.iq");
          for (int ant=0;ant<nr_srs_channel_iq_matrix.num_gnb_antenna_elements;ant++){
            srs_cir_mqtt(srs_estimated_channel_time_shifted[ant][0], nr_srs_channel_iq_matrix.num_prgs, 1, ant);
          }

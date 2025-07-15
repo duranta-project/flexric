@@ -37,12 +37,16 @@
 #include "srs_fapi/srs_fapi_p7.h"
 
 #include <torch/torch.h>
+#include <torch/script.h>
+
+#include "proc_srs_channel.h"
+#include "cc_inference.hpp"
 
 //#define SRS_LOG
 typedef uint32_t frame_t;
 typedef uint32_t slot_t;
-
-static void dump_srs_report(nfapi_srs_report_tlv_t* report_tlv, const char* filename) {
+static  torch::jit::script::Module module;
+/*static void dump_srs_report(nfapi_srs_report_tlv_t* report_tlv, const char* filename) {
   FILE* f = fopen(filename, "w");
   if (!f) {
     perror("Failed to open file");
@@ -81,7 +85,7 @@ static void dump_srs_channel_iq_matrix(nfapi_nr_srs_normalized_channel_iq_matrix
   fclose(f);
 
   return;
-}
+}*/
 
 void log_ric_indication(const srs_ind_msg_t* msg)
 {
@@ -112,7 +116,6 @@ void log_ric_indication(const srs_ind_msg_t* msg)
         printf("xApp Unpacked TA Offset nsec:%u\n", srs_ind_pdu->timing_advance_offset_nsec);
         printf("xApp Unpacked SRS Usage:%u\n", srs_ind_pdu->srs_usage);
         printf("xApp Unpacked Report type:%u\n", srs_ind_pdu->report_type);
-        dump_srs_report(&srs_ind_pdu->report_tlv, "report_tlv_xapp_cpp.csv");
 #endif
         // extract the UL Channel
         nfapi_nr_srs_normalized_channel_iq_matrix_t nr_srs_channel_iq_matrix;
@@ -121,7 +124,18 @@ void log_ric_indication(const srs_ind_msg_t* msg)
                                                     &nr_srs_channel_iq_matrix,
                                                     sizeof(nfapi_nr_srs_normalized_channel_iq_matrix_t));
 
-        dump_srs_channel_iq_matrix(&nr_srs_channel_iq_matrix, "xapp_cpp_channel_rfsim.iq");
+      //Prepare inference
+      c16_t srs_ch_est[N_rx][1][N_FFT];
+      fill_srs_channel_array(&nr_srs_channel_iq_matrix,1,N_FFT,srs_ch_est);
+
+      uint32_t srs_cir[N_rx][N_FFT];
+      uint32_t cir_shifted[N_rx][N_SHIFT];
+      preprocess_cir(N_FFT, N_rx, srs_ch_est, srs_cir, cir_shifted);
+      std::vector<float> prediction = {0.0f, 0.0f}; // Array to store the predictions
+
+      int result;
+      result = cc_inference(module, cir_shifted, prediction);
+
       }
     }
     free_srs_indication(&srs_ind);
@@ -166,6 +180,7 @@ srs_action_def_t fill_srs_action_definition(void)
 
 int main(int argc, char *argv[])
 {
+    module = load_torchscript_model("/home/bouknana/srs_data/CC_EmbeddingModel_2D_050625_torchscript.pt");
     fr_args_t args = init_fr_args(argc, argv);
 
     // init the xApp
