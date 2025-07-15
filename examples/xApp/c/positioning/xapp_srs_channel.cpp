@@ -27,7 +27,10 @@
 #include <cstddef>
 #include <csignal>
 #include <ctime>
-
+#include <cmath>
+#include <vector>
+#include <algorithm>
+#include <pthread.h> 
 #include "../../../../src/xApp/e42_xapp_api.h"
 #include "../../../../src/util/time_now_us.h"
 #include "../../../../src/util/byte_array.h"
@@ -36,51 +39,37 @@
 #include "srs_fapi/nfapi_srs_data.h"
 #include "srs_fapi/srs_fapi_p7.h"
 
+#include "ai_ml/inc/proc_srs_channel.h"
+#include "ai_ml/localization_plots/inc/cc_gui_app.h"
 
-//#define SRS_LOG
+#include <torch/torch.h>
+#include <torch/script.h>
+
+#include "proc_srs_channel.h"
+#include "cc_inference.hpp"
+
+#include "oai_dfts/inc/freq2time.h"
+
+#define SRS_LOG
 typedef uint32_t frame_t;
 typedef uint32_t slot_t;
 
-static void dump_srs_report(nfapi_srs_report_tlv_t* report_tlv, const char* filename) {
-  FILE* f = fopen(filename, "w");
-  if (!f) {
-    perror("Failed to open file");
-    return;
+using namespace std::chrono_literals;
+
+static ChannelApp* app = nullptr;
+static pthread_mutex_t    gui_mutex   = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t    gui_ready_cond = PTHREAD_COND_INITIALIZER;
+static bool              gui_ready      = false;
+
+static  torch::jit::script::Module module;
+
+/*static void channel_amp2(const c16_t *srs_cir, uint16_t Nfft, uint32_t *cir_amp)
+{
+  for(size_t i = 0; i < Nfft; i++){
+    cir_amp[i] = c16amp2(srs_cir[i]);
   }
+}*/
 
-  for (size_t i = 0; i < 16384; ++i) {
-    fprintf(f, "%zu,%u\n", i, report_tlv->value[i]);
-  }
-
-  fclose(f);
-
-  return;
-}
-
-
-
-static void dump_srs_channel_iq_matrix(nfapi_nr_srs_normalized_channel_iq_matrix_t* channel_iq_matrix, const char* filename) {
-  FILE* f = fopen(filename, "wb");
-  if (!f) {
-    perror("Failed to open file");
-    return;
-  }
-  uint16_t Ng = channel_iq_matrix->num_gnb_antenna_elements;
-  uint16_t Nu = channel_iq_matrix->num_ue_srs_ports;
-  uint16_t num_prgs = channel_iq_matrix->num_prgs;
-
-
-  printf("Ng = %u\t ,Nu = %u\t, Np = %u\n", Ng, Nu, num_prgs);
-
-  uint16_t total = Nu * Ng * num_prgs;// NR_NB_SC_PER_RB* Nu * Ng * num_prgs;
-
-  const c16_t *channel = (const c16_t*)channel_iq_matrix->channel_matrix;
-  fwrite(channel, sizeof(c16_t), total, f);
-
-  fclose(f);
-
-  return;
-}
 
 void log_ric_indication(const srs_ind_msg_t* msg)
 {
@@ -109,7 +98,6 @@ void log_ric_indication(const srs_ind_msg_t* msg)
         std::cout << "xApp Unpacked TA Offset nsec:"<< srs_ind_pdu->timing_advance_offset_nsec << std::endl;
         std::cout << "xApp Unpacked SRS Usage:"<< srs_ind_pdu->srs_usage << std::endl;
         std::cout << "xApp Unpacked Report type:"<< srs_ind_pdu->report_type << std::endl;
-        dump_srs_report(&srs_ind_pdu->report_tlv, "report_tlv_xapp_cpp.csv");
 #endif
         // extract the UL Channel
         nfapi_nr_srs_normalized_channel_iq_matrix_t nr_srs_channel_iq_matrix;
@@ -118,7 +106,77 @@ void log_ric_indication(const srs_ind_msg_t* msg)
                                                     &nr_srs_channel_iq_matrix,
                                                     sizeof(nfapi_nr_srs_normalized_channel_iq_matrix_t));
 
-        dump_srs_channel_iq_matrix(&nr_srs_channel_iq_matrix, "xapp_cpp_channel_rfsim.iq");
+        // prepare for inference
+        const uint16_t num_ue_srs_ports = nr_srs_channel_iq_matrix.num_ue_srs_ports;
+        const size_t ofdm_symbol_size = nr_srs_channel_iq_matrix.num_prgs;
+        //c16_t *srs_channel_est = (c16_t*)nr_srs_channel_iq_matrix.channel_matrix;
+        c16_t srs_est_freq[N_rx][1][N_FFT] __attribute__((aligned(32)));
+        c16_t srs_est_time[N_rx][1][N_FFT] __attribute__((aligned(32)));
+        c16_t srs_channel_est[N_rx][1][N_FFT];
+        fill_srs_channel_array(&nr_srs_channel_iq_matrix,1,N_FFT,srs_est_freq);
+
+        // Convert to the time domain
+        for(size_t ant = 0; ant < N_rx; ant++){
+        freq2time(ofdm_symbol_size,(int16_t*)srs_est_freq[ant][0], (int16_t*)srs_est_time[ant][0]);
+        memcpy(srs_channel_est[ant][0],
+             &srs_est_time[ant][0][ofdm_symbol_size >> 1],
+             (ofdm_symbol_size >> 1) * sizeof(c16_t));
+  
+        memcpy(&srs_channel_est[ant][0][ofdm_symbol_size >> 1],
+              srs_est_time[ant][0],
+             (ofdm_symbol_size >> 1) * sizeof(c16_t));
+
+        }
+        // Get instantaneous PDP, copy to a C++ float vector and fill amplitude vector for CC
+        uint32_t cir_amp2[N_rx][N_FFT];
+        uint32_t cfr_amp2[N_rx][N_FFT];
+        uint32_t cir_shifted[N_rx][N_SHIFT];
+        preprocess_cir(N_FFT, N_rx, srs_channel_est, cir_amp2, cir_shifted);
+
+       for(size_t i = 0; i < N_rx; i++){
+         for(size_t j = 0; j < N_FFT; j++){
+          cfr_amp2[i][j] = sqrt(c16amp2(srs_est_freq[0][0][j])); // RFSim: copying from 1 antenna only, and we are only considering 1 antenna port, no sqrt
+         }
+       }
+
+        //channel_amp2(srs_channel_est, ofdm_symbol_size, cir_amp2);
+
+        std::vector<float> srs_pdp;
+        srs_pdp.reserve(ofdm_symbol_size);
+
+        std::vector<float> srs_cfr;
+        srs_cfr.reserve(ofdm_symbol_size);
+        for (size_t i = 0; i < ofdm_symbol_size; i++) {
+          srs_pdp.push_back(static_cast<float>(cir_amp2[0][i]));
+          srs_cfr.push_back(static_cast<float>(cfr_amp2[0][i]));
+        }
+
+        // Compute the amplitude
+        std::vector<float> srs_cir;
+        srs_cir.resize(srs_pdp.size());
+
+        std::transform(srs_pdp.begin(), srs_pdp.end(), srs_cir.begin(), [](float x) { return std::sqrt(x); });
+
+
+       // Do the inference:
+      std::vector<float> prediction = {0.0f, 0.0f}; // Array to store the predictions
+
+      int result;
+      result = cc_inference(module, cir_shifted, prediction);
+ 
+       // Start the plot App
+       // Plot some dummy cc predictions for now
+       //std::vector<float> prediction = {27.3757f, 23.4058f};
+       // Update plot data
+       pthread_mutex_lock(&gui_mutex);
+       while (!gui_ready) {
+          pthread_cond_wait(&gui_ready_cond, &gui_mutex);
+       }
+       pthread_mutex_unlock(&gui_mutex);
+
+       app->UpdateCIR(srs_pdp);
+       app->UpdateCFR(srs_cfr);
+       app->UpdateCC(prediction);
       }
     }
     free_srs_indication(&srs_ind);
@@ -161,14 +219,10 @@ srs_action_def_t fill_srs_action_definition(void)
   return ad;
 }
 
-int main(int argc, char *argv[])
-{
-    fr_args_t args = init_fr_args(argc, argv);
 
-    // init the xApp
-    init_xapp_api(&args);
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(1000ms); // wait after the xApp is initialized
+static void srs_sm_report(void)
+{
+
     // see how many E2 nodes are connected
 
     e2_node_arr_xapp_t nodes = e2_nodes_xapp_api();
@@ -193,16 +247,16 @@ int main(int argc, char *argv[])
         for (size_t j = 0; j < n->len_rf; j++) {
           std::cout << "Registered node" << i <<  "ran func id =  " << n->rf[j].id << std::endl;
         }
+    
     // SRS SM Subscription
     srs_sub_data_t srs_sub = {0};
 
     srs_sub.et = fill_srs_event_trigger();
-    // problem here
     srs_sub.ad = (srs_action_def_t*)calloc(1,sizeof(srs_action_def_t));
     assert(srs_sub.ad != NULL && "Memory exhausted");
     srs_sub.ad[0] = fill_srs_action_definition();
 
-
+   
     srs_handle[i] = report_sm_xapp_api(&nodes.n[i].id, SRS_ran_function, &srs_sub, sm_cb_srs);
     assert(srs_handle[i].success == true);
     free_srs_sub_data(&srs_sub);
@@ -224,6 +278,52 @@ int main(int argc, char *argv[])
       std::this_thread::sleep_for(1000ms);
 
     free_e2_node_arr_xapp(&nodes);
+
+}
+
+static void *sm_report_thread(void*)
+{
+  srs_sm_report();
+  return nullptr;
+}
+
+static void *app_thread(void*)
+{
+
+   if(gui_ready == false){
+      app = new ChannelApp("Real-Time CIR Plots",0,{nullptr}, 2048);
+      std::vector<float> zeros(2048, 0.0f);
+      std::vector<float> prediction0 = {30.0f, 30.0f};
+      app->UpdateCIR(zeros);
+      app->UpdateCC(prediction0);
+
+      pthread_mutex_lock(&gui_mutex);
+      gui_ready = true;
+      pthread_cond_signal(&gui_ready_cond);
+      pthread_mutex_unlock(&gui_mutex);
+      app->Run();
+    }
+    return nullptr;
+}
+
+int main(int argc, char *argv[])
+{
+    load_dftslib(); // Loads dft shared lib from a specific path
+    module = load_torchscript_model("/home/bouknana/srs_data/CC_EmbeddingModel_2D_050625_torchscript.pt");
+    fr_args_t args = init_fr_args(argc, argv);
+
+    // init the xApp
+    init_xapp_api(&args);
+    std::this_thread::sleep_for(1000ms); // wait after the xApp is initialized
+    // Launch xApp and GUI threads
+    pthread_t app_tid, sm_thread;
+
+    pthread_create(&sm_thread, NULL, sm_report_thread, NULL);
+    pthread_create(&app_tid, NULL, app_thread, NULL);
+    // Wait for thread to finish 
+    pthread_join(sm_thread,NULL);
+    pthread_join(app_tid,NULL);
+
     std::cout << "Test C++ xApp run Successfully" << std::endl;
     return 0;
 }

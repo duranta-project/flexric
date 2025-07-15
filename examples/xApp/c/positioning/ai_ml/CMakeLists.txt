@@ -7,3 +7,5 @@ add_library(ml_cc
 
 target_include_directories(ml_cc PUBLIC inc)
 target_link_libraries(ml_cc PUBLIC "${TORCH_LIBRARIES}" m)
+
+add_subdirectory(localization_plots)
