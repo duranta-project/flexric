@@ -262,7 +262,7 @@ static void srs_sm_report(void)
     free_srs_sub_data(&srs_sub);
     }
 
-    sleep(10);
+    xapp_wait_end_api();
 
     // Remove the handle
     for(int i = 0; i < nodes.len; ++i){
