@@ -23,7 +23,7 @@
 #include "../../util/alg_ds/ds/lock_guard/lock_guard.h"
 
 #include <pthread.h>
-
+#include <errno.h>
 void e2ap_ep_init(e2ap_ep_t* ep)
 {
   int rc = pthread_mutex_init(&ep->mtx, NULL);
@@ -58,19 +58,24 @@ void e2ap_send_sctp_msg(const e2ap_ep_t* ep, sctp_msg_t* msg)
 {
   assert(ep != NULL);
   assert(msg->ba.buf && msg->ba.len > 0);
-
+  printf("SCTP ba msg len: %zu\n", msg->ba.len);
   struct sockaddr_in const* addr = &msg->info.addr; 
   struct sctp_sndrcvinfo const* sri = &msg->info.sri;
   byte_array_t const ba = msg->ba;
 
   lock_guard(&((e2ap_ep_t*)ep)->mtx);
+  int rc;
 
-  const int rc = sctp_sendmsg(
+  rc = sctp_sendmsg(
       ep->fd, (void *)ba.buf, ba.len, (struct sockaddr *)addr, sizeof(*addr),
       sri->sinfo_ppid, sri->sinfo_flags, sri->sinfo_stream, 0, 0);
   assert(rc != 0);
+  printf("SCTP sent: %d\n",rc);
+
   if(rc == -1){
     printf("Error sending sctp message \n");
+    printf("errno = %d (%s)\n", errno, strerror(errno));
+    abort();
   }
 }
 
@@ -212,19 +217,43 @@ sctp_msg_t e2ap_recv_sctp_msg(e2ap_ep_t* ep)
 
   sctp_msg_t from = {0}; 
 
-  from.ba.len = 32*4096;
-  from.ba.buf = malloc(32*4096);
+  from.ba.len = 144*1024;
+  from.ba.buf = malloc(from.ba.len);
   assert(from.ba.buf != NULL && "Memory exhausted");
 
   socklen_t len = sizeof(from.info.addr);
   int msg_flags = 0;
 
   lock_guard(&((e2ap_ep_t*)ep)->mtx);
-  int const rc = sctp_recvmsg(ep->fd, from.ba.buf, from.ba.len,
+  int rc;
+  rc = sctp_recvmsg(ep->fd, from.ba.buf, from.ba.len,
                               (struct sockaddr *)&from.info.addr, &len,
                               &from.info.sri, &msg_flags);
   assert(rc > -1 && rc != 0 && rc < (int)from.ba.len);
+  printf("Received SCTP message from stream=%u, SSN=%u, TSN=%u, length=%d\n",
+         from.info.sri.sinfo_stream,
+         from.info.sri.sinfo_ssn,
+         from.info.sri.sinfo_tsn,
+         rc);
 
+  int rcvbuf;
+  socklen_t rlen = sizeof(rcvbuf);
+  assert(getsockopt(ep->fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &rlen) == 0);
+  printf("Receive buffer size: %d bytes\n", rcvbuf);
+
+  int pd_point;
+  socklen_t option_len = sizeof(pd_point);
+  assert(getsockopt(ep->fd, IPPROTO_SCTP, SCTP_PARTIAL_DELIVERY_POINT,&pd_point, &option_len)== 0);
+  printf("SCTP partial delivery point: %d bytes\n", pd_point);
+
+  struct sctp_status status;
+  socklen_t opt_len = sizeof(status);
+  memset(&status, 0, sizeof(status));
+  status.sstat_assoc_id = from.info.sri.sinfo_assoc_id;
+  assert(getsockopt(ep->fd, IPPROTO_SCTP, SCTP_STATUS, &status, &opt_len) == 0);
+  printf("rwnd = %u\n", status.sstat_rwnd);
+
+  if (msg_flags & MSG_EOR)  printf("MSG_EOR\n");
   if(msg_flags & MSG_NOTIFICATION){
     assert((msg_flags & MSG_EOR) && "Notification received but the buffer is not large enough");
     uint8_t buf[2048] = {0};

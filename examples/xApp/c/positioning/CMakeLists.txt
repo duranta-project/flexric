@@ -19,6 +19,19 @@ add_executable(xapp_srs_ind
                       -ldl
                       )
 
+add_executable(xapp_srs_test
+		xapp_srs_test.c
+                ../../../../src/util/alg_ds/alg/defer.c
+              )
+
+ target_link_libraries(xapp_srs_test
+                      PUBLIC
+                      e42_xapp
+                      -pthread
+                      -lsctp
+                      -ldl
+                      )
+
 add_executable(xapp_srs_channel
                 xapp_srs_channel.cpp
                 srs_fapi/debug.c

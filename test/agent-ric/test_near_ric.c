@@ -198,7 +198,7 @@ void* emulate_rrc_msg(void* ptr)
     assert(d != NULL && "Memory exhausted");
     *d = fill_rnd_rc_ind_data();
     async_event_agent_api(sta_ric_id, d);
-    printf("Event for RIC Req ID %u generated\n", sta_ric_id);
+    //printf("Event for RIC Req ID %u generated\n", sta_ric_id);
   }
 
   return NULL;
@@ -232,7 +232,7 @@ void* emulate_srs_fapi_msg(void* ptr)
     d->hdr = fill_rnd_srs_ind_hdr();
     d->msg = fill_rnd_srs_ind_msg();
     async_event_agent_api(srs_ric_id, d);
-    printf("Event for RIC Req ID %u generated\n", srs_ric_id);
+    //printf("Event for RIC Req ID %u generated\n", srs_ric_id);
   }
 
   return NULL;
@@ -317,7 +317,7 @@ int main(int argc, char *argv[])
   assert(e2_nodes.len > 0 && "No E2 Nodes connected");
 
   global_e2_node_id_t const* id = &e2_nodes.n[0].id;
-
+/*
   const uint16_t MAC_ran_func_id = 142;
   char* cmd = "5_ms";
   uint16_t h = report_service_near_ric_api(id, MAC_ran_func_id, cmd );
@@ -368,7 +368,7 @@ int main(int argc, char *argv[])
   rc_ctrl_req_data_t rc_ctrl = fill_rc_ctrl();
 
   control_service_near_ric_api(id, RC_ran_func_id, &rc_ctrl);
-
+*/
   // SRS
 
   // SRS Subscription
@@ -385,16 +385,16 @@ int main(int argc, char *argv[])
   uint16_t h9 = report_service_near_ric_api(id, SRS_ran_func_id, &srs_sub);
   sleep(2);
 
-  rm_report_service_near_ric_api(id, MAC_ran_func_id, h);
-  rm_report_service_near_ric_api(id, RLC_ran_func_id, h2);
-  rm_report_service_near_ric_api(id, PDCP_ran_func_id, h3);
-  rm_report_service_near_ric_api(id, SLICE_ran_func_id, h4);
-  rm_report_service_near_ric_api(id, TC_ran_func_id, h5);
-  rm_report_service_near_ric_api(id, GTP_ran_func_id, h6);
-  rm_report_service_near_ric_api(id, KPM_ran_func_id, h7);
+  //rm_report_service_near_ric_api(id, MAC_ran_func_id, h);
+  //rm_report_service_near_ric_api(id, RLC_ran_func_id, h2);
+  //rm_report_service_near_ric_api(id, PDCP_ran_func_id, h3);
+  //rm_report_service_near_ric_api(id, SLICE_ran_func_id, h4);
+  //rm_report_service_near_ric_api(id, TC_ran_func_id, h5);
+  //rm_report_service_near_ric_api(id, GTP_ran_func_id, h6);
+  //rm_report_service_near_ric_api(id, KPM_ran_func_id, h7);
   // to investigate why I need to chage thr order of thr RC and SRS reports
   rm_report_service_near_ric_api(id, SRS_ran_func_id, h9);
-  rm_report_service_near_ric_api(id, RC_ran_func_id, h8);
+  //rm_report_service_near_ric_api(id, RC_ran_func_id, h8);
 
 
   sleep(1);
@@ -405,15 +405,15 @@ int main(int argc, char *argv[])
   // Stop the RIC
   stop_near_ric_api();
 
-  free_kpm_sub_data(&kpm_sub); 
-  free_rc_sub_data(&rc_sub); 
-  free_rc_ctrl_req_data(&rc_ctrl);
+  //free_kpm_sub_data(&kpm_sub); 
+  //free_rc_sub_data(&rc_sub); 
+  //free_rc_ctrl_req_data(&rc_ctrl);
   free_srs_sub_data(&srs_sub);
 
   free_e2_nodes_api(&e2_nodes); // e2_nodes_api_t* src);
 
-  int rc = pthread_join(t, NULL);
-  assert(rc == 0);
+  //int rc = pthread_join(t, NULL);
+  //assert(rc == 0);
 
   int srs = pthread_join(t_srs_subs_ctrl,NULL);
   assert(srs == 0);

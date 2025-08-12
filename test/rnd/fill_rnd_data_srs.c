@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
-
+#define BUFFER_SIZE 140*1024  
 srs_event_trigger_t fill_rnd_srs_event_trigger(void)
 {
   srs_event_trigger_t et = {0};
@@ -63,7 +63,7 @@ srs_ind_hdr_t fill_rnd_srs_ind_hdr(void)
 srs_ind_msg_t fill_rnd_srs_ind_msg(void)
 {
   srs_ind_msg_t msg = {0};
-  msg.len = rand()%4;
+  msg.len = 1;
   msg.tstamp = time_now_us();
   
   if(msg.len > 0 ){  
@@ -76,7 +76,12 @@ srs_ind_msg_t fill_rnd_srs_ind_msg(void)
       
     // Fill dummy data in your data structure  
     indication_stats->rnti=rand()%1000;
-    printf("Random RNTI in fill_rnd_srs_ind_msg: %d for UE: %d\n", indication_stats->rnti,i);
+    indication_stats->srs_unpacked_pdu.len = BUFFER_SIZE;
+    indication_stats->srs_unpacked_pdu.buf = calloc(BUFFER_SIZE, sizeof(uint8_t));
+    //printf("Random RNTI in fill_rnd_srs_ind_msg: %d for UE: %d\n", indication_stats->rnti,i);
+    for (size_t i = 0; i < BUFFER_SIZE; ++i) {
+      indication_stats->srs_unpacked_pdu.buf[i] = 1 ;//rand() % 256;  // Random byte
+    }
   }
 
   return msg;
@@ -98,7 +103,7 @@ void fill_rnd_srs_ind_data(srs_ind_data_t* ind)
   ind_msg->tstamp = time_now_us();
 
   // Set random number of messages  
-  ind_msg->len = rand()%4;
+  ind_msg->len = 4;
   if(ind_msg->len > 0 ){  
     ind_msg->indication_stats = calloc(ind_msg->len, sizeof(srs_indication_stats_impl_t));
     assert(ind_msg->indication_stats != NULL && "Memory exhausted");

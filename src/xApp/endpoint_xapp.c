@@ -56,6 +56,13 @@ void init_sctp_conn_client(e2ap_ep_xapp_t* ep, const char* addr, int port)
   const int no_delay = 1;
   setsockopt(sock_fd, IPPROTO_SCTP, SCTP_NODELAY, &no_delay, sizeof(no_delay));
 
+  const int rcv = 1100 * 1024;
+  rc = setsockopt(sock_fd, SOL_SOCKET, SO_RCVBUF, &rcv, sizeof(rcv));
+  assert(rc == 0);
+
+  const uint32_t pd_point = 160 * 1024;
+  setsockopt(sock_fd, IPPROTO_SCTP, SCTP_PARTIAL_DELIVERY_POINT, &pd_point, sizeof(pd_point));
+
 
   // This is NOT working! 
   struct linger lin = {0};

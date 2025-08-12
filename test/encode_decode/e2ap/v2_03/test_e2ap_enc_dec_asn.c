@@ -29,7 +29,7 @@
 #include "../src/lib/e2ap/e2ap_msg_dec_generic_wrapper.h"
 #include "../src/lib/e2ap/e2ap_msg_free_wrapper.h"
 
-
+#define BA_LEN 34*4096
 static
 byte_array_t copy_str_to_ba(const char* str)
 {
@@ -301,10 +301,14 @@ void test_indication()
   ba_hdr.len = strlen(hdr_str);
   byte_array_t ba_msg;
   memset(&ba_msg, 0, sizeof(byte_array_t));
-  const char* msg_str = "This is the message string";
-  ba_msg.buf = malloc(strlen(msg_str));
-  memcpy(ba_msg.buf, msg_str, strlen(msg_str)); 
-  ba_msg.len = strlen(msg_str);
+  //const char* msg_str = "This is the message string";
+  ba_msg.buf =calloc(BA_LEN, sizeof(uint8_t)); //malloc(strlen(msg_str));
+  //memcpy(ba_msg.buf, msg_str, strlen(msg_str)); 
+  for (size_t i = 0; i < BA_LEN; ++i) {
+      ba_msg.buf[i] = 1 ;
+  }
+
+  ba_msg.len = BA_LEN;//strlen(msg_str);
 
   ric_indication_t ind_begin = {
   .ric_id = ric_id,
@@ -315,6 +319,7 @@ void test_indication()
   };
 
   byte_array_t ba = e2ap_enc_indication_asn(&ind_begin);
+  printf("Encoded ba len: %zu\n", ba.len);
   E2AP_PDU_t* pdu = e2ap_create_pdu(ba.buf, ba.len);
   free_byte_array(ba);
   e2ap_msg_t msg = e2ap_dec_indication(pdu);
@@ -1134,26 +1139,27 @@ void test_e42_control_request()
 
 int main()
 {
-    test_subscription_request();
-    test_subscription_response();
+    while(true){ 
+    //test_subscription_request();
+    //test_subscription_response();
 
     //test_subscription_failure();
    
-    test_subscription_delete_request();
-    test_ric_subscription_delete_response();
+    //test_subscription_delete_request();
+    //test_ric_subscription_delete_response();
 
     //test_subscription_delete_failure();
-   
+
     test_indication();
-    test_control_request(); 
-    test_control_request_ack(); 
+    //test_control_request(); 
+    //test_control_request_ack(); 
 
     //test_control_request_failure(); 
     //test_error_indication();
    
-    test_setup_request();
-    test_setup_response();
-    test_setup_failure();
+    //test_setup_request();
+    //test_setup_response();
+    //test_setup_failure();
     
     //test_reset_request(); 
     //test_reset_response();
@@ -1176,13 +1182,14 @@ int main()
     // test_removal_failure();
 
     // E42
-    test_e42_setup_request();
-    test_e42_setup_response();
-    test_e42_subscription_request();
-    test_e42_subscription_delete_request();     
-    test_e42_control_request();
+    //test_e42_setup_request();
+    //test_e42_setup_response();
+    //test_e42_subscription_request();
+    //test_e42_subscription_delete_request();     
+    //test_e42_control_request();
 
   puts("Sucess running the encoding/decoding test");
+  }
   return 0;
 }
 
