@@ -54,7 +54,6 @@ int init_sctp_conn_server(const char* addr, int port)
 
   const int server_fd = socket (AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
   assert(server_fd != -1);
-
   const size_t addr_len = sizeof(server4_addr);
   struct sockaddr* server_addr = (struct sockaddr*)&server4_addr;
   int rc = bind(server_fd, server_addr, addr_len);
@@ -64,7 +63,8 @@ int init_sctp_conn_server(const char* addr, int port)
   assert(rc != -1);
 
   struct sctp_event_subscribe evnts = {.sctp_data_io_event = 1, 
-                                       .sctp_shutdown_event = 1};
+                                       .sctp_shutdown_event = 1,
+                                       .sctp_partial_delivery_event = 1};
 
   rc = setsockopt(server_fd, IPPROTO_SCTP, SCTP_EVENTS, &evnts, sizeof(evnts));
   assert(rc != -1);
@@ -74,10 +74,17 @@ int init_sctp_conn_server(const char* addr, int port)
 
   const int no_delay = 1;
   setsockopt(server_fd, IPPROTO_SCTP, SCTP_NODELAY, &no_delay, sizeof(no_delay));
+  const int rcv = 1100 * 1024;
+  rc = setsockopt(server_fd, SOL_SOCKET, SO_RCVBUF, &rcv, sizeof(rcv));
+  assert(rc == 0);
+
+  const uint32_t pd_point = 160 * 1024;
+  setsockopt(server_fd, IPPROTO_SCTP, SCTP_PARTIAL_DELIVERY_POINT, &pd_point, sizeof(pd_point));
 
   rc = listen(server_fd, SERVER_LISTEN_QUEUE_SIZE);
   assert(rc != -1);
   assert(errno == 0);
+
   return server_fd;
 }
 

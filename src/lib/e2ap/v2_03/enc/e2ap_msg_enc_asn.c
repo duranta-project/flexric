@@ -408,7 +408,7 @@ E2nodeComponentConfigUpdate_ItemIEs_t* copy_e2_node_component_conf_update(const 
 byte_array_t e2ap_enc_asn_pdu_ba(struct E2AP_PDU* pdu)
 {
   assert(pdu != NULL);
-  byte_array_t ba = {.buf = malloc(32*4096), .len =32*4096};
+  byte_array_t ba = {.buf = malloc(144*1024), .len =144*1024};
   const bool success = encode(&ba, pdu);
   assert(success);
   return ba;
