@@ -115,7 +115,7 @@ void log_ric_indication(const srs_ind_msg_t* msg)
         c16_t srs_channel_est[N_rx][1][N_FFT];
         fill_srs_channel_array(&nr_srs_channel_iq_matrix,1,N_FFT,srs_est_freq);
 
-        // Convert to the time domain
+        // Convert to the time domain, considers 1 UE port only
         for(size_t ant = 0; ant < N_rx; ant++){
         freq2time(ofdm_symbol_size,(int16_t*)srs_est_freq[ant][0], (int16_t*)srs_est_time[ant][0]);
         memcpy(srs_channel_est[ant][0],
@@ -132,10 +132,10 @@ void log_ric_indication(const srs_ind_msg_t* msg)
         uint32_t cfr_amp2[N_rx][N_FFT];
         uint32_t cir_shifted[N_rx][N_SHIFT];
         preprocess_cir(N_FFT, N_rx, srs_channel_est, cir_amp2, cir_shifted);
-
+       // Testbed: index i RFSim: copying from 1 antenna only, and we are only considering 1 antenna port, no sqrt
        for(size_t i = 0; i < N_rx; i++){
          for(size_t j = 0; j < N_FFT; j++){
-          cfr_amp2[i][j] = sqrt(c16amp2(srs_est_freq[0][0][j])); // RFSim: copying from 1 antenna only, and we are only considering 1 antenna port, no sqrt
+          cfr_amp2[i][j] = sqrt(c16amp2(srs_est_freq[0][0][j]));
          }
        }
 
@@ -164,7 +164,7 @@ void log_ric_indication(const srs_ind_msg_t* msg)
       int result;
       result = cc_inference(module, cir_shifted, prediction);
  
-       // Start the plot App
+       // Start the plot App: 1 antenna data
        // Plot some dummy cc predictions for now
        //std::vector<float> prediction = {27.3757f, 23.4058f};
        // Update plot data
@@ -291,8 +291,8 @@ static void *app_thread(void*)
 {
 
    if(gui_ready == false){
-      app = new ChannelApp("Real-Time CIR Plots",0,{nullptr}, 2048);
-      std::vector<float> zeros(2048, 0.0f);
+      app = new ChannelApp("Real-Time CIR Plots",0,{nullptr}, N_FFT);
+      std::vector<float> zeros(N_FFT, 0.0f);
       std::vector<float> prediction0 = {30.0f, 30.0f};
       app->UpdateCIR(zeros);
       app->UpdateCC(prediction0);

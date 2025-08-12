@@ -6,7 +6,7 @@
 #define N_SHIFT 100
 #define NORM_FACTOR  23156
 #define THRESHOLD  0.3
-#define N_FFT 2048
+#define N_FFT 4096
 #define N_rx  8
 #define NR_NB_SC_PER_RB  12
 
