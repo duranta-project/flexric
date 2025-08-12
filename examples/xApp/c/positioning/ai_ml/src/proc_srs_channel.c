@@ -68,14 +68,14 @@ int fill_srs_channel_array(const nfapi_nr_srs_normalized_channel_iq_matrix_t* ch
 void preprocess_cir(const uint16_t ofdm_symbol_size, const uint16_t num_antennas, const c16_t srs_data[][1][N_FFT],
                     uint32_t srs_cir[][N_FFT], uint32_t cir_shifted[][N_SHIFT])
 {
-
+  // Testbed: add i index | RFSim: copying from 1 antenna only, and we are only considering 1 antenna port, no sqrt
   for(size_t i = 0; i < num_antennas; i++){
     for(size_t j = 0; j < ofdm_symbol_size; j++){
-      srs_cir[i][j] = sqrt(c16amp2(srs_data[0][0][j])); // RFSim: copying from 1 antenna only, and we are only considering 1 antenna port, no sqrt
+      srs_cir[i][j] = sqrt(c16amp2(srs_data[i][0][j]));
     }
   }
-
-  uint32_t shift = 538; //2064; // RFSim: changing the shift for different FFT size(2048)
+  // Testbed: 2064 | RFSim: changing the shift 538 for different FFT size(2048)
+  uint32_t shift = 2064;
 
   for(size_t i = 0; i < num_antennas; i++){
     for (size_t j = 0; j < N_SHIFT; j++){

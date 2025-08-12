@@ -123,7 +123,7 @@ struct ChannelApp : App {
           if (ImGui::BeginTabBar("xAppDemoTabs")) {
             if (ImGui::BeginTabItem("Plots")) {
                // Create section for CIR plots
-               if (ImGui::CollapsingHeader("Real‑time CIR Plots", ImGuiTreeNodeFlags_DefaultOpen)) {
+               if (ImGui::CollapsingHeader("Real‑time Channel Plots", ImGuiTreeNodeFlags_DefaultOpen)) {
 		  ImGui::Columns(2, nullptr, false);
 		  // Plot CIR
 		  if (ImPlot::BeginPlot("SRS Channel Impulse Response", ImVec2(-1,300), ImPlotFlags_None)) {
