@@ -24,10 +24,11 @@ torch::jit::script::Module load_torchscript_model(const char* torchscript_path)
     module = torch::jit::load(torchscript_path);
   }
   catch (const c10::Error& e) {
-    std::cerr << "error loading the model\n";
+    std::cerr << "Error loading the model\n";
+    std::cerr << "Error message: " << e.msg() << "\n";
   }
 
-  std::cout << "loading script ok\n";
+  std::cout << "Loading script ok\n";
   return module;
 }
 
@@ -66,19 +67,33 @@ int cc_inference(torch::jit::script::Module& module, uint32_t cir_shifted[][N_SH
 
   cir_tensor = cir_tensor.unsqueeze(0); // add channel dimension to match (1, N_rx, N_SHIFT)
   cir_tensor = cir_tensor / NORM_FACTOR; // Normalize
-
+  std::cout << "Tensor shape: " << cir_tensor.sizes() << std::endl;
+  printf("[DEBUG INFO] created tensor\n");
   // Create binary mask
-  torch::Tensor max_vals = std::get<0>(cir_tensor.max(2));
+  torch::Tensor max_vals = torch::amax(cir_tensor, 2);//std::get<0>(cir_tensor.max(2));
+  printf("[DEBUG INFO] created max value tensor\n");
+
   torch::Tensor binary_mask = (max_vals > THRESHOLD).to(torch::kFloat32); // shape (1,N_rx)
 
+  printf("[DEBUG INFO] created binary mask\n");
   torch::Tensor masked_input = cir_tensor * binary_mask.unsqueeze(2);
 
   torch::Tensor input_tensor = masked_input.unsqueeze(0).to(torch::kFloat32);
 
+  std::cout << "Masked Input Tensor shape: " << input_tensor.sizes() << std::endl;
+
+  printf("[DEBUG INFO] entering inference scope\n");
+
+  // module.eval();
   // no-grad scope
   {
     torch::NoGradGuard no_grad;  
-    at::Tensor output = module.forward({input_tensor}).toTensor();
+           auto forward_method = module.get_method("forward");
+           std::vector<c10::IValue> input;
+           input.push_back(input_tensor);
+           auto output = forward_method(input).toTensor();
+
+    //at::Tensor output = module.forward({input_tensor}).toTensor();
 
     output = output.squeeze(0);
     prediction.assign(output.data_ptr<float>(), output.data_ptr<float>() + output.numel());
@@ -116,6 +131,41 @@ int cc_inference(torch::jit::script::Module& module, uint32_t cir_shifted[][N_SH
         return 1;
     }
   */
+  }
+
+  return 0;
+}
+
+int dummy_cc_inference(torch::jit::script::Module& module, std::vector<float>& prediction)
+{
+
+  // create a tensor
+
+  auto options = torch::TensorOptions().dtype(torch::kFloat32);
+
+  std::cout << "[DEBUG INFO] entering inference scope" << std::endl;
+
+  // no-grad scope
+  {
+    torch::NoGradGuard no_grad;  
+    auto forward_method = module.get_method("forward");
+    std::vector<c10::IValue> input;
+    torch::Tensor rnd_tensor = torch::rand({1, 1, 8, 100});
+    std::cout << "[DEBUG INFO] Tensor shape: " << rnd_tensor.sizes() << std::endl;
+    input.push_back(rnd_tensor);
+    auto output = forward_method(input).toTensor();
+   // at::Tensor output = module.forward({rnd_tensor}).toTensor();
+
+    output = output.squeeze(0);
+    prediction.assign(output.data_ptr<float>(), output.data_ptr<float>() + output.numel());
+
+    // Print predictions
+    std::cout << "Predictions: [";
+    for (size_t i = 0; i < prediction.size(); ++i) {
+      std::cout << prediction[i];
+      if (i + 1 < prediction.size()) std::cout << ", ";
+    }
+    std::cout << "]\n";
   }
 
   return 0;
