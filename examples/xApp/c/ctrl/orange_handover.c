@@ -5,22 +5,13 @@
 #include "../../../../src/util/time_now_us.h"
 #include "../../../../src/util/alg_ds/ds/lock_guard/lock_guard.h"
 #include "../../../../src/sm/rc_sm/rc_sm_id.h"
+#include "../../../../src/sm/rc_sm/ie/rc_data_ie.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
 #include <time.h>
 #include <unistd.h>
 #include <signal.h>
-#define TARGET_CELL '5'
-#define CURRENT_CELL '2'
-
-
-typedef enum{
-    Handover_Control_7_6_4_1 = 1,
-    Conditional_Handover_Control_7_6_4_1 = 2,
-    DAPS_Handover_Control_7_6_4_1 = 3,
-} rc_ctrl_service_style_3_act_id_e;
-
 
 static
 e2sm_rc_ctrl_hdr_frmt_1_t gen_rc_ctrl_hdr_frmt_1(ue_id_e2sm_t ue_id, uint32_t ric_style_type, uint16_t ctrl_act_id)
@@ -52,37 +43,13 @@ e2sm_rc_ctrl_hdr_t gen_rc_ctrl_hdr(e2sm_rc_ctrl_hdr_e hdr_frmt, ue_id_e2sm_t ue_
   return dst;
 }
 
-typedef enum {
-    Target_Primary_Cell_ID_8_4_4_1= 1,
-    CHOICE_Target_Cell_8_4_4_1= 2,
-    NR_Cell_8_4_4_1= 3,
-    NR_CGI_8_4_4_1= 4,
-    EUTRA_Cell_8_4_4_1= 5,
-    EUTRA_CGI_8_4_4_1= 6,
-    List_of_PDU_sessions_for_handover_8_4_4_1= 7,
-    PDU_session_Item_for_handover_8_4_4_1= 8,
-    PDU_Session_ID_8_4_4_1= 9,
-    List_of_QoS_flows_in_the_PDU_session_8_4_4_1= 10,
-    QoS_flow_Item_8_4_4_1= 11,
-    QoS_Flow_Identifier_8_4_4_1= 12,
-    List_of_DRBs_for_handover_8_4_4_1= 13,
-    DRB_item_for_handover_8_4_4_1= 14,
-    DRB_ID_8_4_4_1= 15,
-    List_of_QoS_flows_in_the_DRB_8_4_4_1= 16,
-    //QoS_flow_Item_8_4_4_1= 17,
-    //QoS_flow_Identifier_8_4_4_1= 18,
-    List_of_Secondary_cells_to_be_setup_8_4_4_1= 19,
-    Secondary_cell_Item_to_be_setup_8_4_4_1= 20,
-    Secondary_cell_ID_8_4_4_1= 21,
-} handover_Control_param_id_e;
-
 
 static
-void gen_Target_Primary_Cell_ID (seq_ran_param_t* Target_Primary_Cell_ID)
+void gen_Target_Primary_Cell_ID (seq_ran_param_t* Target_Primary_Cell_ID, char TARGET_CELL)
 { 
     // Target Primary Cell ID, STRUCTURE (len 1)
 
-  Target_Primary_Cell_ID->ran_param_id = Target_Primary_Cell_ID_8_4_4_1;
+  Target_Primary_Cell_ID->ran_param_id = TARGET_PRIMARY_CELL_ID_8_4_4_1;
   Target_Primary_Cell_ID->ran_param_val.type = STRUCTURE_RAN_PARAMETER_VAL_TYPE;
   Target_Primary_Cell_ID->ran_param_val.strct = calloc(1, sizeof(ran_param_struct_t));
   assert(Target_Primary_Cell_ID->ran_param_val.strct != NULL && "Memory exhausted");
@@ -92,7 +59,7 @@ void gen_Target_Primary_Cell_ID (seq_ran_param_t* Target_Primary_Cell_ID)
  
    // > CHOICE Target Cell, STRUCTURE (len 2)
   seq_ran_param_t* CHOICE_Target_Cell = &Target_Primary_Cell_ID->ran_param_val.strct->ran_param_struct[0];
-  CHOICE_Target_Cell->ran_param_id = CHOICE_Target_Cell_8_4_4_1;
+  CHOICE_Target_Cell->ran_param_id = CHOICE_TARGET_CELL_8_4_4_1;
   CHOICE_Target_Cell->ran_param_val.type = STRUCTURE_RAN_PARAMETER_VAL_TYPE;
   CHOICE_Target_Cell->ran_param_val.strct = calloc(1, sizeof(ran_param_struct_t));
   assert(CHOICE_Target_Cell->ran_param_val.strct != NULL && "Memory exhausted");
@@ -102,7 +69,7 @@ void gen_Target_Primary_Cell_ID (seq_ran_param_t* Target_Primary_Cell_ID)
  
   // >>  NR Cell, STRUCTURE (len 1))
   seq_ran_param_t* NR_Cell = &CHOICE_Target_Cell->ran_param_val.strct->ran_param_struct[0];
-  NR_Cell->ran_param_id = NR_Cell_8_4_4_1;
+  NR_Cell->ran_param_id = NR_CELL_8_4_4_1;
   NR_Cell->ran_param_val.type = STRUCTURE_RAN_PARAMETER_VAL_TYPE;
   NR_Cell->ran_param_val.strct = calloc(1, sizeof(ran_param_struct_t));
   assert(NR_Cell->ran_param_val.strct != NULL && "Memory exhausted");
@@ -127,7 +94,7 @@ void gen_Target_Primary_Cell_ID (seq_ran_param_t* Target_Primary_Cell_ID)
 
   // >>E-UTRA Cell, STRUCTURE (len 1)
   seq_ran_param_t* EUTRA_Cell = &CHOICE_Target_Cell->ran_param_val.strct->ran_param_struct[1];
-  EUTRA_Cell->ran_param_id = EUTRA_Cell_8_4_4_1;
+  EUTRA_Cell->ran_param_id = EUTRA_CELL_8_4_4_1;
   EUTRA_Cell->ran_param_val.type = STRUCTURE_RAN_PARAMETER_VAL_TYPE;
   EUTRA_Cell->ran_param_val.strct = calloc(1, sizeof(ran_param_struct_t));
   assert(EUTRA_Cell->ran_param_val.strct != NULL && "Memory exhausted");
@@ -158,7 +125,7 @@ void gen_List_of_PDU_sessions_for_handover(seq_ran_param_t* List_PDU_sessions_ho
 {
   int num_PDU_session = 1;
   // List of PDU sessions for handover, LIST (len 1)
-  List_PDU_sessions_ho->ran_param_id = List_of_PDU_sessions_for_handover_8_4_4_1;
+  List_PDU_sessions_ho->ran_param_id = LIST_OF_PDU_SESSIONS_FOR_HANDOVER_8_4_4_1;
   List_PDU_sessions_ho->ran_param_val.type = LIST_RAN_PARAMETER_VAL_TYPE;
   List_PDU_sessions_ho->ran_param_val.lst = calloc(1, sizeof(ran_param_list_t));
   assert(List_PDU_sessions_ho->ran_param_val.lst != NULL && "Memory exhausted");
@@ -168,7 +135,7 @@ void gen_List_of_PDU_sessions_for_handover(seq_ran_param_t* List_PDU_sessions_ho
   
   // >PDU session Item for handover, STRUCTURE (len 2) 
   lst_ran_param_t* PDU_session_item = &List_PDU_sessions_ho->ran_param_val.strct->ran_param_struct[0];
-  //PDU_session_item->ran_param_id = PDU_session_Item_for_handover_8_4_4_1;
+  //PDU_session_item->ran_param_id = PDU_SESSION_ITEM_FOR_HANDOVER_8_4_4_1;
   //PDU_session_item->ran_param_val.type = STRUCTURE_RAN_PARAMETER_VAL_TYPE;
   //PDU_session_item->ran_param_val.strct = calloc(1, sizeof(ran_param_struct_t));
   //assert(PDU_session_item->ran_param_val.strct != NULL && "Memory exhausted");
@@ -179,7 +146,7 @@ void gen_List_of_PDU_sessions_for_handover(seq_ran_param_t* List_PDU_sessions_ho
   // >>PDU Session ID, ELEMENT
 
   seq_ran_param_t* PDU_Session_ID = &PDU_session_item->ran_param_struct.ran_param_struct[0];
-  PDU_Session_ID->ran_param_id = PDU_Session_ID_8_4_4_1;
+  PDU_Session_ID->ran_param_id = PDU_SESSION_ID_8_4_4_1;
   PDU_Session_ID->ran_param_val.type = ELEMENT_KEY_FLAG_TRUE_RAN_PARAMETER_VAL_TYPE;
   PDU_Session_ID->ran_param_val.flag_false = calloc(1, sizeof(ran_parameter_value_t));
   assert(PDU_Session_ID->ran_param_val.flag_false != NULL && "Memory exhausted");
@@ -192,7 +159,7 @@ void gen_List_of_PDU_sessions_for_handover(seq_ran_param_t* List_PDU_sessions_ho
   // >>List of QoS flows in the PDU session, LIST (len 1)
 
   seq_ran_param_t* List_of_QoS_flows = &PDU_session_item->ran_param_struct.ran_param_struct[1];
-  List_of_QoS_flows->ran_param_id = List_of_QoS_flows_in_the_PDU_session_8_4_4_1;
+  List_of_QoS_flows->ran_param_id = LIST_OF_QOS_FLOWS_IN_THE_PDU_SESSION_8_4_4_1;
   List_of_QoS_flows->ran_param_val.type = LIST_RAN_PARAMETER_VAL_TYPE;
   List_of_QoS_flows->ran_param_val.lst = calloc(1, sizeof(ran_param_list_t));
   assert(List_of_QoS_flows->ran_param_val.lst != NULL && "Memory exhausted");
@@ -209,7 +176,7 @@ void gen_List_of_PDU_sessions_for_handover(seq_ran_param_t* List_PDU_sessions_ho
 
   // >>>>QoS Flow Identifier, ELEMENT
   seq_ran_param_t* QoS_Flow_Id = &QoS_flow_Item->ran_param_struct.ran_param_struct[0];
-  QoS_Flow_Id->ran_param_id = QoS_Flow_Identifier_8_4_4_1;
+  QoS_Flow_Id->ran_param_id = QOS_FLOW_ITEM_8_4_4_1;
   QoS_Flow_Id->ran_param_val.type = ELEMENT_KEY_FLAG_TRUE_RAN_PARAMETER_VAL_TYPE;
   QoS_Flow_Id->ran_param_val.flag_false = calloc(1, sizeof(ran_parameter_value_t));
   assert(QoS_Flow_Id->ran_param_val.flag_false != NULL && "Memory exhausted");
@@ -228,7 +195,7 @@ void gen_List_of_DRBs_for_handover(seq_ran_param_t* List_DRBs_ho )
 {
   int num_DRBs = 1;
   // List of DRBs for handover, LIST (len 1)
-  List_DRBs_ho->ran_param_id = List_of_DRBs_for_handover_8_4_4_1;
+  List_DRBs_ho->ran_param_id = LIST_OF_DRBS_FOR_HANDOVER_8_4_4_1;
   List_DRBs_ho->ran_param_val.type = LIST_RAN_PARAMETER_VAL_TYPE;
   List_DRBs_ho->ran_param_val.lst = calloc(1, sizeof(ran_param_list_t));
   assert(List_DRBs_ho->ran_param_val.lst != NULL && "Memory exhausted");
@@ -259,7 +226,7 @@ void gen_List_of_DRBs_for_handover(seq_ran_param_t* List_DRBs_ho )
   // >> List of QoS flows in the DRB, LIST (len 1)
 
   seq_ran_param_t* List_of_QoS_flows = &DRB_item_ho->ran_param_struct.ran_param_struct[1];  //////.....//////
-  List_of_QoS_flows->ran_param_id = List_of_QoS_flows_in_the_DRB_8_4_4_1;
+  List_of_QoS_flows->ran_param_id = LIST_OF_QOS_FLOWS_IN_THE_DRB_8_4_4_1;
   List_of_QoS_flows->ran_param_val.type = LIST_RAN_PARAMETER_VAL_TYPE;
   List_of_QoS_flows->ran_param_val.lst = calloc(1, sizeof(ran_param_list_t));
   assert(List_of_QoS_flows->ran_param_val.lst != NULL && "Memory exhausted");
@@ -275,7 +242,7 @@ void gen_List_of_DRBs_for_handover(seq_ran_param_t* List_DRBs_ho )
 
   // >>>>QoS Flow Identifier, ELEMENT
   seq_ran_param_t* QoS_Flow_Id = &QoS_flow_Item->ran_param_struct.ran_param_struct[0];
-  QoS_Flow_Id->ran_param_id = QoS_Flow_Identifier_8_4_4_1;
+  QoS_Flow_Id->ran_param_id = QOS_FLOW_ITEM_DRB_8_4_4_1;
   QoS_Flow_Id->ran_param_val.type = ELEMENT_KEY_FLAG_TRUE_RAN_PARAMETER_VAL_TYPE;
   QoS_Flow_Id->ran_param_val.flag_false = calloc(1, sizeof(ran_parameter_value_t));
   assert(QoS_Flow_Id->ran_param_val.flag_false != NULL && "Memory exhausted");
@@ -295,7 +262,7 @@ void gen_List_of_Secondary_cells_to_be_setup(seq_ran_param_t* List_num_2ndCells)
 
   int num_2ndCells= 1;
   // List of Secondary cells to be setup, LIST (len 1)
-  List_num_2ndCells->ran_param_id = List_of_Secondary_cells_to_be_setup_8_4_4_1;
+  List_num_2ndCells->ran_param_id = LIST_OF_SECONDARY_CELLS_TO_BE_SETUP_8_4_4_1;
   List_num_2ndCells->ran_param_val.type = LIST_RAN_PARAMETER_VAL_TYPE;
   List_num_2ndCells->ran_param_val.lst = calloc(1, sizeof(ran_param_list_t));
   assert(List_num_2ndCells->ran_param_val.lst != NULL && "Memory exhausted");
@@ -314,7 +281,7 @@ void gen_List_of_Secondary_cells_to_be_setup(seq_ran_param_t* List_num_2ndCells)
 
    // >>Secondary cell ID, ELEMENT
   seq_ran_param_t* secCell_Id = &secCell_item->ran_param_struct.ran_param_struct[0];
-  secCell_Id->ran_param_id = Secondary_cell_ID_8_4_4_1;
+  secCell_Id->ran_param_id = SECONDARY_CELL_ID_8_4_4_1;
   secCell_Id->ran_param_val.type = ELEMENT_KEY_FLAG_FALSE_RAN_PARAMETER_VAL_TYPE;
   secCell_Id->ran_param_val.flag_false = calloc(1, sizeof(ran_parameter_value_t));
   assert(secCell_Id->ran_param_val.flag_false != NULL && "Memory exhausted");
@@ -332,7 +299,7 @@ void gen_List_of_Secondary_cells_to_be_setup(seq_ran_param_t* List_num_2ndCells)
 
 
 static
-e2sm_rc_ctrl_msg_frmt_1_t gen_rc_ctrl_msg_frmt_1_Handover_Control()
+e2sm_rc_ctrl_msg_frmt_1_t gen_rc_ctrl_msg_frmt_1_Handover_Control(char TARGET_CELL)
 {
   e2sm_rc_ctrl_msg_frmt_1_t dst = {0};
   // 8.4.4.1
@@ -366,7 +333,7 @@ e2sm_rc_ctrl_msg_frmt_1_t gen_rc_ctrl_msg_frmt_1_Handover_Control()
   dst.ran_param = calloc(4, sizeof(seq_ran_param_t));
   assert(dst.ran_param != NULL && "Memory exhausted");
 
-  gen_Target_Primary_Cell_ID(&dst.ran_param[0]);
+  gen_Target_Primary_Cell_ID(&dst.ran_param[0],TARGET_CELL);
   gen_List_of_PDU_sessions_for_handover(&dst.ran_param[1]);
   gen_List_of_DRBs_for_handover(&dst.ran_param[2]);
   gen_List_of_Secondary_cells_to_be_setup(&dst.ran_param[3]);
@@ -375,13 +342,13 @@ e2sm_rc_ctrl_msg_frmt_1_t gen_rc_ctrl_msg_frmt_1_Handover_Control()
 }
 
 static
-e2sm_rc_ctrl_msg_t gen_rc_ctrl_msg(e2sm_rc_ctrl_msg_e msg_frmt)
+e2sm_rc_ctrl_msg_t gen_rc_ctrl_msg(e2sm_rc_ctrl_msg_e msg_frmt, char TARGET_CELL)
 {
   e2sm_rc_ctrl_msg_t dst = {0};
 
   if (msg_frmt == FORMAT_1_E2SM_RC_CTRL_MSG) {
     dst.format = msg_frmt;
-    dst.frmt_1 = gen_rc_ctrl_msg_frmt_1_Handover_Control();
+    dst.frmt_1 = gen_rc_ctrl_msg_frmt_1_Handover_Control(TARGET_CELL);
   } else {
     assert(0!=0 && "not implemented the fill func for this ctrl msg frmt");
   }
@@ -445,24 +412,25 @@ int main(int argc, char *argv[])
   uint64_t IMSI_ue2=8;
   ue_id_e2sm_t ue_id_1 = gen_rc_ue_id(GNB_UE_ID_E2SM,IMSI_ue1);
   ue_id_e2sm_t ue_id_2 = gen_rc_ue_id(GNB_UE_ID_E2SM,IMSI_ue2);
-
-  rc_ctrl_1.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_1, 3, Handover_Control_7_6_4_1);
-  rc_ctrl_1.msg = gen_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG);
+  char TARGET_CELL = '4';
+  rc_ctrl_1.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_1, 3, HANDOVER_CONTROL_7_6_4_1);
+  rc_ctrl_1.msg = gen_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG, TARGET_CELL);
 
   int64_t st = time_now_us();
-  printf("[xApp]: Send Handover Control message to move IMSI %ld from cellId %c to target cellId %c \n",*(ue_id_1.gnb.ran_ue_id), CURRENT_CELL,TARGET_CELL);
+  printf("[xApp]: Send Handover Control message to move IMSI %ld from cellId %c to target cellId %c \n",*(ue_id_1.gnb.ran_ue_id), '2',TARGET_CELL);
   for(size_t i =0; i < nodes.len; ++i){
     control_sm_xapp_api(&nodes.n[i].id, SM_RC_ID, &rc_ctrl_1);
   }
   printf("[xApp]: Control Loop Latency for the first control message : %ld us\n", time_now_us() - st);
-   sleep(5);
+   sleep(50);
 //  ***********************************************************************************************************
    rc_ctrl_req_data_t rc_ctrl_2 = {0};
-  rc_ctrl_2.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_2, 3, Handover_Control_7_6_4_1);
-  rc_ctrl_2.msg = gen_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG);
+    TARGET_CELL = '5';
+  rc_ctrl_2.hdr = gen_rc_ctrl_hdr(FORMAT_1_E2SM_RC_CTRL_HDR, ue_id_2, 3, HANDOVER_CONTROL_7_6_4_1);
+  rc_ctrl_2.msg = gen_rc_ctrl_msg(FORMAT_1_E2SM_RC_CTRL_MSG, TARGET_CELL);
 
   int64_t st1 = time_now_us();
-    printf("[xApp]: Send Handover Control message to move IMSI %ld from cellId %c to target cellId %c \n",*(ue_id_2.gnb.ran_ue_id), CURRENT_CELL,TARGET_CELL);
+    printf("[xApp]: Send Handover Control message to move IMSI %ld from cellId %c to target cellId %c \n",*(ue_id_2.gnb.ran_ue_id),'4',TARGET_CELL);
   for(size_t i =0; i < nodes.len; ++i){
     control_sm_xapp_api(&nodes.n[i].id, SM_RC_ID, &rc_ctrl_2);
   }
