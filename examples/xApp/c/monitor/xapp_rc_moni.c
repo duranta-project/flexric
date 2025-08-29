@@ -35,7 +35,7 @@
 #include "NR_RRCReconfiguration.h"
 #include "NR_CellGroupConfig.h"
 #include "NR_UL-DCCH-Message.h"
-#include "../../../../src/lib/sm/dec/dec_ue_id.c"
+#include "../../../../src/lib/sm/dec/dec_ue_id.h"
 
 static
 pthread_mutex_t mtx;
