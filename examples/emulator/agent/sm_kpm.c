@@ -92,6 +92,13 @@ static
 }
 
 static
+meas_record_lst_t fill_CARR_PDSCHMCSDist(ue_id_e2sm_t const* ue)
+{
+    assert(ue != NULL);
+    return fill_rnd_int_data();
+}
+
+static
 assoc_ht_open_t ht;
 
 typedef meas_record_lst_t (*kpm_fp)(ue_id_e2sm_t const* ue);
@@ -110,6 +117,7 @@ const kv_measure_t lst_measure[] = {
   (kv_measure_t){.key = "DRB.UEThpUl", .value =  fill_DRB_UEThpUl }, 
   (kv_measure_t){.key = "RRU.PrbTotDl", .value =  fill_RRU_PrbTotDl }, 
   (kv_measure_t){.key = "RRU.PrbTotUl", .value =  fill_RRU_PrbTotUl }, 
+  (kv_measure_t){.key = "CARR.PDSCHMCSDist", .value = fill_CARR_PDSCHMCSDist },
   }; 
   // 3GPP TS 28.552
 
@@ -455,38 +463,44 @@ seq_arr_t matching_ues(matching_condition_format_4_lst_t const* cond, size_t len
 static
 kpm_ind_msg_format_1_t collect_measurements(ue_id_e2sm_t const* ue, meas_info_format_1_lst_t const* lst, size_t len)
 {
-  assert(ue != NULL);
-  assert(lst != NULL);
-  assert(len > 0 && len < 65536);
+    assert(ue != NULL);
+    assert(lst != NULL);
+    assert(len > 0 && len < 65536);
 
-  kpm_ind_msg_format_1_t dst = {0}; 
-  // Value depending on the (period subscription) / (granularity period)
-  // currently only 1 supported
-  dst.meas_data_lst_len = 1;
-  dst.meas_data_lst = calloc(dst.meas_data_lst_len, sizeof(meas_data_lst_t));
-  assert(dst.meas_data_lst != NULL && "Memory exhausted");
+    kpm_ind_msg_format_1_t dst = {0}; 
+    // Value depending on the (period subscription) / (granularity period)
+    // currently only 1 supported
+    dst.meas_data_lst_len = 1;
+    dst.meas_data_lst = calloc(dst.meas_data_lst_len, sizeof(meas_data_lst_t));
+    assert(dst.meas_data_lst != NULL && "Memory exhausted");
 
-  dst.meas_data_lst[0].meas_record_len = len; 
-  dst.meas_data_lst[0].meas_record_lst = calloc(len, sizeof(meas_record_lst_t));
-  assert(dst.meas_data_lst[0].meas_record_lst != NULL && "Memory exhausted");
+    dst.meas_data_lst[0].meas_record_len = len; 
+    dst.meas_data_lst[0].meas_record_lst = calloc(len, sizeof(meas_record_lst_t));
+    assert(dst.meas_data_lst[0].meas_record_lst != NULL && "Memory exhausted");
 
-  dst.meas_info_lst_len = len;
-  dst.meas_info_lst = calloc(len, sizeof(meas_info_format_1_lst_t));
-  assert(dst.meas_info_lst != NULL && "Memory exhausted");
+    dst.meas_info_lst_len = len;
+    dst.meas_info_lst = calloc(len, sizeof(meas_info_format_1_lst_t));
+    assert(dst.meas_info_lst != NULL && "Memory exhausted");
 
-  for(size_t i = 0; i < len; ++i) {
-    assert(lst[i].meas_type.type == NAME_MEAS_TYPE && "Only NAME supported"); 
-    dst.meas_info_lst[i] = cp_meas_info_format_1_lst(&lst[i]);
+    for(size_t i = 0; i < len; ++i) {
+        assert(lst[i].meas_type.type == NAME_MEAS_TYPE && "Only NAME supported"); 
+        dst.meas_info_lst[i] = cp_meas_info_format_1_lst(&lst[i]);
 
-    const void* key = lst[i].meas_type.name.buf;
-    // Get the value pointer from the key i.e., the function to be called
-    // for the key that represents a measurement e.g., fill_DRB_PdcpSduVolumeDL
-    void* value = assoc_ht_open_value(&ht, &key);
-    assert(value != NULL && "Not registered name used as key");
-    // Get the measurement (e.g., DRB_PdcpSduVolumeDL) for the UE
-    dst.meas_data_lst[0].meas_record_lst[i] = (*(kpm_fp*)value)(ue); 
-  }
-  return dst;
+        // MODIFICATION START: Correctly create and use the key for hash table lookup
+        char* key = calloc(lst[i].meas_type.name.len + 1, sizeof(char));
+        assert(key != NULL);
+        memcpy(key, lst[i].meas_type.name.buf, lst[i].meas_type.name.len);
+        
+        void* value = assoc_ht_open_value(&ht, &key);
+        
+        free(key);
+        // MODIFICATION END
+
+        assert(value != NULL && "Not registered name used as key");
+        // Get the measurement (e.g., DRB_PdcpSduVolumeDL) for the UE
+        dst.meas_data_lst[0].meas_record_lst[i] = (*(kpm_fp*)value)(ue); 
+    }
+    return dst;
 }
 
 static
@@ -600,6 +614,7 @@ ric_report_style_item_t fill_kpm_report_style_4(void)
     "DRB.UEThpUl", 
     "RRU.PrbTotDl", 
     "RRU.PrbTotUl",
+    "CARR.PDSCHMCSDist",
   };
 #elif defined NGRAN_GNB_CU 
   const char* kpm_meas[] = {
@@ -613,6 +628,7 @@ ric_report_style_item_t fill_kpm_report_style_4(void)
     "DRB.UEThpUl", 
     "RRU.PrbTotDl", 
     "RRU.PrbTotUl",
+    "CARR.PDSCHMCSDist",
   };
 #elif defined NGRAN_ENB 
   const char* kpm_meas[] = {

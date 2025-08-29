@@ -87,36 +87,52 @@ log_ue_id log_ue_id_e2sm[END_UE_ID_E2SM] = {
 };
 
 static
-void log_int_value(byte_array_t name, meas_record_lst_t meas_record)
+void log_int_value(const meas_info_format_1_lst_t* meas_info, const meas_record_lst_t* meas_record)
 {
+  byte_array_t name = meas_info->meas_type.name;
+
   if (cmp_str_ba("RRU.PrbTotDl", name) == 0) {
-    printf("RRU.PrbTotDl = %d [PRBs]\n", meas_record.int_val);
+    printf("RRU.PrbTotDl = %d [PRBs]\n", meas_record->int_val);
   } else if (cmp_str_ba("RRU.PrbTotUl", name) == 0) {
-    printf("RRU.PrbTotUl = %d [PRBs]\n", meas_record.int_val);
+    printf("RRU.PrbTotUl = %d [PRBs]\n", meas_record->int_val);
   } else if (cmp_str_ba("DRB.PdcpSduVolumeDL", name) == 0) {
-    printf("DRB.PdcpSduVolumeDL = %d [kb]\n", meas_record.int_val);
+    printf("DRB.PdcpSduVolumeDL = %d [kb]\n", meas_record->int_val);
   } else if (cmp_str_ba("DRB.PdcpSduVolumeUL", name) == 0) {
-    printf("DRB.PdcpSduVolumeUL = %d [kb]\n", meas_record.int_val);
+    printf("DRB.PdcpSduVolumeUL = %d [kb]\n", meas_record->int_val);
+  } else if (cmp_str_ba("CARR.PDSCHMCSDist", name) == 0) {
+    if (meas_info->label_info_lst_len > 0) {
+      const label_info_lst_t* label = &meas_info->label_info_lst[0];
+      uint32_t bin_x = (label->distBinX) ? *label->distBinX : 0;
+      uint32_t bin_y = (label->distBinY) ? *label->distBinY : 0;
+      uint32_t bin_z = (label->distBinZ) ? *label->distBinZ : 0;
+      
+      // Only print bins that have a non-zero count
+      if (meas_record->int_val > 0) {
+        printf("CARR.PDSCHMCSDist[RI=%u][Table=%u][MCS=%u] = %d\n", bin_x, bin_y, bin_z, meas_record->int_val);
+      }
+    }
   } else {
-    printf("Measurement Name not yet supported\n");
+    printf("Measurement Name '%.*s' not yet supported\n", (int)name.len, name.buf);
   }
 }
 
 static
-void log_real_value(byte_array_t name, meas_record_lst_t meas_record)
+void log_real_value(const meas_info_format_1_lst_t* meas_info, const meas_record_lst_t* meas_record)
 {
+  byte_array_t name = meas_info->meas_type.name;
+
   if (cmp_str_ba("DRB.RlcSduDelayDl", name) == 0) {
-    printf("DRB.RlcSduDelayDl = %.2f [μs]\n", meas_record.real_val);
+    printf("DRB.RlcSduDelayDl = %.2f [μs]\n", meas_record->real_val);
   } else if (cmp_str_ba("DRB.UEThpDl", name) == 0) {
-    printf("DRB.UEThpDl = %.2f [kbps]\n", meas_record.real_val);
+    printf("DRB.UEThpDl = %.2f [kbps]\n", meas_record->real_val);
   } else if (cmp_str_ba("DRB.UEThpUl", name) == 0) {
-    printf("DRB.UEThpUl = %.2f [kbps]\n", meas_record.real_val);
+    printf("DRB.UEThpUl = %.2f [kbps]\n", meas_record->real_val);
   } else {
     printf("Measurement Name not yet supported\n");
   }
 }
 
-typedef void (*log_meas_value)(byte_array_t name, meas_record_lst_t meas_record);
+typedef void (*log_meas_value)(const meas_info_format_1_lst_t* meas_info, const meas_record_lst_t* meas_record);
 
 static
 log_meas_value get_meas_value[END_MEAS_VALUE] = {
@@ -126,21 +142,21 @@ log_meas_value get_meas_value[END_MEAS_VALUE] = {
 };
 
 static
-void match_meas_name_type(meas_type_t meas_type, meas_record_lst_t meas_record)
+void match_meas_name_type(const meas_info_format_1_lst_t* meas_info, const meas_record_lst_t* record_item)
 {
   // Get the value of the Measurement
-  get_meas_value[meas_record.value](meas_type.name, meas_record);
+  get_meas_value[record_item->value](meas_info, record_item);
 }
 
 static
-void match_id_meas_type(meas_type_t meas_type, meas_record_lst_t meas_record)
+void match_id_meas_type(const meas_info_format_1_lst_t* meas_info, const meas_record_lst_t* record_item)
 {
-  (void)meas_type;
-  (void)meas_record;
+  (void)meas_info;
+  (void)record_item;
   assert(false && "ID Measurement Type not yet supported");
 }
 
-typedef void (*check_meas_type)(meas_type_t meas_type, meas_record_lst_t meas_record);
+typedef void (*check_meas_type)(const meas_info_format_1_lst_t* meas_info, const meas_record_lst_t* meas_record);
 
 static
 check_meas_type match_meas_type[END_MEAS_TYPE] = {
@@ -158,10 +174,10 @@ void log_kpm_measurements(kpm_ind_msg_format_1_t const* msg_frm_1)
     meas_data_lst_t const data_item = msg_frm_1->meas_data_lst[j];
 
     for (size_t z = 0; z < data_item.meas_record_len; z++) {
-      meas_type_t const meas_type = msg_frm_1->meas_info_lst[z].meas_type;
-      meas_record_lst_t const record_item = data_item.meas_record_lst[z];
-
-      match_meas_type[meas_type.type](meas_type, record_item);
+      const meas_info_format_1_lst_t* info_item = &msg_frm_1->meas_info_lst[z];
+      const meas_record_lst_t* record_item = &data_item.meas_record_lst[z];
+ 
+      match_meas_type[info_item->meas_type.type](info_item, record_item);
 
       if (data_item.incomplete_flag && *data_item.incomplete_flag == TRUE_ENUM_VALUE)
         printf("Measurement Record not reliable");
@@ -400,6 +416,29 @@ label_info_lst_t fill_kpm_label(void)
   return label_item;
 }
 
+
+static
+label_info_lst_t fill_distribution_bin_label(uint32_t bin_x, uint32_t bin_y, uint32_t bin_z)
+{
+  label_info_lst_t label_item = {0};
+
+  label_item.noLabel = NULL;
+
+  label_item.distBinX = calloc(1, sizeof(uint32_t));
+  assert(label_item.distBinX != NULL);
+  *label_item.distBinX = bin_x;
+
+  label_item.distBinY = calloc(1, sizeof(uint32_t));
+  assert(label_item.distBinY != NULL);
+  *label_item.distBinY = bin_y;
+
+  label_item.distBinZ = calloc(1, sizeof(uint32_t));
+  assert(label_item.distBinZ != NULL);
+  *label_item.distBinZ = bin_z;
+
+  return label_item;
+}
+
 static
 kpm_act_def_format_1_t fill_act_def_frm_1(ric_report_style_item_t const* report_item)
 {
@@ -407,25 +446,58 @@ kpm_act_def_format_1_t fill_act_def_frm_1(ric_report_style_item_t const* report_
 
   kpm_act_def_format_1_t ad_frm_1 = {0};
 
-  size_t const sz = report_item->meas_info_for_action_lst_len;
+  const int pdsch_dim_x = 4;
+  const int pdsch_dim_y = 4;
+  const int pdsch_dim_z = 32;
+  const int pdsch_total_bins = pdsch_dim_x * pdsch_dim_y * pdsch_dim_z;
 
-  // [1, 65535]
-  ad_frm_1.meas_info_lst_len = sz;
-  ad_frm_1.meas_info_lst = calloc(sz, sizeof(meas_info_format_1_lst_t));
+  size_t total_measurements = report_item->meas_info_for_action_lst_len;
+  bool dist_meas_found = false;
+
+  // Check if the distribution is in the offered list
+  for (size_t i = 0; i < report_item->meas_info_for_action_lst_len; ++i) {
+    if (cmp_str_ba("CARR.PDSCHMCSDist", report_item->meas_info_for_action_lst[i].name) == 0) {
+      total_measurements = total_measurements - 1 + pdsch_total_bins;
+      dist_meas_found = true;
+      break;
+    }
+  }
+
+  ad_frm_1.meas_info_lst_len = total_measurements;
+  ad_frm_1.meas_info_lst = calloc(total_measurements, sizeof(meas_info_format_1_lst_t));
   assert(ad_frm_1.meas_info_lst != NULL && "Memory exhausted");
 
-  for (size_t i = 0; i < sz; i++) {
-    meas_info_format_1_lst_t* meas_item = &ad_frm_1.meas_info_lst[i];
-    // 8.3.9
-    // Measurement Name
+  size_t idx = 0;
+
+  for (size_t i = 0; i < report_item->meas_info_for_action_lst_len; i++) {
+    // Skip the distribution measurement name, as we will add its bins manually
+    if (cmp_str_ba("CARR.PDSCHMCSDist", report_item->meas_info_for_action_lst[i].name) == 0) {
+      continue;
+    }
+
+    meas_info_format_1_lst_t* meas_item = &ad_frm_1.meas_info_lst[idx++];
     meas_item->meas_type.type = NAME_MEAS_TYPE;
     meas_item->meas_type.name = copy_byte_array(report_item->meas_info_for_action_lst[i].name);
-
-    // [1, 2147483647]
-    // 8.3.11
     meas_item->label_info_lst_len = 1;
     meas_item->label_info_lst = ecalloc(1, sizeof(label_info_lst_t));
     meas_item->label_info_lst[0] = fill_kpm_label();
+  }
+
+  if (dist_meas_found) {
+    byte_array_t pdsch_meas_name = cp_str_to_ba("CARR.PDSCHMCSDist");
+    for (int i = 0; i < pdsch_dim_x; i++) {      // RI
+      for (int j = 0; j < pdsch_dim_y; j++) {    // Table
+        for (int k = 0; k < pdsch_dim_z; k++) {  // MCS
+          meas_info_format_1_lst_t* dist_item = &ad_frm_1.meas_info_lst[idx++];
+          dist_item->meas_type.type = NAME_MEAS_TYPE;
+          dist_item->meas_type.name = copy_byte_array(pdsch_meas_name);
+          dist_item->label_info_lst_len = 1;
+          dist_item->label_info_lst = ecalloc(1, sizeof(label_info_lst_t));
+          dist_item->label_info_lst[0] = fill_distribution_bin_label(i, j, k);
+        }
+      }
+    }
+    free_byte_array(pdsch_meas_name);
   }
 
   // 8.3.8 [0, 4294967295]
