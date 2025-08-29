@@ -70,13 +70,19 @@ LabelInfoItem_t * kpm_enc_label_info_asn(const label_info_lst_t * label_info)
       assert(false && "not implemented");
     }
     if (label_info->distBinX != NULL) {
-      assert(false && "not implemented");
+        label_info_asn->measLabel.distBinX = calloc(1, sizeof(*label_info_asn->measLabel.distBinX));
+        assert(label_info_asn->measLabel.distBinX != NULL && "Memory exhausted");
+        *label_info_asn->measLabel.distBinX = *label_info->distBinX;
     }
     if (label_info->distBinY != NULL) {
-      assert(false && "not implemented");
+        label_info_asn->measLabel.distBinY = calloc(1, sizeof(*label_info_asn->measLabel.distBinY));
+        assert(label_info_asn->measLabel.distBinY != NULL && "Memory exhausted");
+        *label_info_asn->measLabel.distBinY = *label_info->distBinY;
     }
     if (label_info->distBinZ != NULL) {
-      assert(false && "not implemented");
+        label_info_asn->measLabel.distBinZ = calloc(1, sizeof(*label_info_asn->measLabel.distBinZ));
+        assert(label_info_asn->measLabel.distBinZ != NULL && "Memory exhausted");
+        *label_info_asn->measLabel.distBinZ = *label_info->distBinZ;
     }
     if (label_info->preLabelOverride != NULL) {
       assert(false && "not implemented");

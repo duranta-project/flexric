@@ -31,9 +31,23 @@ label_info_lst_t cp_label_info(label_info_lst_t const *src)
   assert(src->bitrateRange == NULL && "Not implemented");
   assert(src->layerMU_MIMO == NULL && "Not implemented");
   assert(src->sUM == NULL && "Not implemented");
-  assert(src->distBinX == NULL && "Not implemented");
-  assert(src->distBinY == NULL && "Not implemented");
-  assert(src->distBinZ == NULL && "Not implemented");
+
+  if (src->distBinX != NULL) {
+    dst.distBinX = calloc(1, sizeof(uint32_t));
+    assert(dst.distBinX != NULL && "Memory exhausted");
+    *dst.distBinX = *src->distBinX;
+  }
+  if (src->distBinY != NULL) {
+    dst.distBinY = calloc(1, sizeof(uint32_t));
+    assert(dst.distBinY != NULL && "Memory exhausted");
+    *dst.distBinY = *src->distBinY;
+  }
+  if (src->distBinZ != NULL) {
+    dst.distBinZ = calloc(1, sizeof(uint32_t));
+    assert(dst.distBinZ != NULL && "Memory exhausted");
+    *dst.distBinZ = *src->distBinZ;
+  }
+
   assert(src->preLabelOverride == NULL && "Not implemented");
   assert(src->startEndInd == NULL && "Not implemented");
   assert(src->min == NULL && "Not implemented");
@@ -95,15 +109,11 @@ void free_label_info(label_info_lst_t *l)
 	if (l->sUM != NULL) {
     assert(false && "not implemented");
   }
-	if (l->distBinX != NULL) {
-    assert(false && "not implemented");
-  }
-	if (l->distBinY != NULL) {
-    assert(false && "not implemented");
-  }
-	if (l->distBinZ != NULL) {
-    assert(false && "not implemented");
-  }
+
+  if (l->distBinX != NULL) free(l->distBinX);
+  if (l->distBinY != NULL) free(l->distBinY);
+  if (l->distBinZ != NULL) free(l->distBinZ);
+
 	if (l->preLabelOverride != NULL) {
     assert(false && "not implemented");
   }
@@ -180,14 +190,18 @@ bool eq_label_info(const label_info_lst_t *l1, const label_info_lst_t *l2)
   assert(l1->sUM == NULL && "Not implemented");
   assert(l2->sUM == NULL && "Not implemented");
 
-  assert(l1->distBinX == NULL && "Not implemented");
-  assert(l2->distBinX == NULL && "Not implemented");
-
-  assert(l1->distBinY == NULL && "Not implemented");
-  assert(l2->distBinY == NULL && "Not implemented");
-
-  assert(l1->distBinZ == NULL && "Not implemented");
-  assert(l2->distBinZ == NULL && "Not implemented");
+  if (l1->distBinX != NULL || l2->distBinX != NULL) {
+    if (l1->distBinX == NULL || l2->distBinX == NULL) return false;
+    if (*l1->distBinX != *l2->distBinX) return false;
+  }
+  if (l1->distBinY != NULL || l2->distBinY != NULL) {
+    if (l1->distBinY == NULL || l2->distBinY == NULL) return false;
+    if (*l1->distBinY != *l2->distBinY) return false;
+  }
+  if (l1->distBinZ != NULL || l2->distBinZ != NULL) {
+    if (l1->distBinZ == NULL || l2->distBinZ == NULL) return false;
+    if (*l1->distBinZ != *l2->distBinZ) return false;
+  }
 
   assert(l1->preLabelOverride == NULL && "Not implemented");
   assert(l2->preLabelOverride == NULL && "Not implemented");

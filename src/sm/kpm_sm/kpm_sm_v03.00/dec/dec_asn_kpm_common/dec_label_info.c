@@ -78,13 +78,19 @@ label_info_lst_t kpm_dec_label_info_asn(const MeasurementLabel_t * meas_label_as
         assert(false && "not implemented");
     }
     if (meas_label_asn->distBinX != NULL) {
-        assert(false && "not implemented");
+        label_info.distBinX = calloc(1, sizeof(uint32_t));
+        assert(label_info.distBinX != NULL && "Memory exhausted");
+        *label_info.distBinX = *meas_label_asn->distBinX;
     }
     if (meas_label_asn->distBinY != NULL) {
-        assert(false && "not implemented");
+        label_info.distBinY = calloc(1, sizeof(uint32_t));
+        assert(label_info.distBinY != NULL && "Memory exhausted");
+        *label_info.distBinY = *meas_label_asn->distBinY;
     }
     if (meas_label_asn->distBinZ != NULL) {
-        assert(false && "not implemented");
+        label_info.distBinZ = calloc(1, sizeof(uint32_t));
+        assert(label_info.distBinZ != NULL && "Memory exhausted");
+        *label_info.distBinZ = *meas_label_asn->distBinZ;
     }
     if (meas_label_asn->preLabelOverride != NULL) {
         assert(false && "not implemented");
