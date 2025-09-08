@@ -405,7 +405,6 @@ void sctp_msg_arrived_event(void* arg)
   near_ric_t* ric = ric_ev->ric;
   sctp_msg_t const* sctp_msg = &ric_ev->msg;
   defer({free_sctp_msg((sctp_msg_t*)sctp_msg);});
-  printf("decoding msg len: %zu\n", sctp_msg->ba.len);
   e2ap_msg_t const msg = e2ap_msg_dec_ric(&ric->ap, sctp_msg->ba); 
   defer({e2ap_msg_free_ric(&ric->ap, (e2ap_msg_t*)&msg); } );
 
@@ -448,7 +447,6 @@ void e2_event_loop_ric(near_ric_t* ric)
             ric_sctp->ric = ric;
             // Pass ownership
             ric_sctp->msg = e.msg;
-            printf("SCTP ARRIVED msg len: %zu\n", e.msg.ba.len);
             task_t t = {.args = ric_sctp, .func = sctp_msg_arrived_event};
             // Execute tasks in parallel
             async_task_manager(&ric->man, t);
