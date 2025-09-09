@@ -68,21 +68,15 @@ int cc_inference(torch::jit::script::Module& module, uint32_t cir_shifted[][N_SH
   cir_tensor = cir_tensor.unsqueeze(0); // add channel dimension to match (1, N_rx, N_SHIFT)
   cir_tensor = cir_tensor / NORM_FACTOR; // Normalize
   std::cout << "Tensor shape: " << cir_tensor.sizes() << std::endl;
-  printf("[DEBUG INFO] created tensor\n");
   // Create binary mask
   torch::Tensor max_vals = torch::amax(cir_tensor, 2);//std::get<0>(cir_tensor.max(2));
-  printf("[DEBUG INFO] created max value tensor\n");
 
   torch::Tensor binary_mask = (max_vals > THRESHOLD).to(torch::kFloat32); // shape (1,N_rx)
 
-  printf("[DEBUG INFO] created binary mask\n");
   torch::Tensor masked_input = cir_tensor * binary_mask.unsqueeze(2);
 
   torch::Tensor input_tensor = masked_input.unsqueeze(0).to(torch::kFloat32);
 
-  std::cout << "Masked Input Tensor shape: " << input_tensor.sizes() << std::endl;
-
-  printf("[DEBUG INFO] entering inference scope\n");
 
   // module.eval();
   // no-grad scope

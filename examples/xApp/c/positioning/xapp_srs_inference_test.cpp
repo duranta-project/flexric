@@ -52,11 +52,11 @@ using namespace std::chrono_literals;
 void log_ric_indication(const srs_ind_msg_t* msg)
 {
     srs_indication_stats_impl_t* srs_stats = msg->indication_stats;
-    uint16_t rnti = srs_stats->rnti;
-    std::cout << "SRS RNTI =" << rnti << std::endl;
+    uint16_t ue_id = srs_stats->ue_id;
+    std::cout << "SRS UE_ID =" << ue_id << std::endl;
 
-    size_t packedBufLen = srs_stats->srs_unpacked_pdu.len;
-    uint8_t *pReadPackedMessage = srs_stats->srs_unpacked_pdu.buf;
+    size_t packedBufLen = srs_stats->srs_indication_ba.len;
+    uint8_t *pReadPackedMessage = srs_stats->srs_indication_ba.buf;
     std::cout << "[DEBUG INFO] ba initialized len:" << packedBufLen << "bytes" << std::endl;
     for(size_t i = 0; i < packedBufLen; i++){
       if(pReadPackedMessage[i]!=1){

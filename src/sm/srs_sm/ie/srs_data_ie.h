@@ -91,10 +91,8 @@ bool eq_srs_ind_hdr(srs_ind_hdr_t* m0, srs_ind_hdr_t* m1);
 
 typedef struct
 {
-  // Some fields from nfapi_nr_srs_indication_pdu_t
-  uint16_t rnti;
-  // uint32_t len;
-  byte_array_t srs_unpacked_pdu; // 
+  uint32_t ue_id;
+  byte_array_t srs_indication_ba;
 } srs_indication_stats_impl_t;
 
 srs_indication_stats_impl_t cp_srs_indication_stats_impl(srs_indication_stats_impl_t const* src);

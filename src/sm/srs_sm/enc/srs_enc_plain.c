@@ -75,9 +75,9 @@ byte_array_t srs_enc_ind_msg_plain(srs_ind_msg_t const* ind_msg) { assert(ind_ms
   uint32_t len = sizeof(ind_msg->len); 
   for(uint32_t i = 0; i< ind_msg->len; i++){
     const srs_indication_stats_impl_t* srs_stats = &ind_msg->indication_stats[i];
-    len += sizeof(srs_stats->rnti);
-    len += sizeof(srs_stats->srs_unpacked_pdu.len);
-    len += srs_stats->srs_unpacked_pdu.len;
+    len += sizeof(srs_stats->ue_id);
+    len += sizeof(srs_stats->srs_indication_ba.len);
+    len += srs_stats->srs_indication_ba.len;
   }
   len += sizeof(ind_msg->tstamp); 
   byte_array_t ba = {0};
@@ -95,14 +95,14 @@ byte_array_t srs_enc_ind_msg_plain(srs_ind_msg_t const* ind_msg) { assert(ind_ms
     // deep copy
 
     const srs_indication_stats_impl_t* srs_stats = &ind_msg->indication_stats[i];
-    memcpy(ptr, &srs_stats->rnti, sizeof(srs_stats->rnti));
-    ptr += sizeof(srs_stats->rnti);
+    memcpy(ptr, &srs_stats->ue_id, sizeof(srs_stats->ue_id));
+    ptr += sizeof(srs_stats->ue_id);
 
-    memcpy(ptr, &srs_stats->srs_unpacked_pdu.len, sizeof(srs_stats->srs_unpacked_pdu.len));
-    ptr += sizeof(srs_stats->srs_unpacked_pdu.len);
+    memcpy(ptr, &srs_stats->srs_indication_ba.len, sizeof(srs_stats->srs_indication_ba.len));
+    ptr += sizeof(srs_stats->srs_indication_ba.len);
 
-    memcpy(ptr, srs_stats->srs_unpacked_pdu.buf, srs_stats->srs_unpacked_pdu.len);
-    ptr += srs_stats->srs_unpacked_pdu.len;
+    memcpy(ptr, srs_stats->srs_indication_ba.buf, srs_stats->srs_indication_ba.len);
+    ptr += srs_stats->srs_indication_ba.len;
   }
 
   memcpy(ptr, &ind_msg->tstamp, sizeof(ind_msg->tstamp));

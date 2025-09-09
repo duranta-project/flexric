@@ -75,12 +75,11 @@ srs_ind_msg_t fill_rnd_srs_ind_msg(void)
     srs_indication_stats_impl_t* indication_stats = &msg.indication_stats[i];
       
     // Fill dummy data in your data structure  
-    indication_stats->rnti=rand()%1000;
-    indication_stats->srs_unpacked_pdu.len = BUFFER_SIZE;
-    indication_stats->srs_unpacked_pdu.buf = calloc(BUFFER_SIZE, sizeof(uint8_t));
-    //printf("Random RNTI in fill_rnd_srs_ind_msg: %d for UE: %d\n", indication_stats->rnti,i);
+    indication_stats->ue_id = rand()%1000;
+    indication_stats->srs_indication_ba.len = BUFFER_SIZE;
+    indication_stats->srs_indication_ba.buf = calloc(BUFFER_SIZE, sizeof(uint8_t));
     for (size_t i = 0; i < BUFFER_SIZE; ++i) {
-      indication_stats->srs_unpacked_pdu.buf[i] = 1 ;//rand() % 256;  // Random byte
+      indication_stats->srs_indication_ba.buf[i] = 1 ;//rand() % 256;  // Random byte
     }
   }
 
@@ -114,8 +113,8 @@ void fill_rnd_srs_ind_data(srs_ind_data_t* ind)
     srs_indication_stats_impl_t* indication_stats = &ind_msg->indication_stats[i];
       
     // Fill dummy data in your data structure  
-    indication_stats->rnti=rand()%mod;
-    printf("filled RNTI: %d for UE: %d\n", indication_stats->rnti,i);
+    indication_stats->ue_id = rand()%mod;
+    printf("filled ID: %d for UE: %d\n", indication_stats->ue_id,i);
   }
 }
 

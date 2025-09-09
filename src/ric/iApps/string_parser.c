@@ -547,7 +547,7 @@ void to_string_srs_indication(srs_indication_stats_impl_t const* srs, int64_t ts
         "rnti=%u,"
         "\n"
         , tstamp
-        , srs->rnti
+        , srs->ue_id
         );
   assert(rc < (int)max && "Not enough space in the char array to write all the data");
 }
