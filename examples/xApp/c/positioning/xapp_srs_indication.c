@@ -81,11 +81,11 @@ static void dump_srs_channel_iq_matrix(nfapi_nr_srs_normalized_channel_iq_matrix
 void log_ric_indication(const srs_ind_msg_t* msg)
 {
     srs_indication_stats_impl_t* srs_stats = msg->indication_stats;
-    uint16_t rnti = srs_stats->rnti;
-    printf("SRS RNTI = %u\n", rnti);
+    uint16_t ue_id = srs_stats->ue_id;
+    printf("SRS UE_ID = %u\n", ue_id);
 
-    size_t packedBufLen = srs_stats->srs_unpacked_pdu.len;
-    uint8_t *pReadPackedMessage = srs_stats->srs_unpacked_pdu.buf;
+    size_t packedBufLen = srs_stats->srs_indication_ba.len;
+    uint8_t *pReadPackedMessage = srs_stats->srs_indication_ba.buf;
     uint8_t *pUnpackMessageEnd = pReadPackedMessage + packedBufLen;
 
     nfapi_nr_srs_indication_t srs_ind = {0};

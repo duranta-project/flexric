@@ -127,7 +127,7 @@ bool eq_srs_ind_hdr(srs_ind_hdr_t* m0, srs_ind_hdr_t* m1)
 
 void free_srs_indication_stats_impl(srs_indication_stats_impl_t* src){
   assert(src != NULL);
-  free_byte_array(src->srs_unpacked_pdu);
+  free_byte_array(src->srs_indication_ba);
 }
 
 void free_srs_ind_msg(srs_ind_msg_t* src)
@@ -146,8 +146,8 @@ srs_indication_stats_impl_t cp_srs_indication_stats_impl(srs_indication_stats_im
   assert(src != NULL);
 
   srs_indication_stats_impl_t dst = {0};
-  dst.rnti = src->rnti;
-  dst.srs_unpacked_pdu = copy_byte_array(src->srs_unpacked_pdu);
+  dst.ue_id = src->ue_id;
+  dst.srs_indication_ba = copy_byte_array(src->srs_indication_ba);
 
   return dst;
 }
@@ -179,8 +179,8 @@ bool eq_srs_stats_impl(srs_indication_stats_impl_t* m0, srs_indication_stats_imp
   assert(m1 != NULL);
 
   if(
-    m0->rnti != m1->rnti ||
-    eq_byte_array(&m0->srs_unpacked_pdu, &m1->srs_unpacked_pdu) == false
+    m0->ue_id != m1->ue_id ||
+    eq_byte_array(&m0->srs_indication_ba, &m1->srs_indication_ba) == false
     )
     return false;
 

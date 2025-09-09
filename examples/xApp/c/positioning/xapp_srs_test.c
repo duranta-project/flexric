@@ -34,11 +34,11 @@
 void log_ric_indication(const srs_ind_msg_t* msg)
 {
     srs_indication_stats_impl_t* srs_stats = msg->indication_stats;
-    uint16_t rnti = srs_stats->rnti;
-    printf("SRS RNTI = %u\n", rnti);
+    uint16_t ue_id = srs_stats->ue_id;
+    printf("SRS UE_ID = %u\n", ue_id);
 
-    size_t packedBufLen = srs_stats->srs_unpacked_pdu.len;
-    uint8_t *pReadPackedMessage = srs_stats->srs_unpacked_pdu.buf;
+    size_t packedBufLen = srs_stats->srs_indication_ba.len;
+    uint8_t *pReadPackedMessage = srs_stats->srs_indication_ba.buf;
     printf("[DEBUG INFO] ba initialized len: %zu bytes\n", packedBufLen);
     for(size_t i = 0; i < packedBufLen; i++){
       if(pReadPackedMessage[i]!=1){

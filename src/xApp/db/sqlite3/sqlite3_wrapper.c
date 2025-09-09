@@ -953,7 +953,7 @@ int to_sql_string_srs_indication(global_e2_node_id_t const* id, srs_indication_s
         , id->plmn.mnc_digit_len
         , id->nb_id.nb_id
         , id->cu_du_id ? c_cu_du_id : c_null
-        , srs->rnti
+        , srs->ue_id
         );
   assert(rc < (int)max && "Not enough space in the char array to write all the data");
   return rc;

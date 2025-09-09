@@ -69,14 +69,14 @@ srs_ind_msg_t srs_dec_ind_msg_plain(size_t len, uint8_t const ind_msg[len])
   for(uint32_t i = 0; i < ret.len; ++i){
     srs_indication_stats_impl_t* ret_stats = &ret.indication_stats[i];
 
-    memcpy(&ret_stats->rnti, ptr, sizeof(ret_stats->rnti));
-    ptr += sizeof(ret_stats->rnti);
+    memcpy(&ret_stats->ue_id, ptr, sizeof(ret_stats->ue_id));
+    ptr += sizeof(ret_stats->ue_id);
 
-    memcpy(&ret_stats->srs_unpacked_pdu.len, ptr, sizeof(ret_stats->srs_unpacked_pdu.len));
-    ptr += sizeof(ret_stats->srs_unpacked_pdu.len);
-    ret_stats->srs_unpacked_pdu.buf = malloc(ret_stats->srs_unpacked_pdu.len);
-    memcpy(ret_stats->srs_unpacked_pdu.buf, ptr, ret_stats->srs_unpacked_pdu.len);
-    ptr += ret_stats->srs_unpacked_pdu.len;
+    memcpy(&ret_stats->srs_indication_ba.len, ptr, sizeof(ret_stats->srs_indication_ba.len));
+    ptr += sizeof(ret_stats->srs_indication_ba.len);
+    ret_stats->srs_indication_ba.buf = malloc(ret_stats->srs_indication_ba.len);
+    memcpy(ret_stats->srs_indication_ba.buf, ptr, ret_stats->srs_indication_ba.len);
+    ptr += ret_stats->srs_indication_ba.len;
   }
 
   memcpy(&ret.tstamp, ptr, sizeof(ret.tstamp));

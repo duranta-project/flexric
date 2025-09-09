@@ -40,8 +40,8 @@
 #include "cjson/cJSON.h"
 
 #include "ai_ml/inc/proc_srs_channel.h"
-
-//#define SRS_LOG
+#include "oai_dfts/inc/freq2time.h"
+#define SRS_LOG
 
 typedef uint32_t frame_t;
 typedef uint32_t slot_t;
@@ -105,11 +105,9 @@ static void dump_srs_channel_iq_matrix(nfapi_nr_srs_normalized_channel_iq_matrix
 void log_ric_indication(const srs_ind_msg_t* msg)
 {
     srs_indication_stats_impl_t* srs_stats = msg->indication_stats;
-    uint16_t rnti = srs_stats->rnti;
-    printf("SRS RNTI = %u\n", rnti);
-
-    size_t packedBufLen = srs_stats->srs_unpacked_pdu.len;
-    uint8_t *pReadPackedMessage = srs_stats->srs_unpacked_pdu.buf;
+    uint16_t ue_id = srs_stats->ue_id;
+    size_t packedBufLen = srs_stats->srs_indication_ba.len;
+    uint8_t *pReadPackedMessage = srs_stats->srs_indication_ba.buf;
     uint8_t *pUnpackMessageEnd = pReadPackedMessage + packedBufLen;
 
     nfapi_nr_srs_indication_t srs_ind = {0};
@@ -131,7 +129,6 @@ void log_ric_indication(const srs_ind_msg_t* msg)
         printf("xApp Unpacked TA Offset nsec:%u\n", srs_ind_pdu->timing_advance_offset_nsec);
         printf("xApp Unpacked SRS Usage:%u\n", srs_ind_pdu->srs_usage);
         printf("xApp Unpacked Report type:%u\n", srs_ind_pdu->report_type);
-        dump_srs_report(&srs_ind_pdu->report_tlv, "report_tlv_xapp.csv");
 #endif
         // extract the UL Channel
         nfapi_nr_srs_normalized_channel_iq_matrix_t nr_srs_channel_iq_matrix;
@@ -139,21 +136,33 @@ void log_ric_indication(const srs_ind_msg_t* msg)
                                                     srs_ind_pdu->report_tlv.length,
                                                     &nr_srs_channel_iq_matrix,
                                                     sizeof(nfapi_nr_srs_normalized_channel_iq_matrix_t));
-        
 
-        dump_srs_channel_iq_matrix(&nr_srs_channel_iq_matrix, "xapp_channel.iq");
         // prepare for inference
         const uint16_t num_ue_srs_ports = nr_srs_channel_iq_matrix.num_ue_srs_ports;
-        const uint16_t ofdm_symbol_size = nr_srs_channel_iq_matrix.num_prgs;
-        printf("OFDM size %u\n", ofdm_symbol_size);
-        c16_t srs_estimated_channel_time_shifted[nr_srs_channel_iq_matrix.num_gnb_antenna_elements][nr_srs_channel_iq_matrix.num_ue_srs_ports][nr_srs_channel_iq_matrix.num_prgs];
-        
-        fill_srs_channel_array(&nr_srs_channel_iq_matrix,num_ue_srs_ports, ofdm_symbol_size, srs_estimated_channel_time_shifted);
+        const size_t ofdm_symbol_size = nr_srs_channel_iq_matrix.num_prgs;
+        //c16_t *srs_channel_est = (c16_t*)nr_srs_channel_iq_matrix.channel_matrix;
+        c16_t srs_est_freq[N_rx][1][N_FFT] __attribute__((aligned(32)));
+        c16_t srs_est_time[N_rx][1][N_FFT] __attribute__((aligned(32)));
+        c16_t srs_channel_est[N_rx][1][N_FFT];
+        fill_srs_channel_array(&nr_srs_channel_iq_matrix,1,N_FFT,srs_est_freq);
+        // Convert to the time domain, considers 1 UE port only
+        for(size_t ant = 0; ant < 1; ant++){
+        freq2time(ofdm_symbol_size,(int16_t*)srs_est_freq[ant][0], (int16_t*)srs_est_time[ant][0]);}
+/*
+        memcpy(srs_channel_est[ant][0],
+             &srs_est_time[ant][0][ofdm_symbol_size >> 1],
+             (ofdm_symbol_size >> 1) * sizeof(c16_t));
+
+        memcpy(&srs_channel_est[ant][0][ofdm_symbol_size >> 1],
+              srs_est_time[ant][0],
+             (ofdm_symbol_size >> 1) * sizeof(c16_t));
+
+        }
+*/       
         // send over MQTT
-        //dump_srs_channel_array(&srs_estimated_channel_time_shifted[0][0], nr_srs_channel_iq_matrix.num_prgs, "xapp_shifted_cir.iq");
-         for (int ant=0;ant<nr_srs_channel_iq_matrix.num_gnb_antenna_elements;ant++){
-           srs_cir_mqtt(srs_estimated_channel_time_shifted[ant][0], nr_srs_channel_iq_matrix.num_prgs, 1, ant);
-         }
+        // for (int ant=0;ant<nr_srs_channel_iq_matrix.num_gnb_antenna_elements;ant++){
+        //   srs_cir_mqtt(srs_channel_est[ant][0], nr_srs_channel_iq_matrix.num_prgs, 1, ant);
+        // }
 
       }
     }
@@ -248,8 +257,7 @@ int main(int argc, char *argv[])
     assert(srs_handle[i].success == true);
     }
 
-    sleep(10);
-
+    xapp_wait_end_api();
     // Remove the handle 
     for(int i = 0; i < nodes.len; ++i){
         if(srs_handle[i].u.handle != 0 )

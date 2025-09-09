@@ -50,6 +50,8 @@
 
 #include "oai_dfts/inc/freq2time.h"
 
+#include <unordered_map>
+
 #define SRS_LOG
 typedef uint32_t frame_t;
 typedef uint32_t slot_t;
@@ -63,6 +65,7 @@ static bool              gui_ready      = false;
 
 static  torch::jit::script::Module module;
 
+static std::unordered_map<uint32_t, std::vector<float>> ue_map;
 /*static void channel_amp2(const c16_t *srs_cir, uint16_t Nfft, uint32_t *cir_amp)
 {
   for(size_t i = 0; i < Nfft; i++){
@@ -74,9 +77,9 @@ static  torch::jit::script::Module module;
 void log_ric_indication(const srs_ind_msg_t* msg)
 {
     srs_indication_stats_impl_t* srs_stats = msg->indication_stats;
-    uint16_t rnti = srs_stats->rnti;
-    size_t packedBufLen = srs_stats->srs_unpacked_pdu.len;
-    uint8_t *pReadPackedMessage = srs_stats->srs_unpacked_pdu.buf;
+    uint16_t ue_id = srs_stats->ue_id;
+    size_t packedBufLen = srs_stats->srs_indication_ba.len;
+    uint8_t *pReadPackedMessage = srs_stats->srs_indication_ba.buf;
     uint8_t *pUnpackMessageEnd = pReadPackedMessage + packedBufLen;
 
     nfapi_nr_srs_indication_t srs_ind = {0};
@@ -85,6 +88,7 @@ void log_ric_indication(const srs_ind_msg_t* msg)
       const slot_t slot = srs_ind.slot;
       const int num_srs = srs_ind.number_of_pdus;
 #ifdef SRS_LOG
+      std::cout << "CU-UE ID:" << ue_id << std::endl;
       std::cout << "xApp Unpacked SFN:" << frame << std::endl;
       std::cout << "xApp Unpacked Slot:"<< slot << std::endl;
       std::cout << "xApp Unpacked Num of SRS PDUs:"<< num_srs << std::endl;
@@ -163,7 +167,8 @@ void log_ric_indication(const srs_ind_msg_t* msg)
 
       int result;
       result = cc_inference(module, cir_shifted, prediction);
- 
+      // Update the hashmap
+      ue_map[ue_id] = prediction;
        // Start the plot App: 1 antenna data
        // Plot some dummy cc predictions for now
        //std::vector<float> prediction = {27.3757f, 23.4058f};
@@ -176,7 +181,7 @@ void log_ric_indication(const srs_ind_msg_t* msg)
 
        app->UpdateCIR(srs_pdp);
        app->UpdateCFR(srs_cfr);
-       app->UpdateCC(prediction);
+       app->UpdateCC(ue_map);
       }
     }
     free_srs_indication(&srs_ind);
@@ -293,9 +298,8 @@ static void *app_thread(void*)
    if(gui_ready == false){
       app = new ChannelApp("Real-Time CIR Plots",0,{nullptr}, N_FFT);
       std::vector<float> zeros(N_FFT, 0.0f);
-      std::vector<float> prediction0 = {30.0f, 30.0f};
       app->UpdateCIR(zeros);
-      app->UpdateCC(prediction0);
+      app->UpdateCC(ue_map);
 
       pthread_mutex_lock(&gui_mutex);
       gui_ready = true;
@@ -309,7 +313,7 @@ static void *app_thread(void*)
 int main(int argc, char *argv[])
 {
     load_dftslib(); // Loads dft shared lib from a specific path
-    module = load_torchscript_model("/home/bouknana/srs_data/CC_EmbeddingModel_2D_050625_torchscript.pt");
+    module = load_torchscript_model("/home/bouknana/srs_data/trained_models/CC_EmbeddingModel_2D_cpu.pt");
     fr_args_t args = init_fr_args(argc, argv);
 
     // init the xApp
@@ -324,6 +328,9 @@ int main(int argc, char *argv[])
     pthread_join(sm_thread,NULL);
     pthread_join(app_tid,NULL);
 
+    for(const auto& key_value: ue_map) {
+      std::cout << "UE with ID: " << key_value.first << " has predictions " << key_value.second << std::endl;
+    }
     std::cout << "Test C++ xApp run Successfully" << std::endl;
     return 0;
 }
