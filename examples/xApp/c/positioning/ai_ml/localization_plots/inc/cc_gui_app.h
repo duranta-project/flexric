@@ -10,6 +10,7 @@
 #include <sstream>
 #include <mutex>
 #include <unordered_map>
+#include <tuple>
 
 void Demo_Config() {
     ImGui::ShowFontSelector("Font");
@@ -22,10 +23,10 @@ void Demo_Config() {
 struct ChannelApp : App {
     // Add channel buffers as members
     size_t m_ofdm_symbol_size;
-    std::vector<float> m_srs_cir;
+    std::vector<std::vector<float>> m_srs_cir;
     std::mutex m_cir_mutex;
 
-    std::vector<float> m_srs_cfr;
+    std::vector<std::vector<float>> m_srs_cfr;
     std::mutex m_cfr_mutex;
 
     std::vector<float> rx_x, rx_y;
@@ -35,9 +36,10 @@ struct ChannelApp : App {
 
     std::mutex                     m_cc_mutex;
 
-    std::unordered_map<uint32_t, std::vector<std::pair<float,float>>> m_ue_map;
+    std::unordered_map<uint32_t, std::vector<std::pair<float,float>>> m_cc_map;
+    std::unordered_map<uint32_t,std::tuple< std::vector<std::vector<float>>, std::vector<std::vector<float>>, std::vector<float>>> m_ue_map;
     // Add setters to update the data and plot it in real-time
-
+/*
     void UpdateCIR(const std::vector<float>& srs_cir) {
         std::lock_guard<std::mutex> lk(m_cir_mutex);
         m_srs_cir = srs_cir;
@@ -59,6 +61,33 @@ struct ChannelApp : App {
             m_ue_map[key_value.first].erase(m_ue_map[key_value.first].begin());
         }
       }
+    }
+*/
+    void UpdateData(const std::unordered_map<uint32_t,std::tuple< std::vector<std::vector<float>>, std::vector<std::vector<float>>, std::vector<float>>>& ue_map) {
+        std::lock_guard<std::mutex> lk(m_cc_mutex);
+        m_ue_map = ue_map;
+      for(const auto& key_value: ue_map) {
+        uint32_t ue_id = key_value.first;
+        const auto& [srs_cir, srs_cfr, predictions] = key_value.second;
+        m_cc_map[ue_id].emplace_back(predictions[0], predictions[1]);
+
+        if (m_cc_map[ue_id].size() > 5000) {
+            m_cc_map[ue_id].erase(m_cc_map[ue_id].begin());
+        }
+      }
+/*
+        for(const auto& key_value: ue_map) {
+        uint32_t ue_id = key_value.first;
+        const auto& [srs_cir, srs_cfr, predictions] = key_value.second;
+        m_srs_cir = srs_cir;
+        m_srs_cfr = srs_cfr;
+        m_ue_map[ue_id].emplace_back(predictions[0], predictions[1]);
+
+        if (m_ue_map[ue_id].size() > 5000) {
+            m_ue_map[ue_id].erase(m_ue_map[ue_id].begin());
+        }
+      }
+*/
     }
 
     // Constructor
@@ -102,52 +131,81 @@ struct ChannelApp : App {
     void Update() override {
 
         // pull the new data for plotting
-        std::vector<float> local_cir;
+        std::vector<std::vector<float>> local_cir;
         {
           std::lock_guard<std::mutex> lk(m_cir_mutex);
           local_cir = m_srs_cir;
         }
 
-        std::vector<float> local_cfr;
+        std::vector<std::vector<float>> local_cfr;
         {
           std::lock_guard<std::mutex> lk(m_cfr_mutex);
           local_cfr = m_srs_cfr;
         }
 
-        std::unordered_map<uint32_t, std::vector<std::pair<float, float>>> local_map_cp;
+        std::unordered_map<uint32_t, std::vector<std::pair<float, float>>> local_map_cc;
+        std::unordered_map<uint32_t,std::tuple< std::vector<std::vector<float>>, std::vector<std::vector<float>>, std::vector<float>>> local_map_cp;
+
         std::vector<float> local_cc_0;
         std::vector<float> local_cc_1;
         {
             std::lock_guard<std::mutex> lk(m_cc_mutex);
             local_map_cp = m_ue_map;
+            local_map_cc = m_cc_map;
         }
 
         ImGui::Begin("Localization with Channel Charting");
-          if (ImGui::BeginTabBar("xAppDemoTabs")) {
-            if (ImGui::BeginTabItem("Plots")) {
-               // Create section for CIR plots
-               if (ImGui::CollapsingHeader("Localization with Channel Charting", ImGuiTreeNodeFlags_DefaultOpen)) {
-		  ImGui::Columns(2, nullptr, false);
-		  // Plot CIR
-		  if (ImPlot::BeginPlot("SRS Channel Impulse Response", ImVec2(-1,300), ImPlotFlags_None)) {
-		    //ImPlot::SetNextPlotLimitsX(2060, 2150, ImGuiCond_Always);
-		    ImPlot::SetupAxis(ImAxis_X1, "Sample Index");
-		    ImPlot::SetupAxis(ImAxis_Y1, "|h|");
-		    ImPlot::PlotLine("CIR", local_cir.data(), (int)m_ofdm_symbol_size);
-		    ImPlot::EndPlot();
-		  }
-		  ImGui::NextColumn();
-		  // Plot CFR
-		  if (ImPlot::BeginPlot("SRS Channel Frequency Response", ImVec2(-1,300), ImPlotFlags_None)) {
-		    ImPlot::SetupAxis(ImAxis_X1, "Subcarrier Index");
-		    ImPlot::SetupAxis(ImAxis_Y1, "|H|");
-		    ImPlot::PlotLine("CFR", local_cfr.data(), (int)m_ofdm_symbol_size);
-		    ImPlot::EndPlot();
-		  }
-		  ImGui::Columns(1);  // back to single column
-	       }
+          if (ImGui::BeginTabBar("Localization with Channel Charting")) {
+            if (ImGui::BeginTabItem("Channel Plots")) {
+
+        for (size_t ant = 0; ant < 8; ant++) {
+            ImGui::Columns(2, nullptr, false);
+
+            //CIR
+            std::string cir_title = "Antenna " + std::to_string(ant) + " CIR";
+            if (ImPlot::BeginPlot(cir_title.c_str(), ImVec2(-1, 300), ImPlotFlags_None)) {
+                ImPlot::SetupAxis(ImAxis_X1, "Sample Index");
+                ImPlot::SetupAxis(ImAxis_Y1, "|h|");
+
+                for (const auto& [ue_id, data] : local_map_cp) {
+                    const auto& [srs_cir, srs_cfr, predictions] = data;
+                    if (ant < srs_cir.size()) {
+                        const auto& cir = srs_cir[ant];
+                        std::string label = "UE " + std::to_string(ue_id);
+                        ImPlot::PlotLine(label.c_str(), cir.data(), static_cast<int>(cir.size()));
+                    }
+                }
+
+                ImPlot::EndPlot();
+            }
+
+            ImGui::NextColumn();
+
+            //CFR
+            std::string cfr_title = "Antenna " + std::to_string(ant) + " CFR";
+            if (ImPlot::BeginPlot(cfr_title.c_str(), ImVec2(-1, 300), ImPlotFlags_None)) {
+                ImPlot::SetupAxis(ImAxis_X1, "Subcarrier Index");
+                ImPlot::SetupAxis(ImAxis_Y1, "|H|");
+
+                for (const auto& [ue_id, data] : local_map_cp) {
+                    const auto& [srs_cir, srs_cfr, predictions] = data;
+                    if (ant < srs_cfr.size()) {
+                        const auto& cfr = srs_cfr[ant];
+                        std::string label = "UE " + std::to_string(ue_id);
+                        ImPlot::PlotLine(label.c_str(), cfr.data(), static_cast<int>(cfr.size()));
+                    }
+                }
+
+                ImPlot::EndPlot();
+            }
+
+            ImGui::Columns(1);
+            ImGui::Separator();
+        }
+    ImGui::EndTabItem();
+    }
 	      // Create section for Testbed map
-	       if (ImGui::CollapsingHeader("Testbed - UE position tracking", ImGuiTreeNodeFlags_DefaultOpen)) {
+      if (ImGui::BeginTabItem("Testbed - UE Position tracking")) {
 		  ImGui::Checkbox("RX Antennas",    &show_antennas);
 		  ImGui::Checkbox("Test Points", &show_test_points);
 		  if (ImPlot::BeginPlot("##map", ImVec2(-1,450), ImPlotFlags_None)) {
@@ -162,7 +220,7 @@ struct ChannelApp : App {
 		       ImPlot::PlotScatter("Test Points", tp_x.data(), tp_y.data(), tp_x.size());
 		    }
 
-        for (const auto& [ue_id, history] : local_map_cp) {
+        for (const auto& [ue_id, history] : local_map_cc) {
 
           for (const auto& [x, y] : history) {
               local_cc_0.push_back(x);
@@ -181,7 +239,6 @@ struct ChannelApp : App {
         }
         ImPlot::EndPlot();
 		  }
-                 }
                  ImGui::EndTabItem();
              }
              if (ImGui::BeginTabItem("Config")) {

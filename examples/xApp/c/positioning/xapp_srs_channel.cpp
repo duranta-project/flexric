@@ -51,6 +51,7 @@
 #include "oai_dfts/inc/freq2time.h"
 
 #include <unordered_map>
+#include <tuple>
 
 #define SRS_LOG
 typedef uint32_t frame_t;
@@ -66,6 +67,7 @@ static bool              gui_ready      = false;
 static  torch::jit::script::Module module;
 
 static std::unordered_map<uint32_t, std::vector<float>> ue_map;
+static std::unordered_map<uint32_t,std::tuple<std::vector<std::vector<float>>, std::vector<std::vector<float>>, std::vector<float>>> ue_map2;
 /*static void channel_amp2(const c16_t *srs_cir, uint16_t Nfft, uint32_t *cir_amp)
 {
   for(size_t i = 0; i < Nfft; i++){
@@ -145,21 +147,20 @@ void log_ric_indication(const srs_ind_msg_t* msg)
 
         //channel_amp2(srs_channel_est, ofdm_symbol_size, cir_amp2);
 
-        std::vector<float> srs_pdp;
-        srs_pdp.reserve(ofdm_symbol_size);
-
-        std::vector<float> srs_cfr;
-        srs_cfr.reserve(ofdm_symbol_size);
-        for (size_t i = 0; i < ofdm_symbol_size; i++) {
-          srs_pdp.push_back(static_cast<float>(cir_amp2[0][i]));
-          srs_cfr.push_back(static_cast<float>(cfr_amp2[0][i]));
+        std::vector<std::vector<float>> srs_pdp(N_rx, std::vector<float>(N_FFT));
+        std::vector<std::vector<float>> srs_cir(N_rx, std::vector<float>(N_FFT));
+        std::vector<std::vector<float>> srs_cfr(N_rx, std::vector<float>(N_FFT));
+        for (size_t i = 0; i < N_rx; i++) {
+          for (size_t j = 0; j < N_FFT; j++) {
+            srs_pdp[i][j] = static_cast<float>(cir_amp2[i][j]);
+            srs_cfr[i][j] = static_cast<float>(cfr_amp2[i][j]);
+          }
         }
 
         // Compute the amplitude
-        std::vector<float> srs_cir;
-        srs_cir.resize(srs_pdp.size());
-
-        std::transform(srs_pdp.begin(), srs_pdp.end(), srs_cir.begin(), [](float x) { return std::sqrt(x); });
+        for (size_t i = 0; i < N_rx; i++) {
+          std::transform(srs_pdp[i].begin(), srs_pdp[i].end(), srs_cir[i].begin(), [](float x) { return std::sqrt(x); });
+        }
 
 
        // Do the inference:
@@ -169,6 +170,7 @@ void log_ric_indication(const srs_ind_msg_t* msg)
       result = cc_inference(module, cir_shifted, prediction);
       // Update the hashmap
       ue_map[ue_id] = prediction;
+      ue_map2[ue_id] = std::make_tuple(srs_pdp, srs_cfr, prediction);
        // Start the plot App: 1 antenna data
        // Plot some dummy cc predictions for now
        //std::vector<float> prediction = {27.3757f, 23.4058f};
@@ -178,10 +180,12 @@ void log_ric_indication(const srs_ind_msg_t* msg)
           pthread_cond_wait(&gui_ready_cond, &gui_mutex);
        }
        pthread_mutex_unlock(&gui_mutex);
-
+/*
        app->UpdateCIR(srs_pdp);
        app->UpdateCFR(srs_cfr);
        app->UpdateCC(ue_map);
+*/
+       app->UpdateData(ue_map2);
       }
     }
     free_srs_indication(&srs_ind);
@@ -252,7 +256,6 @@ static void srs_sm_report(void)
         for (size_t j = 0; j < n->len_rf; j++) {
           std::cout << "Registered node" << i <<  "ran func id =  " << n->rf[j].id << std::endl;
         }
-    
     // SRS SM Subscription
     srs_sub_data_t srs_sub = {0};
 
@@ -261,7 +264,6 @@ static void srs_sm_report(void)
     assert(srs_sub.ad != NULL && "Memory exhausted");
     srs_sub.ad[0] = fill_srs_action_definition();
 
-   
     srs_handle[i] = report_sm_xapp_api(&nodes.n[i].id, SRS_ran_function, &srs_sub, sm_cb_srs);
     assert(srs_handle[i].success == true);
     free_srs_sub_data(&srs_sub);
@@ -297,9 +299,9 @@ static void *app_thread(void*)
 
    if(gui_ready == false){
       app = new ChannelApp("Real-Time CIR Plots",0,{nullptr}, N_FFT);
-      std::vector<float> zeros(N_FFT, 0.0f);
-      app->UpdateCIR(zeros);
-      app->UpdateCC(ue_map);
+ //     std::vector<float> zeros(N_FFT, 0.0f);
+ //     app->UpdateCIR(zeros);
+ //     app->UpdateCC(ue_map);
 
       pthread_mutex_lock(&gui_mutex);
       gui_ready = true;

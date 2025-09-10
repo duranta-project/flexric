@@ -39,8 +39,8 @@
 #include "MQTTClient.h"
 #include "cjson/cJSON.h"
 
-#include "ai_ml/inc/proc_srs_channel.h"
-#include "oai_dfts/inc/freq2time.h"
+//#include "ai_ml/inc/proc_srs_channel.h"
+//#include "oai_dfts/inc/freq2time.h"
 #define SRS_LOG
 
 typedef uint32_t frame_t;
@@ -146,9 +146,9 @@ void log_ric_indication(const srs_ind_msg_t* msg)
         c16_t srs_channel_est[N_rx][1][N_FFT];
         fill_srs_channel_array(&nr_srs_channel_iq_matrix,1,N_FFT,srs_est_freq);
         // Convert to the time domain, considers 1 UE port only
+/*
         for(size_t ant = 0; ant < 1; ant++){
         freq2time(ofdm_symbol_size,(int16_t*)srs_est_freq[ant][0], (int16_t*)srs_est_time[ant][0]);}
-/*
         memcpy(srs_channel_est[ant][0],
              &srs_est_time[ant][0][ofdm_symbol_size >> 1],
              (ofdm_symbol_size >> 1) * sizeof(c16_t));
