@@ -39,8 +39,8 @@
 #include "MQTTClient.h"
 #include "cjson/cJSON.h"
 
-//#include "ai_ml/inc/proc_srs_channel.h"
-//#include "oai_dfts/inc/freq2time.h"
+#include "ai_ml/inc/proc_srs_channel.h"
+#include "oai_dfts/inc/freq2time.h"
 #define SRS_LOG
 
 typedef uint32_t frame_t;
@@ -145,10 +145,10 @@ void log_ric_indication(const srs_ind_msg_t* msg)
         c16_t srs_est_time[N_rx][1][N_FFT] __attribute__((aligned(32)));
         c16_t srs_channel_est[N_rx][1][N_FFT];
         fill_srs_channel_array(&nr_srs_channel_iq_matrix,1,N_FFT,srs_est_freq);
+
         // Convert to the time domain, considers 1 UE port only
-/*
-        for(size_t ant = 0; ant < 1; ant++){
-        freq2time(ofdm_symbol_size,(int16_t*)srs_est_freq[ant][0], (int16_t*)srs_est_time[ant][0]);}
+        for(size_t ant = 0; ant < N_rx; ant++){
+        freq2time(ofdm_symbol_size,(int16_t*)srs_est_freq[ant][0], (int16_t*)srs_est_time[ant][0]);
         memcpy(srs_channel_est[ant][0],
              &srs_est_time[ant][0][ofdm_symbol_size >> 1],
              (ofdm_symbol_size >> 1) * sizeof(c16_t));
@@ -158,11 +158,11 @@ void log_ric_indication(const srs_ind_msg_t* msg)
              (ofdm_symbol_size >> 1) * sizeof(c16_t));
 
         }
-*/       
+
         // send over MQTT
-        // for (int ant=0;ant<nr_srs_channel_iq_matrix.num_gnb_antenna_elements;ant++){
-        //   srs_cir_mqtt(srs_channel_est[ant][0], nr_srs_channel_iq_matrix.num_prgs, 1, ant);
-        // }
+        for (int ant=0;ant < N_rx;ant++){
+           srs_cir_mqtt(srs_channel_est[ant][0], nr_srs_channel_iq_matrix.num_prgs, 1, ant);
+        }
 
       }
     }
@@ -211,6 +211,8 @@ srs_action_def_t fill_srs_action_definition(void)
 
 int main(int argc, char *argv[])
 {
+    load_dftslib(); // Loads dft shared lib from a specific path
+
     fr_args_t args = init_fr_args(argc, argv);
 
     // init the xApp

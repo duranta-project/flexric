@@ -80,14 +80,16 @@ add_executable(xapp_cc_mqtt
                 srs_fapi/debug.c
                 srs_fapi/nfapi.c
                 srs_fapi/srs_fapi_p7.c
-                ai_ml/src/proc_srs_channel.c
                 cc_mqtt/src/mqtt_utils.c
+                ai_ml/src/proc_srs_channel.c
               )
 
  target_link_libraries(xapp_cc_mqtt
                       PRIVATE
                         paho-mqtt3c
+                        ml_cc
                         cjson
+                        freq2time
                       PUBLIC
                         e42_xapp
                         -pthread
