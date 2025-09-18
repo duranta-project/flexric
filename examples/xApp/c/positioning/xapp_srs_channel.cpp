@@ -54,6 +54,16 @@
 #include <tuple>
 
 #define SRS_LOG
+// Moving average window size
+#define WINDOW_SIZE 10
+
+static std::vector<float> history_cc_x(WINDOW_SIZE, 0.0f);
+static std::vector<float> history_cc_y(WINDOW_SIZE, 0.0f);
+static float sum_x = 0.0f;
+static float sum_y = 0.0f;
+static size_t ma_index = 0;
+static bool first_run = true;
+
 typedef uint32_t frame_t;
 typedef uint32_t slot_t;
 
@@ -74,7 +84,32 @@ static std::unordered_map<uint32_t,std::tuple<std::vector<std::vector<float>>, s
     cir_amp[i] = c16amp2(srs_cir[i]);
   }
 }*/
+static void update_moving_average(const std::vector<float>& prediction, std::vector<float>& smoothed_prediction) {
+    float cc_x = prediction[0];
+    float cc_y = prediction[1];
 
+    if (first_run) {
+        std::fill(history_cc_x.begin(), history_cc_x.end(), cc_x);
+        std::fill(history_cc_y.begin(), history_cc_y.end(), cc_y);
+        sum_x = cc_x * WINDOW_SIZE;
+        sum_y = cc_y * WINDOW_SIZE;
+        smoothed_prediction[0] = cc_x;
+        smoothed_prediction[1] = cc_y;
+        first_run = false;
+    } else {
+        sum_x -= history_cc_x[ma_index];
+        history_cc_x[ma_index] = cc_x;
+        sum_x += cc_x;
+
+        sum_y -= history_cc_y[ma_index];
+        history_cc_y[ma_index] = cc_y;
+        sum_y += cc_y;
+
+        smoothed_prediction[0] = sum_x / WINDOW_SIZE;
+        smoothed_prediction[1] = sum_y / WINDOW_SIZE ;
+        ma_index = (ma_index + 1) % WINDOW_SIZE;
+    }
+}
 
 void log_ric_indication(const srs_ind_msg_t* msg)
 {
@@ -168,9 +203,14 @@ void log_ric_indication(const srs_ind_msg_t* msg)
 
       int result;
       result = cc_inference(module, cir_shifted, prediction);
+
+      // Do a simple moving average over the predictions
+      std::vector<float> smoothed_prediction(2, 0.0f);
+
+      update_moving_average(prediction, smoothed_prediction);
       // Update the hashmap
       ue_map[ue_id] = prediction;
-      ue_map2[ue_id] = std::make_tuple(srs_pdp, srs_cfr, prediction);
+      ue_map2[ue_id] = std::make_tuple(srs_pdp, srs_cfr, smoothed_prediction);
        // Start the plot App: 1 antenna data
        // Plot some dummy cc predictions for now
        //std::vector<float> prediction = {27.3757f, 23.4058f};
