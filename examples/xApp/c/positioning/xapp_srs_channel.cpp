@@ -141,7 +141,7 @@ void log_ric_indication(const srs_ind_msg_t* msg)
        // Testbed: index i RFSim: copying from 1 antenna only, and we are only considering 1 antenna port, no sqrt
        for(size_t i = 0; i < N_rx; i++){
          for(size_t j = 0; j < N_FFT; j++){
-          cfr_amp2[i][j] = sqrt(c16amp2(srs_est_freq[0][0][j]));
+          cfr_amp2[i][j] = sqrt(c16amp2(srs_est_freq[i][0][j]));
          }
        }
 

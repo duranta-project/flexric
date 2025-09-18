@@ -75,11 +75,45 @@ void preprocess_cir(const uint16_t ofdm_symbol_size, const uint16_t num_antennas
     }
   }
   // Testbed: 2064 | RFSim: changing the shift 538 for different FFT size(2048)
+/*
   uint32_t shift = 2064;
 
   for(size_t i = 0; i < num_antennas; i++){
     for (size_t j = 0; j < N_SHIFT; j++){
       cir_shifted[i][j] = srs_cir[i][(j + shift) % ofdm_symbol_size];
+    }
+  }
+*/
+
+ // estimate ToA do a circular shift from the min of offsets of all antennas.
+
+  uint32_t toa[N_rx];
+  for (size_t i = 0; i < N_rx; i++) {
+    uint32_t max_val = 0;
+    uint32_t max_idx = 0;
+    for (size_t j = 0; j < N_FFT; j++) {
+        uint32_t abs = srs_cir[i][j];
+        if (abs > max_val) {
+             max_val = abs;
+             max_idx = j;
+        }
+    }
+    toa[i] = max_idx;
+  }
+
+  // minimum offset
+  uint32_t offset = toa[0];
+  for (size_t i = 1; i < N_rx; i++) {
+      if (toa[i] < offset) {
+          offset = toa[i];
+      }
+  }
+
+  // shift cir by -offset and truncate to N_SHIFT
+  for (size_t i = 0; i < N_rx; i++) {
+    for (size_t j = 0; j < N_SHIFT; j++) {
+        size_t idx = (j + offset) % N_FFT;
+        cir_shifted[i][j] = srs_cir[i][idx];
     }
   }
   return;
