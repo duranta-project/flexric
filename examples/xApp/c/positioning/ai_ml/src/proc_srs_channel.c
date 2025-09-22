@@ -66,7 +66,7 @@ int fill_srs_channel_array(const nfapi_nr_srs_normalized_channel_iq_matrix_t* ch
 //computes the amplitude of the signal, truncates it and performs a right shift
 
 void preprocess_cir(const uint16_t ofdm_symbol_size, const uint16_t num_antennas, const c16_t srs_data[][1][N_FFT],
-                    uint32_t srs_cir[][N_FFT], uint32_t cir_shifted[][N_SHIFT])
+                    uint32_t srs_cir[][N_FFT], uint32_t cir_shifted[][N_SHIFT], uint32_t toa[N_rx])
 {
   // Testbed: add i index | RFSim: copying from 1 antenna only, and we are only considering 1 antenna port, no sqrt
   for(size_t i = 0; i < num_antennas; i++){
@@ -87,7 +87,7 @@ void preprocess_cir(const uint16_t ofdm_symbol_size, const uint16_t num_antennas
 
  // estimate ToA do a circular shift from the min of offsets of all antennas.
 
-  uint32_t toa[N_rx];
+//  uint32_t toa[N_rx];
   for (size_t i = 0; i < N_rx; i++) {
     uint32_t max_val = 0;
     uint32_t max_idx = 0;
