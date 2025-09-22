@@ -130,7 +130,8 @@ void log_ric_indication(const srs_ind_msg_t* msg)
 
       uint32_t srs_cir[N_rx][N_FFT];
       uint32_t cir_shifted[N_rx][N_SHIFT];
-      preprocess_cir(N_FFT, N_rx, srs_ch_est, srs_cir, cir_shifted);
+      uint32_t toa[N_rx];
+      preprocess_cir(N_FFT, N_rx, srs_ch_est, srs_cir, cir_shifted, toa);
       std::vector<float> prediction = {0.0f, 0.0f}; // Array to store the predictions
 
       int result;

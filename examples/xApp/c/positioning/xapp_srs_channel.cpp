@@ -47,7 +47,6 @@
 
 #include "proc_srs_channel.h"
 #include "cc_inference.hpp"
-
 #include "oai_dfts/inc/freq2time.h"
 
 #include <unordered_map>
@@ -169,7 +168,16 @@ void log_ric_indication(const srs_ind_msg_t* msg)
         uint32_t cir_amp2[N_rx][N_FFT];
         uint32_t cfr_amp2[N_rx][N_FFT];
         uint32_t cir_shifted[N_rx][N_SHIFT];
-        preprocess_cir(N_FFT, N_rx, srs_channel_est, cir_amp2, cir_shifted);
+        uint32_t toa[N_rx];
+        preprocess_cir(N_FFT, N_rx, srs_channel_est, cir_amp2, cir_shifted, toa);
+
+       for(size_t i = 0; i < N_rx; i++){
+        if (toa[i] < 2000 || toa[i] > 2100) {
+            // If an invalid peak is detected, don't continue with the inference 
+            printf("Warning: Invalid peak detected outside (2000-2100).\n");
+            return;
+        }
+       }
        // Testbed: index i RFSim: copying from 1 antenna only, and we are only considering 1 antenna port, no sqrt
        for(size_t i = 0; i < N_rx; i++){
          for(size_t j = 0; j < N_FFT; j++){
@@ -184,7 +192,7 @@ void log_ric_indication(const srs_ind_msg_t* msg)
         std::vector<std::vector<float>> srs_cfr(N_rx, std::vector<float>(N_FFT));
         for (size_t i = 0; i < N_rx; i++) {
           for (size_t j = 0; j < N_FFT; j++) {
-            srs_pdp[i][j] = static_cast<float>(cir_amp2[i][j]);
+            srs_pdp[i][j] = static_cast<float>(cir_amp2[i][j]) / NORM_FACTOR;
             srs_cfr[i][j] = static_cast<float>(cfr_amp2[i][j]);
           }
         }
