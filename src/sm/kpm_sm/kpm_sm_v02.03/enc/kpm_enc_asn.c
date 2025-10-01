@@ -51,11 +51,15 @@ byte_array_t encode(void* pdu, e2sm_kpm_e e)
 
   const enum asn_transfer_syntax syntax = ATS_ALIGNED_BASIC_PER;
   asn_encode_to_new_buffer_result_t er = {0};
-  if(e == E2SM_KPM_EVENT_TRIGGER_DEFINITION_ENUM)
+  if(e == E2SM_KPM_EVENT_TRIGGER_DEFINITION_ENUM) {
     er = asn_encode_to_new_buffer(NULL, syntax, &asn_DEF_E2SM_KPM_EventTriggerDefinition, pdu);
+    xer_fprint(stderr, &asn_DEF_E2SM_KPM_EventTriggerDefinition, pdu);
+    fflush(stdout);
+  }
   else if(e == E2SM_KPM_ACTION_DEFINITION_ENUM){
     er = asn_encode_to_new_buffer(NULL, syntax, &asn_DEF_E2SM_KPM_ActionDefinition, pdu);
-    //xer_fprint(stderr, &asn_DEF_E2SM_KPM_ActionDefinition, pdu);
+    xer_fprint(stderr, &asn_DEF_E2SM_KPM_ActionDefinition, pdu);
+    fflush(stdout);
   }
   else if(e == E2SM_KPM_INDICATION_HEADER_ENUM)
     er = asn_encode_to_new_buffer(NULL, syntax, &asn_DEF_E2SM_KPM_IndicationHeader, pdu);

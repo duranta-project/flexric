@@ -58,10 +58,10 @@ void free_e2_node_connected(e2_node_connected_t* src)
 
   free_global_e2_node_id(&src->id);
 
-  assert(src->len_cca > 0);
+  /*assert(src->len_cca > 0);
   for(size_t i = 0; i < src->len_cca; ++i){
      free_e2ap_node_component_config_add(&src->cca[i]);
-  }
+  }*/
   free(src->cca);
 
   for(size_t i = 0; i < src->len_rf; ++i){

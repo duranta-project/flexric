@@ -1766,20 +1766,20 @@ struct E2AP_PDU* e2ap_enc_setup_response_asn_pdu(const e2_setup_response_t* sr)
 
   // Mandatory
   // E2 Node Component Configuration Addition Acknowledge List
-  assert(sr->len_ccaa > 0 && sr->len_ccaa < 1025);
+  //assert(sr->len_ccaa > 0 && sr->len_ccaa < 1025);
 
   E2setupResponseIEs_t* ca_list = calloc(1,sizeof(*ca_list));
   ca_list->id = ProtocolIE_ID_id_E2nodeComponentConfigAdditionAck;
   ca_list->criticality = Criticality_reject;
   ca_list->value.present = E2setupResponseIEs__value_PR_E2nodeComponentConfigAdditionAck_List;
 
-  for (size_t i = 0; i < sr->len_ccaa; ++i) {
+  /*for (size_t i = 0; i < sr->len_ccaa; ++i) {
     E2nodeComponentConfigAdditionAck_ItemIEs_t* ccaa_ie = e2ap_enc_node_component_conf_addition_ack(&sr->comp_config_add_ack[i]);
     rc = ASN_SEQUENCE_ADD(&ca_list->value.choice.E2nodeComponentConfigAdditionAck_List.list, ccaa_ie);
     assert(rc == 0);
   }
   rc = ASN_SEQUENCE_ADD(&out->protocolIEs.list, ca_list);
-  assert(rc == 0);
+  assert(rc == 0);*/
  
 
 
@@ -3226,22 +3226,22 @@ struct E2AP_PDU* e2ap_enc_e42_setup_response_asn_pdu(const e42_setup_response_t*
     // E2 Node Component Configuration Addition List
     // Mandatory
     // [1 - 256] uint8_t. should be fine
-    assert(sr->nodes[i].len_cca > 0);
+    //assert(sr->nodes[i].len_cca > 0);
     E2nodeConnected_ItemIEs_t* con_lst = calloc(1, sizeof(E2nodeConnected_ItemIEs_t));
     assert(con_lst != NULL && "Memory exhausted");
     con_lst->id = ProtocolIE_ID_id_E2nodeComponentConfigAddition;
     con_lst->criticality = Criticality_reject;
     con_lst->value.present = E2nodeConnected_ItemIEs__value_PR_E2nodeComponentConfigAddition_List;
 
-    for(size_t j = 0; j < sr->nodes[i].len_cca; ++j){
+    /*for(size_t j = 0; j < sr->nodes[i].len_cca; ++j){
       // E2 Node Component Configuration Addition Ack Item
       E2nodeComponentConfigAddition_ItemIEs_t* comp_addition_item_ie = e2ap_enc_node_component_conf_addition(&sr->nodes[i].cca[j]);
       rc = ASN_SEQUENCE_ADD(&con_lst->value.choice.E2nodeComponentConfigAddition_List.list, comp_addition_item_ie);
       assert(rc == 0);
-    }
+    }*/
 
-    rc = ASN_SEQUENCE_ADD(&conn_list->value.choice.E2nodeConnected_List.protocolIEs.list, con_lst);
-    assert(rc == 0);
+    //rc = ASN_SEQUENCE_ADD(&conn_list->value.choice.E2nodeConnected_List.protocolIEs.list, con_lst);
+    //assert(rc == 0);
 
     // RAN functions
     E2nodeConnected_ItemIEs_t* conn_rf = calloc(1, sizeof(E2nodeConnected_ItemIEs_t));

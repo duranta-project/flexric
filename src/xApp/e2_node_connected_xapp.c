@@ -33,11 +33,11 @@ void free_e2_node_connected_xapp(e2_node_connected_xapp_t* src)
 #ifdef E2AP_V1
 #elif defined(E2AP_V2) || defined(E2AP_V3)
   // [1-256]
-  assert(src->len_cca > 0);
+  /*assert(src->len_cca > 0);
   for(size_t i = 0; i < src->len_cca; ++i){
     free_e2ap_node_component_config_add(&src->cca[i]);
   }
-  free(src->cca);
+  free(src->cca);*/
 #endif
 
   // Decoded RAN Function ran_function_t

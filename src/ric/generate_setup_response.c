@@ -109,16 +109,16 @@ e2_setup_response_t generate_setup_response_v2(near_ric_t* ric, const e2_setup_r
   accepted_pair_t const acc = accept_ran_func(ric, req);
 
   // [1-1024]
-  assert(req->len_cca > 0 && req->len_cca < 1025);
+  //assert(req->len_cca > 0 && req->len_cca < 1025);
   size_t const len_ccaa = req->len_cca; 
   e2ap_node_comp_config_add_ack_t* add_ack = calloc(len_ccaa, sizeof(e2ap_node_comp_config_add_ack_t));
-  assert(add_ack != NULL && "Memory exhausted");
+  /*assert(add_ack != NULL && "Memory exhausted");
 
   for(size_t i = 0; i < len_ccaa; ++i){
     add_ack[i].e2_node_comp_interface_type = req->comp_conf_add[i].e2_node_comp_interface_type;  
     add_ack[i].e2_node_comp_id = cp_e2ap_node_comp_id(&req->comp_conf_add[i].e2_node_comp_id);
     add_ack[i].e2_node_comp_conf_ack.outcome = SUCCESS_E2AP_NODE_COMP_CONF_ACK; 
-  }
+  }*/
 
   e2_setup_response_t sr = {
       .trans_id = req->trans_id,

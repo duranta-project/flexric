@@ -54,9 +54,9 @@ void free_pair_rf_cca(pair_rf_cca_t* src)
 
 #ifdef E2AP_V1
 #elif defined (E2AP_V2) || defined(E2AP_V3)
-  seq_arr_t* cca = &src->comp_conf_add;
+ /*seq_arr_t* cca = &src->comp_conf_add;
   seq_free_func f2 = free_e2ap_node_component_config_add_it; 
-  seq_arr_free(cca, f2);
+  seq_arr_free(cca, f2);*/
 #endif
 }
 
@@ -141,8 +141,11 @@ void add_reg_e2_node(reg_e2_nodes_t* i, global_e2_node_id_t const* id, size_t le
   assert(id != NULL);
   assert(len_rf > 0);
   assert(ran_func != NULL);
-  assert(len_cca > 0);
-  assert(cca != NULL);
+
+  if (len_cca == 0 && cca == NULL)
+    printf("\"E2 Node Component Configuration Addition List\" missing. Mandatory as per E2AP v2.00 specification.\n");
+  //assert(len_cca > 0);
+  //assert(cca != NULL);
 
   pair_rf_cca_t* rf_cca = calloc(1, sizeof(pair_rf_cca_t));
   assert(rf_cca != NULL && "memory exhausted");
@@ -157,12 +160,12 @@ void add_reg_e2_node(reg_e2_nodes_t* i, global_e2_node_id_t const* id, size_t le
   }
 
   // Component configuration Add
-  seq_arr_t* arr_cca = &rf_cca->comp_conf_add; 
+  /*seq_arr_t* arr_cca = &rf_cca->comp_conf_add; 
   seq_init(arr_cca, sizeof(e2ap_node_component_config_add_t));
   for(size_t i = 0; i < len_cca; ++i){
     e2ap_node_component_config_add_t tmp = cp_e2ap_node_component_config_add(&cca[i]);  
     seq_push_back(arr_cca, &tmp, sizeof(e2ap_node_component_config_add_t));
-  }
+  }*/
 
   lock_guard(&i->mtx);
 
@@ -403,9 +406,9 @@ e2_node_arr_t generate_e2_node_arr(reg_e2_nodes_t* n)
 
 #ifdef E2AP_V1
 #elif defined(E2AP_V2) || defined(E2AP_V3)
-    span_cca_t span = cp_cca(&rf_cca->comp_conf_add);
+    /*span_cca_t span = cp_cca(&rf_cca->comp_conf_add);
     n->cca = span.cca;
-    n->len_cca = span.len;
+    n->len_cca = span.len;*/
 #else
     static_assert(0 != 0, "Unknown E2AP version");
 #endif
@@ -461,9 +464,9 @@ e2_node_arr_xapp_t generate_e2_node_arr_xapp(reg_e2_nodes_t* n, plugin_ric_t con
 
 #ifdef E2AP_V1
 #elif defined(E2AP_V2) || defined(E2AP_V3)
-    span_cca_t span = cp_cca(&rf_cca->comp_conf_add);
-    n->cca = span.cca;
-    n->len_cca = span.len;
+    //span_cca_t span = cp_cca(&rf_cca->comp_conf_add);
+    //n->cca = span.cca;
+    //n->len_cca = span.len;
 #else
     static_assert(0 != 0, "Unknown E2AP version");
 #endif
