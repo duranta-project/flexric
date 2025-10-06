@@ -77,6 +77,29 @@ static std::unordered_map<uint32_t,std::tuple<std::vector<std::vector<float>>, s
     cir_amp[i] = c16amp2(srs_cir[i]);
   }
 }*/
+
+// Function to write prediction to a CSV file
+static void save_predictions(const std::string& filename, uint16_t ue_id, float cc_x, float cc_y) {
+    // Check if the file exists already
+    std::ifstream infile(filename);
+    bool file_exists = infile.good();
+    infile.close();
+
+    // Append to fike
+    std::ofstream file(filename, std::ios::app);
+    if (file.is_open()) {
+        // If new file, write the header
+        if (!file_exists) {
+            file << "ue_id,cc_x,cc_y\n";
+        }
+        // add data
+        file << ue_id << "," << cc_x << "," << cc_y << "\n";
+        file.close();
+    } else {
+        std::cerr << "Error opening file: " << filename << std::endl;
+    }
+}
+
 static void update_moving_average(const std::vector<float>& prediction, std::vector<float>& smoothed_prediction) {
     static std::deque<std::vector<float>> buffer;
 
@@ -216,25 +239,22 @@ void log_ric_indication(const srs_ind_msg_t* msg)
       if (!smoothed_prediction.empty()) {
           std::cout << "( cc_x = " << smoothed_prediction[0] << ", cc_y = " << smoothed_prediction[1] << ")\n";
           ue_map2[ue_id] = std::make_tuple(srs_pdp, srs_cfr, smoothed_prediction);
+          // Only save SMA predictions
+          std::string filename = "cc_predictions.csv";
+
+          save_predictions(filename, ue_id, smoothed_prediction[0] , smoothed_prediction[1]);
       } else {
       // Update the hashmap
       ue_map[ue_id] = prediction;
       ue_map2[ue_id] = std::make_tuple(srs_pdp, srs_cfr, prediction);
       }
        // Start the plot App: 1 antenna data
-       // Plot some dummy cc predictions for now
-       //std::vector<float> prediction = {27.3757f, 23.4058f};
        // Update plot data
        pthread_mutex_lock(&gui_mutex);
        while (!gui_ready) {
           pthread_cond_wait(&gui_ready_cond, &gui_mutex);
        }
        pthread_mutex_unlock(&gui_mutex);
-/*
-       app->UpdateCIR(srs_pdp);
-       app->UpdateCFR(srs_cfr);
-       app->UpdateCC(ue_map);
-*/
        app->UpdateData(ue_map2);
       }
     }
