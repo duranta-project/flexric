@@ -81,7 +81,7 @@ int cc_inference(torch::jit::script::Module& module, uint32_t cir_shifted[][N_SH
   // module.eval();
   // no-grad scope
   {
-    torch::NoGradGuard no_grad;  
+    torch::NoGradGuard no_grad;
            auto forward_method = module.get_method("forward");
            std::vector<c10::IValue> input;
            input.push_back(input_tensor);
@@ -99,32 +99,6 @@ int cc_inference(torch::jit::script::Module& module, uint32_t cir_shifted[][N_SH
       if (i + 1 < prediction.size()) std::cout << ", ";
     }
     std::cout << "]\n";
-  /*
-    // Write to a CSV file for plotting
-    std::string csv_file = "cc_predictions.csv";
-
-    std::ofstream file(csv_file, std::ios::out);
-    if (file.is_open()) {
-        file << "cc_x,cc_y\n";
-        file.close();
-    } else {
-        std::cerr << "Error opening file" << std::endl;
-        return 1;
-    }
-
-    float cc_x = prediction[0];
-    float cc_y = prediction[1];
-
-    // Append prediction to CSV
-    std::ofstream file_append(csv_file, std::ios::app);
-    if (file_append.is_open()) {
-        file_append << cc_x << "," << cc_y << "\n";
-        file_append.close();
-    } else {
-        std::cerr << "Error opening file" << std::endl;
-        return 1;
-    }
-  */
   }
 
   return 0;
