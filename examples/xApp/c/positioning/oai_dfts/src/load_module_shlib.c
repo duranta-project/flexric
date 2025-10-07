@@ -47,8 +47,7 @@ loader_data_t loader_data;
 void loader_init(void) {
   loader_data.mainexec_buildversion = "";
   if (loader_data.shlibpath == NULL) {
-    loader_data.shlibpath=DEFAULT_PATH;
-    printf("shlibpath default path: %s\n", DEFAULT_PATH);
+    loader_data.shlibpath= DFT_LIB_PATH;
   }
   loader_data.maxshlibs = DEFAULT_MAXSHLIBS;
   loader_data.shlibs = malloc(loader_data.maxshlibs * sizeof(loader_shlibdesc_t));
@@ -141,7 +140,7 @@ int load_module_version_shlib(char *modname, char *version, loader_shlibfunc_t *
     loader_data.shlibs[lib_idx].thisshlib_path = strdup(shlib_path);
   }
 
-  lib_handle = dlopen("/home/bouknana/oai_dfts/build/libdfts.so", RTLD_LAZY|RTLD_NODELETE|RTLD_GLOBAL);
+  lib_handle = dlopen(shlib_path, RTLD_LAZY|RTLD_NODELETE|RTLD_GLOBAL);
   if (!lib_handle) {
     fprintf(stderr,"[LOADER] library %s is not loaded: %s\n", shlib_path,dlerror());
     ret = -1;
