@@ -66,7 +66,7 @@ typedef int(*checkverfunc_t)(char * mainexec_version, char ** shlib_version);
 typedef int(*getfarrayfunc_t)(loader_shlibfunc_t **funcarray);
 
 #define LOADER_CONFIG_PREFIX  "loader"
-#define DEFAULT_PATH      "home/bouknana/oai_dfts/build"
+#define DEFAULT_PATH      ""
 #define DEFAULT_MAXSHLIBS 10
 extern loader_data_t loader_data;
 
