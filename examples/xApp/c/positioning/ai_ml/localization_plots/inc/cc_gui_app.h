@@ -97,34 +97,6 @@ struct ChannelApp : App {
        m_srs_cir(Nfft),
        m_srs_cfr(Nfft)
       {
-       // Load CSV data once
-       {
-          std::ifstream in("/home/bouknana/srs_data/rx_positions.csv");
-          std::string line;
-          while (std::getline(in, line)) {
-            std::stringstream ss(line);
-            float x, y;
-            char comma;
-            if (ss >> x >> comma >> y) {
-              rx_x.push_back(x);
-              rx_y.push_back(y);
-            }
-          }
-         
-       }
-       {
-          std::ifstream in("/home/bouknana/srs_data/test_points.csv");
-          std::string line;
-          while (std::getline(in, line)) {
-            std::stringstream ss(line);
-            float x, y;
-            char comma;
-            if (ss >> x >> comma >> y) {
-              tp_x.push_back(x);
-              tp_y.push_back(y);
-            }
-          }
-       }
 
       }
 
@@ -154,11 +126,11 @@ struct ChannelApp : App {
             local_map_cc = m_cc_map;
         }
 
-        ImGui::Begin("Localization with Channel Charting");
-          if (ImGui::BeginTabBar("Localization with Channel Charting")) {
+        ImGui::Begin("SRS Channel");
+          if (ImGui::BeginTabBar("SRS Channel")) {
             if (ImGui::BeginTabItem("Channel Plots")) {
 
-        for (size_t ant = 0; ant < 8; ant++) {
+        for (size_t ant = 0; ant < 1; ant++) {
             ImGui::Columns(2, nullptr, false);
 
             //CIR
@@ -204,43 +176,6 @@ struct ChannelApp : App {
         }
     ImGui::EndTabItem();
     }
-	      // Create section for Testbed map
-      if (ImGui::BeginTabItem("Testbed - UE Position tracking")) {
-		  ImGui::Checkbox("RX Antennas",    &show_antennas);
-		  ImGui::Checkbox("Test Points", &show_test_points);
-		  if (ImPlot::BeginPlot("##map", ImVec2(-1,450), ImPlotFlags_None)) {
-		    ImPlot::SetupAxisLimits(ImAxis_X1, -10, 60);
-		    ImPlot::SetupAxisLimits(ImAxis_Y1, -10, 40, ImPlotAxisFlags_Invert);
-		    if (show_antennas){
-		       ImPlot::SetNextMarkerStyle(ImPlotMarker_Diamond, 6.0f, ImVec4(0.314f, 0.980f, 0.482f, 1.0f), IMPLOT_AUTO, ImVec4(0.314f, 0.980f, 0.482f, 1.0f));
-		       ImPlot::PlotScatter("RX Antennas", rx_x.data(), rx_y.data(), rx_x.size());
-		    }
-		    if (show_test_points){
-                       //ImPlot::SetNextMarkerStyle(ImPlotMarker_Square, 6.0f, ImVec4(0,0,1,1), IMPLOT_AUTO, ImVec4(0,0,0,0));
-		       ImPlot::PlotScatter("Test Points", tp_x.data(), tp_y.data(), tp_x.size());
-		    }
-
-        for (const auto& [ue_id, history] : local_map_cc) {
-
-          for (const auto& [x, y] : history) {
-              local_cc_0.push_back(x);
-              local_cc_1.push_back(y);
-          }
-
-          std::string label = "UE " + std::to_string(ue_id);
-          ImPlot::PlotScatter(label.c_str(), local_cc_0.data(), local_cc_1.data(), (int)local_cc_0.size());
-/*
-          if (!local_cc_0.empty()) {
-              //ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 6.0f, ImVec4(0.314f, 0.980f, 0.482f, 1.0f));
-              std::string latest_label = "Latest position for UE" + std::to_string(ue_id);
-              ImPlot::PlotScatter(latest_label.c_str(), &local_cc_0.back(), &local_cc_1.back(), 1);
-          }
-*/
-        }
-        ImPlot::EndPlot();
-		  }
-                 ImGui::EndTabItem();
-             }
              if (ImGui::BeginTabItem("Config")) {
                 Demo_Config();
                 ImGui::EndTabItem();
