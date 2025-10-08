@@ -39,9 +39,14 @@
 #include "srs_fapi/nfapi_srs_data.h"
 #include "srs_fapi/srs_fapi_p7.h"
 
+#include "ai_ml/inc/proc_srs_channel.h"
 #include "ai_ml/localization_plots/inc/cc_gui_app.h"
 
+#include <torch/torch.h>
+#include <torch/script.h>
 
+#include "proc_srs_channel.h"
+#include "cc_inference.hpp"
 #include "oai_dfts/inc/freq2time.h"
 
 #include <unordered_map>
@@ -62,44 +67,67 @@ static pthread_mutex_t    gui_mutex   = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t    gui_ready_cond = PTHREAD_COND_INITIALIZER;
 static bool              gui_ready      = false;
 
+static  torch::jit::script::Module module;
 
 static std::unordered_map<uint32_t, std::vector<float>> ue_map;
 static std::unordered_map<uint32_t,std::tuple<std::vector<std::vector<float>>, std::vector<std::vector<float>>, std::vector<float>>> ue_map2;
-
-static int fill_srs_channel_array(const nfapi_nr_srs_normalized_channel_iq_matrix_t* channel_iq_matrix,
-                           const uint16_t num_ue_srs_ports, const uint16_t ofdm_symbol_size,
-                           c16_t srs_estimated_channel_freq[][1][N_FFT])
+/*static void channel_amp2(const c16_t *srs_cir, uint16_t Nfft, uint32_t *cir_amp)
 {
-  // For E2, prg_size=0, so we always have subcarrier_offset=0 and n_prg = ofdm_symbol_size:
-
-  const uint16_t step = 1;
-  const uint16_t num_gnb_antenna_elements = channel_iq_matrix->num_gnb_antenna_elements;
-
-  const c16_t *channel_matrix16 = (const c16_t*)channel_iq_matrix->channel_matrix;
-  const uint16_t num_samples = ofdm_symbol_size;
-
-  for (int uI = 0; uI < num_ue_srs_ports; uI++) {
-    for (int gI = 0; gI < num_gnb_antenna_elements; gI++) {
-      uint16_t subcarrier = 0;
-
-      for (int pI = 0; pI < num_samples; pI++) {
-        uint16_t index = uI * num_gnb_antenna_elements * num_samples + gI * num_samples + pI;
-
-        c16_t *srs_estimated_channel16 = &srs_estimated_channel_freq[gI][uI][subcarrier];
-
-        // copy back
-        srs_estimated_channel16->r = channel_matrix16[index].r;
-        srs_estimated_channel16->i = channel_matrix16[index].i;
-
-        // subcarrier increment
-        subcarrier += step;
-        if (subcarrier >= ofdm_symbol_size)
-          subcarrier -= ofdm_symbol_size;
-      }
-    }
+  for(size_t i = 0; i < Nfft; i++){
+    cir_amp[i] = c16amp2(srs_cir[i]);
   }
+}*/
 
-  return 0;
+// Function to write prediction to a CSV file
+static void save_predictions(const std::string& filename, uint16_t ue_id, float cc_x, float cc_y) {
+    // Check if the file exists already
+    std::ifstream infile(filename);
+    bool file_exists = infile.good();
+    infile.close();
+
+    // Append to fike
+    std::ofstream file(filename, std::ios::app);
+    if (file.is_open()) {
+        // If new file, write the header
+        if (!file_exists) {
+            file << "ue_id,cc_x,cc_y\n";
+        }
+        // add data
+        file << ue_id << "," << cc_x << "," << cc_y << "\n";
+        file.close();
+    } else {
+        std::cerr << "Error opening file: " << filename << std::endl;
+    }
+}
+
+static void update_moving_average(const std::vector<float>& prediction, std::vector<float>& smoothed_prediction) {
+    static std::deque<std::vector<float>> buffer;
+
+    buffer.push_back(prediction);
+
+    if (buffer.size() > WINDOW_SIZE) {
+        buffer.pop_front();
+    }
+
+    // compute average when buffer is full
+    if (buffer.size() == WINDOW_SIZE) {
+        int dim = prediction.size();
+        smoothed_prediction.assign(dim, 0.0f);
+
+        // Sum
+        for (const auto& vec : buffer) {
+            for (int i = 0; i < dim; ++i) {
+                smoothed_prediction[i] += vec[i];
+            }
+        }
+
+        // Division
+        for (int i = 0; i < dim; ++i) {
+            smoothed_prediction[i] /= WINDOW_SIZE;
+        }
+    } else {
+        smoothed_prediction.clear();
+    }
 }
 
 void log_ric_indication(const srs_ind_msg_t* msg)
@@ -162,10 +190,20 @@ void log_ric_indication(const srs_ind_msg_t* msg)
         // Get instantaneous PDP, copy to a C++ float vector and fill amplitude vector for CC
         uint32_t cir_amp2[N_rx][N_FFT];
         uint32_t cfr_amp2[N_rx][N_FFT];
+        uint32_t cir_shifted[N_rx][N_SHIFT];
+        uint32_t toa[N_rx];
+        preprocess_cir(N_FFT, N_rx, srs_channel_est, cir_amp2, cir_shifted, toa);
 
        for(size_t i = 0; i < N_rx; i++){
+        if (toa[i] < 2000 || toa[i] > 2100) {
+            // If an invalid peak is detected, don't continue with the inference 
+            printf("Warning: Invalid peak detected outside (2000-2100).\n");
+            return;
+        }
+       }
+       // Testbed: index i RFSim: copying from 1 antenna only, and we are only considering 1 antenna port, no sqrt
+       for(size_t i = 0; i < N_rx; i++){
          for(size_t j = 0; j < N_FFT; j++){
-          cir_amp2[i][j] = sqrt(c16amp2(srs_channel_est[i][0][j]));
           cfr_amp2[i][j] = sqrt(c16amp2(srs_est_freq[i][0][j]));
          }
        }
@@ -177,7 +215,7 @@ void log_ric_indication(const srs_ind_msg_t* msg)
         std::vector<std::vector<float>> srs_cfr(N_rx, std::vector<float>(N_FFT));
         for (size_t i = 0; i < N_rx; i++) {
           for (size_t j = 0; j < N_FFT; j++) {
-            srs_pdp[i][j] = static_cast<float>(cir_amp2[i][j]);
+            srs_pdp[i][j] = static_cast<float>(cir_amp2[i][j]) / NORM_FACTOR;
             srs_cfr[i][j] = static_cast<float>(cfr_amp2[i][j]);
           }
         }
@@ -187,13 +225,29 @@ void log_ric_indication(const srs_ind_msg_t* msg)
           std::transform(srs_pdp[i].begin(), srs_pdp[i].end(), srs_cir[i].begin(), [](float x) { return std::sqrt(x); });
         }
 
+
        // Do the inference:
       std::vector<float> prediction = {0.0f, 0.0f}; // Array to store the predictions
 
+      int result;
+      result = cc_inference(module, cir_shifted, prediction);
 
+      // Do a simple moving average over the predictions
+      std::vector<float> smoothed_prediction(2, 0.0f);
+
+      update_moving_average(prediction, smoothed_prediction);
+      if (!smoothed_prediction.empty()) {
+          std::cout << "( cc_x = " << smoothed_prediction[0] << ", cc_y = " << smoothed_prediction[1] << ")\n";
+          ue_map2[ue_id] = std::make_tuple(srs_pdp, srs_cfr, smoothed_prediction);
+          // Only save SMA predictions
+          std::string filename = "cc_predictions.csv";
+
+          save_predictions(filename, ue_id, smoothed_prediction[0] , smoothed_prediction[1]);
+      } else {
       // Update the hashmap
       ue_map[ue_id] = prediction;
       ue_map2[ue_id] = std::make_tuple(srs_pdp, srs_cfr, prediction);
+      }
        // Start the plot App: 1 antenna data
        // Update plot data
        pthread_mutex_lock(&gui_mutex);
@@ -314,7 +368,7 @@ static void *app_thread(void*)
 {
 
    if(gui_ready == false){
-      app = new ChannelApp("Real-Time SRS Channel Plots",0,{nullptr}, N_FFT);
+      app = new ChannelApp("Real-Time CIR Plots",0,{nullptr}, N_FFT);
  //     std::vector<float> zeros(N_FFT, 0.0f);
  //     app->UpdateCIR(zeros);
  //     app->UpdateCC(ue_map);
@@ -331,6 +385,7 @@ static void *app_thread(void*)
 int main(int argc, char *argv[])
 {
     load_dftslib(); // Loads dft shared lib from a specific path
+    module = load_torchscript_model("/home/bouknana/srs_data/trained_models/CC_EmbeddingModel_2D_cpu.pt");
     fr_args_t args = init_fr_args(argc, argv);
 
     // init the xApp
@@ -345,6 +400,9 @@ int main(int argc, char *argv[])
     pthread_join(sm_thread,NULL);
     pthread_join(app_tid,NULL);
 
+    for(const auto& key_value: ue_map) {
+      std::cout << "UE with ID: " << key_value.first << " has predictions " << key_value.second << std::endl;
+    }
     std::cout << "Test C++ xApp run Successfully" << std::endl;
     return 0;
 }
