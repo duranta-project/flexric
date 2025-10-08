@@ -208,16 +208,27 @@ struct ChannelApp : App {
       if (ImGui::BeginTabItem("Testbed - UE Position tracking")) {
 		  ImGui::Checkbox("RX Antennas",    &show_antennas);
 		  ImGui::Checkbox("Test Points", &show_test_points);
-		  if (ImPlot::BeginPlot("##map", ImVec2(-1,450), ImPlotFlags_None)) {
-		    ImPlot::SetupAxisLimits(ImAxis_X1, -10, 60);
-		    ImPlot::SetupAxisLimits(ImAxis_Y1, -10, 40, ImPlotAxisFlags_Invert);
+		  if (ImPlot::BeginPlot("##map", ImGui::GetContentRegionAvail(), ImPlotFlags_None)) {
+		    ImPlot::SetupAxisLimits(ImAxis_X1, -5.04, 52.2);
+		    ImPlot::SetupAxisLimits(ImAxis_Y1, -1.13, 36.2);
+        ImPlot::SetupAxis(ImAxis_Y1, nullptr, ImPlotAxisFlags_Invert);
+//        ImPlot::SetupAxes(nullptr,nullptr,ImPlotAxisFlags_AutoFit|ImPlotAxisFlags_NoDecorations,ImPlotAxisFlags_AutoFit|ImPlotAxisFlags_Invert);
+
 		    if (show_antennas){
 		       ImPlot::SetNextMarkerStyle(ImPlotMarker_Diamond, 6.0f, ImVec4(0.314f, 0.980f, 0.482f, 1.0f), IMPLOT_AUTO, ImVec4(0.314f, 0.980f, 0.482f, 1.0f));
 		       ImPlot::PlotScatter("RX Antennas", rx_x.data(), rx_y.data(), rx_x.size());
 		    }
 		    if (show_test_points){
                        //ImPlot::SetNextMarkerStyle(ImPlotMarker_Square, 6.0f, ImVec4(0,0,1,1), IMPLOT_AUTO, ImVec4(0,0,0,0));
+//           ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 8.0f);
 		       ImPlot::PlotScatter("Test Points", tp_x.data(), tp_y.data(), tp_x.size());
+          ImGui::PushFont(NULL, 12.0f);
+          for (int i = 0; i < tp_x.size(); ++i) {
+          char point_label[2] = { static_cast<char>('A' + i), '\0' };
+          ImPlot::PlotText(point_label, tp_x[i], tp_y[i] + 0.9f);
+          }
+          ImGui::PopFont();
+
 		    }
 
         for (const auto& [ue_id, history] : local_map_cc) {
@@ -228,6 +239,7 @@ struct ChannelApp : App {
           }
 
           std::string label = "UE " + std::to_string(ue_id);
+          ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross, 5.0f);
           ImPlot::PlotScatter(label.c_str(), local_cc_0.data(), local_cc_1.data(), (int)local_cc_0.size());
 /*
           if (!local_cc_0.empty()) {

@@ -368,7 +368,7 @@ static void *app_thread(void*)
 {
 
    if(gui_ready == false){
-      app = new ChannelApp("Real-Time CIR Plots",0,{nullptr}, N_FFT);
+      app = new ChannelApp("Localization with Channel Charting",0,{nullptr}, N_FFT);
  //     std::vector<float> zeros(N_FFT, 0.0f);
  //     app->UpdateCIR(zeros);
  //     app->UpdateCC(ue_map);
@@ -403,6 +403,6 @@ int main(int argc, char *argv[])
     for(const auto& key_value: ue_map) {
       std::cout << "UE with ID: " << key_value.first << " has predictions " << key_value.second << std::endl;
     }
-    std::cout << "Test C++ xApp run Successfully" << std::endl;
+    std::cout << "Channel Charting xApp run Successfully" << std::endl;
     return 0;
 }
