@@ -212,8 +212,8 @@ sctp_msg_t e2ap_recv_sctp_msg(e2ap_ep_t* ep)
 
   sctp_msg_t from = {0}; 
 
-  from.ba.len = 32*1024;
-  from.ba.buf = malloc(32*1024);
+  from.ba.len = 144*1024;
+  from.ba.buf = malloc(from.ba.len);
   assert(from.ba.buf != NULL && "Memory exhausted");
 
   socklen_t len = sizeof(from.info.addr);
