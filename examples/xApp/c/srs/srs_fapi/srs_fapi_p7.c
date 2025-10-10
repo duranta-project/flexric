@@ -78,7 +78,6 @@ int unpack_nr_srs_normalized_channel_iq_matrix(void *pMessageBuf,
 static uint8_t unpack_nr_srs_report_tlv_value(nfapi_srs_report_tlv_t *report_tlv, uint8_t **ppReadPackedMsg, uint8_t *end)
 {
  #ifndef ENABLE_AERIAL
-  printf("enabled aerial"\n);
    for (int i = 0; i < (report_tlv->length + 3) / 4; i++) {
      if (!pull32(ppReadPackedMsg, &report_tlv->value[i], end)) {
        return 0;

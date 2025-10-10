@@ -113,8 +113,8 @@ void log_ric_indication(const srs_ind_msg_t* msg)
         std::cout << "xApp Unpacked RNTI:"<< srs_ind_pdu->rnti << std::endl;
         std::cout << "xApp Unpacked TA Offset:"<< srs_ind_pdu->timing_advance_offset << std::endl;
         std::cout << "xApp Unpacked TA Offset nsec:"<< srs_ind_pdu->timing_advance_offset_nsec << std::endl;
-        std::cout << "xApp Unpacked SRS Usage:"<< srs_ind_pdu->srs_usage << std::endl;
-        std::cout << "xApp Unpacked Report type:"<< srs_ind_pdu->report_type << std::endl;
+        std::cout << "xApp Unpacked SRS Usage:"<< static_cast<int>(srs_ind_pdu->srs_usage) << std::endl;
+        std::cout << "xApp Unpacked Report type:"<< static_cast<int>(srs_ind_pdu->report_type) << std::endl;
 #endif
         // extract the UL Channel
         nfapi_nr_srs_normalized_channel_iq_matrix_t nr_srs_channel_iq_matrix;
@@ -125,7 +125,7 @@ void log_ric_indication(const srs_ind_msg_t* msg)
 
         const uint16_t num_ue_srs_ports = nr_srs_channel_iq_matrix.num_ue_srs_ports;
         const size_t num_prgs = nr_srs_channel_iq_matrix.num_prgs;
-        const uint16_t num_ant = nr_srs_channel_iq_matrix.num_gnb_antenna_elements;
+        const size_t num_ant = nr_srs_channel_iq_matrix.num_gnb_antenna_elements;
         std::vector<std::vector<std::vector<c16_t>>> srs_est_freq(num_ant, std::vector<std::vector<c16_t>>(num_ue_srs_ports, std::vector<c16_t>(num_prgs)));
         fill_srs_channel_array(&nr_srs_channel_iq_matrix,num_ue_srs_ports,num_prgs,srs_est_freq);
 
