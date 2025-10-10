@@ -1,7 +1,5 @@
-#find_package(Torch REQUIRED)
 
-add_subdirectory(ai_ml)
-add_subdirectory(oai_dfts)
+add_subdirectory(localization_plots)
 
 add_executable(xapp_srs_ind
 		xapp_srs_indication.c
@@ -25,14 +23,12 @@ add_executable(xapp_srs_channel
                 srs_fapi/debug.c
                 srs_fapi/nfapi.c
                 srs_fapi/srs_fapi_p7.c
-                ai_ml/src/proc_srs_channel.c
               )
 
 
  target_link_libraries(xapp_srs_channel
                       PRIVATE
                          gui_if
-                         freq2time
                       PUBLIC
                         e42_xapp
                         -pthread

@@ -39,18 +39,9 @@
 #include "srs_fapi/nfapi_srs_data.h"
 #include "srs_fapi/srs_fapi_p7.h"
 
-#include "ai_ml/localization_plots/inc/cc_gui_app.h"
-
-
-#include "oai_dfts/inc/freq2time.h"
-
-#include <unordered_map>
-#include <tuple>
-#include <deque>
+#include "localization_plots/inc/cc_gui_app.h"
 
 #define SRS_LOG
-// Moving average window size
-#define WINDOW_SIZE 5
 
 typedef uint32_t frame_t;
 typedef uint32_t slot_t;
@@ -63,27 +54,21 @@ static pthread_cond_t    gui_ready_cond = PTHREAD_COND_INITIALIZER;
 static bool              gui_ready      = false;
 
 
-static std::unordered_map<uint32_t, std::vector<float>> ue_map;
-static std::unordered_map<uint32_t,std::tuple<std::vector<std::vector<float>>, std::vector<std::vector<float>>, std::vector<float>>> ue_map2;
-
 static int fill_srs_channel_array(const nfapi_nr_srs_normalized_channel_iq_matrix_t* channel_iq_matrix,
-                           const uint16_t num_ue_srs_ports, const uint16_t ofdm_symbol_size,
-                           c16_t srs_estimated_channel_freq[][1][N_FFT])
+                           const uint16_t num_ue_srs_ports, const uint16_t num_prgs,
+                           std::vector<std::vector<std::vector<c16_t>>>& srs_estimated_channel_freq)
 {
-  // For E2, prg_size=0, so we always have subcarrier_offset=0 and n_prg = ofdm_symbol_size:
 
-  const uint16_t step = 1;
   const uint16_t num_gnb_antenna_elements = channel_iq_matrix->num_gnb_antenna_elements;
 
   const c16_t *channel_matrix16 = (const c16_t*)channel_iq_matrix->channel_matrix;
-  const uint16_t num_samples = ofdm_symbol_size;
 
   for (int uI = 0; uI < num_ue_srs_ports; uI++) {
     for (int gI = 0; gI < num_gnb_antenna_elements; gI++) {
       uint16_t subcarrier = 0;
 
-      for (int pI = 0; pI < num_samples; pI++) {
-        uint16_t index = uI * num_gnb_antenna_elements * num_samples + gI * num_samples + pI;
+      for (int pI = 0; pI < num_prgs; pI++) {
+        uint16_t index = uI * num_gnb_antenna_elements * num_prgs + gI * num_prgs + pI;
 
         c16_t *srs_estimated_channel16 = &srs_estimated_channel_freq[gI][uI][subcarrier];
 
@@ -92,15 +77,15 @@ static int fill_srs_channel_array(const nfapi_nr_srs_normalized_channel_iq_matri
         srs_estimated_channel16->i = channel_matrix16[index].i;
 
         // subcarrier increment
-        subcarrier += step;
-        if (subcarrier >= ofdm_symbol_size)
-          subcarrier -= ofdm_symbol_size;
+        subcarrier += 1;
       }
     }
   }
 
   return 0;
 }
+
+
 
 void log_ric_indication(const srs_ind_msg_t* msg)
 {
@@ -138,62 +123,19 @@ void log_ric_indication(const srs_ind_msg_t* msg)
                                                     &nr_srs_channel_iq_matrix,
                                                     sizeof(nfapi_nr_srs_normalized_channel_iq_matrix_t));
 
-        // prepare for inference
         const uint16_t num_ue_srs_ports = nr_srs_channel_iq_matrix.num_ue_srs_ports;
-        const size_t ofdm_symbol_size = nr_srs_channel_iq_matrix.num_prgs;
-        //c16_t *srs_channel_est = (c16_t*)nr_srs_channel_iq_matrix.channel_matrix;
-        c16_t srs_est_freq[N_rx][1][N_FFT] __attribute__((aligned(32)));
-        c16_t srs_est_time[N_rx][1][N_FFT] __attribute__((aligned(32)));
-        c16_t srs_channel_est[N_rx][1][N_FFT];
-        fill_srs_channel_array(&nr_srs_channel_iq_matrix,1,N_FFT,srs_est_freq);
+        const size_t num_prgs = nr_srs_channel_iq_matrix.num_prgs;
+        const uint16_t num_ant = nr_srs_channel_iq_matrix.num_gnb_antenna_elements;
+        std::vector<std::vector<std::vector<c16_t>>> srs_est_freq(num_ant, std::vector<std::vector<c16_t>>(num_ue_srs_ports, std::vector<c16_t>(num_prgs)));
+        fill_srs_channel_array(&nr_srs_channel_iq_matrix,num_ue_srs_ports,num_prgs,srs_est_freq);
 
-        // Convert to the time domain, considers 1 UE port only
-        for(size_t ant = 0; ant < N_rx; ant++){
-        freq2time(ofdm_symbol_size,(int16_t*)srs_est_freq[ant][0], (int16_t*)srs_est_time[ant][0]);
-        memcpy(srs_channel_est[ant][0],
-             &srs_est_time[ant][0][ofdm_symbol_size >> 1],
-             (ofdm_symbol_size >> 1) * sizeof(c16_t));
-  
-        memcpy(&srs_channel_est[ant][0][ofdm_symbol_size >> 1],
-              srs_est_time[ant][0],
-             (ofdm_symbol_size >> 1) * sizeof(c16_t));
-
-        }
-        // Get instantaneous PDP, copy to a C++ float vector and fill amplitude vector for CC
-        uint32_t cir_amp2[N_rx][N_FFT];
-        uint32_t cfr_amp2[N_rx][N_FFT];
-
-       for(size_t i = 0; i < N_rx; i++){
-         for(size_t j = 0; j < N_FFT; j++){
-          cir_amp2[i][j] = sqrt(c16amp2(srs_channel_est[i][0][j]));
-          cfr_amp2[i][j] = sqrt(c16amp2(srs_est_freq[i][0][j]));
-         }
-       }
-
-        //channel_amp2(srs_channel_est, ofdm_symbol_size, cir_amp2);
-
-        std::vector<std::vector<float>> srs_pdp(N_rx, std::vector<float>(N_FFT));
-        std::vector<std::vector<float>> srs_cir(N_rx, std::vector<float>(N_FFT));
-        std::vector<std::vector<float>> srs_cfr(N_rx, std::vector<float>(N_FFT));
-        for (size_t i = 0; i < N_rx; i++) {
-          for (size_t j = 0; j < N_FFT; j++) {
-            srs_pdp[i][j] = static_cast<float>(cir_amp2[i][j]);
-            srs_cfr[i][j] = static_cast<float>(cfr_amp2[i][j]);
+        std::vector<std::vector<float>> srs_cfr(num_ant, std::vector<float>(num_prgs));
+        for (size_t i = 0; i < num_ant; i++) {
+          for (size_t j = 0; j < num_prgs; j++) {
+            srs_cfr[i][j] = static_cast<float>(sqrt(c16amp2(srs_est_freq[i][0][j])));
           }
         }
 
-        // Compute the amplitude
-        for (size_t i = 0; i < N_rx; i++) {
-          std::transform(srs_pdp[i].begin(), srs_pdp[i].end(), srs_cir[i].begin(), [](float x) { return std::sqrt(x); });
-        }
-
-       // Do the inference:
-      std::vector<float> prediction = {0.0f, 0.0f}; // Array to store the predictions
-
-
-      // Update the hashmap
-      ue_map[ue_id] = prediction;
-      ue_map2[ue_id] = std::make_tuple(srs_pdp, srs_cfr, prediction);
        // Start the plot App: 1 antenna data
        // Update plot data
        pthread_mutex_lock(&gui_mutex);
@@ -201,7 +143,7 @@ void log_ric_indication(const srs_ind_msg_t* msg)
           pthread_cond_wait(&gui_ready_cond, &gui_mutex);
        }
        pthread_mutex_unlock(&gui_mutex);
-       app->UpdateData(ue_map2);
+       app->UpdateCFR(srs_cfr);
       }
     }
     free_srs_indication(&srs_ind);
@@ -314,10 +256,7 @@ static void *app_thread(void*)
 {
 
    if(gui_ready == false){
-      app = new ChannelApp("Real-Time SRS Channel Plots",0,{nullptr}, N_FFT);
- //     std::vector<float> zeros(N_FFT, 0.0f);
- //     app->UpdateCIR(zeros);
- //     app->UpdateCC(ue_map);
+      app = new ChannelApp("SRS Channel Plots",0,{nullptr});
 
       pthread_mutex_lock(&gui_mutex);
       gui_ready = true;
@@ -330,7 +269,6 @@ static void *app_thread(void*)
 
 int main(int argc, char *argv[])
 {
-    load_dftslib(); // Loads dft shared lib from a specific path
     fr_args_t args = init_fr_args(argc, argv);
 
     // init the xApp

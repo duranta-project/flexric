@@ -210,7 +210,7 @@ App::App(std::string title, int w, int h, int argc, char const *argv[])
         title += " - 4X MSAA";
         glfwWindowHint(GLFW_SAMPLES, 4);
     }*/
-    //glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);//Maximize window size at start
+    glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);//Maximize window size at start
     // Create window with graphics context
     Window = glfwCreateWindow(w, h, title.c_str(), NULL, NULL);
     if (Window == NULL)
