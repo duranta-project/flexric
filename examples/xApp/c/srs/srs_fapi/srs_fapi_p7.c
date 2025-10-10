@@ -23,11 +23,11 @@
 
 #include "srs_fapi_p7.h"
 
-/*
+
 static uint8_t get_tlv_padding(uint16_t tlv_length)
 {
   return (4 - (tlv_length % 4)) % 4;
-}*/
+}
 
 //static
 int unpack_nr_srs_normalized_channel_iq_matrix(void *pMessageBuf,
@@ -91,7 +91,7 @@ static uint8_t unpack_nr_srs_report_tlv_value(nfapi_srs_report_tlv_t *report_tlv
     }
   }
   // Pull last bytes according to how much padding it would need to be 32-bit aligned
-  const uint8_t padding = (4 - (report_tlv->length% 4)) % 4;// get_tlv_padding(report_tlv->length);
+  const uint8_t padding = get_tlv_padding(report_tlv->length);
   pullx32(4 - padding, ppReadPackedMsg, &report_tlv->value[last_idx], end);
 #endif
   return 1;
@@ -104,11 +104,11 @@ static uint8_t unpack_nr_srs_report_tlv(nfapi_srs_report_tlv_t *report_tlv, uint
         pull32(ppReadPackedMsg, &report_tlv->length, end))) {
     return 0;
   }
-#ifndef ENABLE_AERIAL
+//#ifndef ENABLE_AERIAL
   if (!unpack_nr_srs_report_tlv_value(report_tlv, ppReadPackedMsg, end)) {
     return 0;
   }
-#endif
+//#endif
   return 1;
 }
 
@@ -148,6 +148,24 @@ uint8_t unpack_nr_srs_indication(uint8_t **ppReadPackedMsg, uint8_t *end, void *
 
   return 1;
 }
+
+// Adapted from openairinterface5g/nfapi/oai_integration/aerial/fapi_vnf_p7.c:301
+/*uint8_t aerial_unpack_nr_srs_indication(uint8_t **ppReadPackedMsg,
+                                        uint8_t *end,
+                                        uint8_t **pDataMsg,
+                                        uint8_t *data_end,
+                                        void *msg) //nfapi_p7_codec_config_t *config)
+{
+  uint8_t retval = unpack_nr_srs_indication(ppReadPackedMsg, end, msg);
+  nfapi_nr_srs_indication_t *srs_ind = (nfapi_nr_srs_indication_t *)msg;
+  for (uint8_t pdu_idx = 0; pdu_idx < srs_ind->number_of_pdus; pdu_idx++) {
+    nfapi_nr_srs_indication_pdu_t *pdu = &srs_ind->pdu_list[pdu_idx];
+    if (!unpack_nr_srs_report_tlv_value(&pdu->report_tlv, pDataMsg, data_end)) {
+      return 0;
+    }
+  }
+  return retval;
+}*/
 
 int fapi_nr_message_header_unpack(uint8_t **pMessageBuf,
                                   uint32_t messageBufLen,
