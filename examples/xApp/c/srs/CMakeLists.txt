@@ -25,6 +25,7 @@ add_executable(xapp_srs_ind
 
 if (OAI_AERIAL)
 target_compile_definitions(xapp_srs_ind PRIVATE ENABLE_AERIAL)
+target_compile_definitions(xapp_srs_ind PRIVATE FAPI_BYTE_ORDERING_BIG_ENDIAN)
 endif()
  target_link_libraries(xapp_srs_ind
                       PUBLIC
@@ -45,6 +46,7 @@ add_executable(xapp_srs_channel
 
 if (OAI_AERIAL)
 target_compile_definitions(xapp_srs_channel PRIVATE ENABLE_AERIAL)
+target_compile_definitions(xapp_srs_channel PRIVATE FAPI_BYTE_ORDERING_BIG_ENDIAN)
 endif()
  target_link_libraries(xapp_srs_channel
                       PRIVATE
