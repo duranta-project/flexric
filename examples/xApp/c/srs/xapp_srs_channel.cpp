@@ -41,7 +41,7 @@
 
 #include "localization_plots/inc/cc_gui_app.h"
 
-#define SRS_LOG
+//#define SRS_LOG
 
 typedef uint32_t frame_t;
 typedef uint32_t slot_t;

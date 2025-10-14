@@ -95,18 +95,22 @@ void log_ric_indication(const srs_ind_msg_t* msg)
       const frame_t frame = srs_ind.sfn;
       const slot_t slot = srs_ind.slot;
       const int num_srs = srs_ind.number_of_pdus;
+#ifdef SRS_LOG
       printf("xApp Unpacked SFN:%u\n", frame);
       printf("xApp Unpacked Slot:%u\n", slot);
       printf("xApp Unpacked Num of SRS PDUs:%d\n", num_srs);
+#endif
       nfapi_nr_srs_indication_pdu_t *srs_list = srs_ind.pdu_list;
       for (int i = 0; i < num_srs; i++) {
         nfapi_nr_srs_indication_pdu_t *srs_ind_pdu = &srs_list[i];
+#ifdef SRS_LOG
         printf("xApp Unpacked RNTI:%u\n", srs_ind_pdu->rnti);
         printf("xApp Unpacked TA Offset:%u\n", srs_ind_pdu->timing_advance_offset);
         printf("xApp Unpacked TA Offset nsec:%u\n", srs_ind_pdu->timing_advance_offset_nsec);
         printf("xApp Unpacked SRS Usage:%u\n", srs_ind_pdu->srs_usage);
         printf("xApp Unpacked Report type:%u\n", srs_ind_pdu->report_type);
         dump_srs_report(&srs_ind_pdu->report_tlv, "report_tlv_xapp.csv");
+#endif
         // extract the UL Channel
         nfapi_nr_srs_normalized_channel_iq_matrix_t nr_srs_channel_iq_matrix;
         unpack_nr_srs_normalized_channel_iq_matrix(&srs_ind_pdu->report_tlv.value,
