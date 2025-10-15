@@ -79,7 +79,7 @@ static std::unordered_map<uint32_t,std::tuple<std::vector<std::vector<float>>, s
 }*/
 
 // Function to write prediction to a CSV file
-static void save_predictions(const std::string& filename, uint16_t ue_id, float cc_x, float cc_y) {
+static void save_predictions(const std::string& filename, frame_t sfn, slot_t slot ,uint16_t ue_id, float cc_x, float cc_y) {
     // Check if the file exists already
     std::ifstream infile(filename);
     bool file_exists = infile.good();
@@ -90,10 +90,11 @@ static void save_predictions(const std::string& filename, uint16_t ue_id, float 
     if (file.is_open()) {
         // If new file, write the header
         if (!file_exists) {
-            file << "ue_id,cc_x,cc_y\n";
+            file << "tstamp, ue_id,cc_x,cc_y\n";
         }
         // add data
-        file << ue_id << "," << cc_x << "," << cc_y << "\n";
+        double tstamp = fmod((double)time_now_us() * 1e-6, 10.24) + sfn * 0.01 + slot * 0.0005;
+        file << tstamp << "," << ue_id << "," << cc_x << "," << cc_y << "\n";
         file.close();
     } else {
         std::cerr << "Error opening file: " << filename << std::endl;
@@ -242,7 +243,7 @@ void log_ric_indication(const srs_ind_msg_t* msg)
           // Only save SMA predictions
           std::string filename = "cc_predictions.csv";
 
-          save_predictions(filename, ue_id, smoothed_prediction[0] , smoothed_prediction[1]);
+          save_predictions(filename, frame, slot, ue_id, smoothed_prediction[0] , smoothed_prediction[1]);
       } else {
       // Update the hashmap
       ue_map[ue_id] = prediction;
