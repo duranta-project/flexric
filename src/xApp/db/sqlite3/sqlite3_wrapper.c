@@ -1388,7 +1388,7 @@ void write_db_sqlite3(sqlite3* db, global_e2_node_id_t const* id, sm_ag_if_rd_t 
     write_gtp_stats(db, id, &rd->gtp);
   } else if (rd->type == KPM_STATS_V3_0) {
     kpm_acc++;
-    write_kpm_stats(db, id, &ag_rd->ind.kpm.ind);
+   //write_kpm_stats(db, id, &ag_rd->ind.kpm.ind);
     if(kpm_acc > 2048){
       printf("KPM sqlite not implemented\n"); 
       kpm_acc = 0;
