@@ -68,18 +68,17 @@ static
 bool encode(byte_array_t* b, const E2AP_PDU_t* pdu)
 {
   assert(pdu != NULL);
-  assert(b->buf != NULL);
   //xer_fprint_e2ap_v2_03(stderr, &asn_DEF_E2AP_PDU_e2ap_v2_03, pdu);
   const enum asn_transfer_syntax syntax = ATS_ALIGNED_BASIC_PER;
-  asn_enc_rval_t er = asn_encode_e2ap_v2_03_to_buffer(NULL, syntax, &asn_DEF_E2AP_PDU_e2ap_v2_03, pdu, b->buf, b->len);
-  assert(er.encoded < (ssize_t) b->len);
-  if(er.encoded == -1) {
-    printf("Failed the encoding in type %s and xml_type = %s\n", er.failed_type->name, er.failed_type->xml_tag);
+  asn_encode_e2ap_v2_03_to_new_buffer_result_t er = asn_encode_e2ap_v2_03_to_new_buffer(NULL, syntax, &asn_DEF_E2AP_PDU_e2ap_v2_03, pdu);
+  if(er.result.encoded == -1) {
+    printf("Failed the encoding in type %s and xml_type = %s\n", er.result.failed_type->name, er.result.failed_type->xml_tag);
     fflush(stdout);
     return false;
   }
-  assert(er.encoded > -1);
-  b->len = er.encoded;
+  assert(er.buffer != NULL && er.result.encoded > 0 && "Failed to encode.");
+  b->buf = er.buffer;
+  b->len = er.result.encoded;
   return true;
 }
 
@@ -408,7 +407,7 @@ E2nodeComponentConfigUpdate_ItemIEs_t* copy_e2_node_component_conf_update(const 
 byte_array_t e2ap_enc_asn_pdu_ba(struct E2AP_PDU* pdu)
 {
   assert(pdu != NULL);
-  byte_array_t ba = {.buf = malloc(32*1024), .len =32*1024};
+  byte_array_t ba = {0};
   const bool success = encode(&ba, pdu);
   assert(success);
   return ba;
