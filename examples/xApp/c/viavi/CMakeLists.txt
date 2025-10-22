@@ -23,3 +23,16 @@ target_link_libraries(xapp_viavi_rc
                       -lsctp
                       -ldl
                       )
+
+add_executable(xapp_viavi_kpm_rc
+                xapp_viavi_kpm_rc.c
+                ../../../../src/util/alg_ds/alg/defer.c
+              )
+
+target_link_libraries(xapp_viavi_kpm_rc
+                      PUBLIC
+                      e42_xapp
+                      -pthread
+                      -lsctp
+                      -ldl
+                      )
