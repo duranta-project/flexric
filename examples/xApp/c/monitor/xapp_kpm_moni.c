@@ -88,9 +88,9 @@ static
 void log_int_value(byte_array_t name, meas_record_lst_t meas_record)
 {
   if (cmp_str_ba("RRU.PrbTotDl", name) == 0) {
-    printf("RRU.PrbTotDl = %d [PRBs]\n", meas_record.int_val);
+    printf("RRU.PrbTotDl = %d [%%]\n", meas_record.int_val);
   } else if (cmp_str_ba("RRU.PrbTotUl", name) == 0) {
-    printf("RRU.PrbTotUl = %d [PRBs]\n", meas_record.int_val);
+    printf("RRU.PrbTotUl = %d [%%]\n", meas_record.int_val);
   } else if (cmp_str_ba("DRB.PdcpSduVolumeDL", name) == 0) {
     printf("DRB.PdcpSduVolumeDL = %d [kb]\n", meas_record.int_val);
   } else if (cmp_str_ba("DRB.PdcpSduVolumeUL", name) == 0) {
@@ -379,8 +379,6 @@ int main(int argc, char* argv[])
 
   e2_node_arr_xapp_t nodes = e2_nodes_xapp_api();
   defer({ free_e2_node_arr_xapp(&nodes); });
-
-  assert(nodes.len > 0);
 
   printf("Connected E2 nodes = %d\n", nodes.len);
 

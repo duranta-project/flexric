@@ -603,7 +603,7 @@
             }
           },
           "mappings": [],
-          "max": 500000,
+          "max": 100,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -617,7 +617,7 @@
               }
             ]
           },
-          "unit": "PRBs"
+          "unit": "%"
         },
         "overrides": [
           {
@@ -738,7 +738,7 @@
             }
           },
           "mappings": [],
-          "max": 200000,
+          "max": 100,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -752,7 +752,7 @@
               }
             ]
           },
-          "unit": "PRBs"
+          "unit": "%"
         },
         "overrides": [
           {
