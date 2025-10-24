@@ -336,6 +336,14 @@ e2ap_msg_t e2ap_handle_setup_response_xapp(e42_xapp_t* xapp, const e2ap_msg_t* m
   return ans; 
 }
 
+static inline
+void send_setup_request(e42_xapp_t* xapp)
+{
+  assert(xapp != NULL);
+  assert(xapp->handle_msg[E42_SETUP_REQUEST]!= NULL);
+  xapp->handle_msg[E42_SETUP_REQUEST](xapp, NULL);
+}
+
 e2ap_msg_t e2ap_handle_e42_setup_response_xapp(e42_xapp_t* xapp, const e2ap_msg_t* msg)
 {
   assert(xapp != NULL);
@@ -371,14 +379,18 @@ e2ap_msg_t e2ap_handle_e42_setup_response_xapp(e42_xapp_t* xapp, const e2ap_msg_
 
   }
 
-  printf("[xApp]: Registered E2 Nodes = %ld \n", sz_reg_e2_node(&xapp->e2_nodes) );
-
   // Stop the timer
   pending_event_xapp_t ev = {.ev = E42_SETUP_REQUEST_PENDING_EVENT };
   rm_pending_event_xapp(xapp, &ev);
 
-  // Set the connected flag 
-  xapp->connected = true;
+  if (sz_reg_e2_node(&xapp->e2_nodes) == 0) {
+    printf("[xApp]: The nearRT-RIC has no registered nodes. Resending the E42 SETUP-REQUEST in 5s.\n");
+    sleep(5);
+    send_setup_request(xapp);
+    xapp->connected = false;
+  } else {
+    xapp->connected = true;
+  }
 
   e2ap_msg_t ans = {.type = NONE_E2_MSG_TYPE};
   return ans; 
