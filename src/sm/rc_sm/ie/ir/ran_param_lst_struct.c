@@ -22,7 +22,9 @@ void free_ran_param_lst_struct(ran_param_lst_struct_t* src)
   // RAN Parameter Definition
   // Optional
   // 9.3.51
-  assert(src->ran_param_def == NULL && "Not implemented");
+  if (src->ran_param_def != NULL) {
+    free_ran_param_def(src->ran_param_def);
+  }
 }
 
 bool eq_ran_param_lst_struct(ran_param_lst_struct_t const* m0, ran_param_lst_struct_t const* m1)
