@@ -315,7 +315,22 @@ sm_ind_data_t ind_sm_payload(ric_indication_t const* src)
   assert(xapp != NULL);
   assert(msg != NULL);
   assert(msg->type == RIC_CONTROL_FAILURE);
-  assert(0!=0 && "not implemented" );
+
+  ric_control_failure_t const* failure = &msg->u_msgs.ric_ctrl_fail;
+  act_proc_ans_t rv = find_act_proc(&xapp->act_proc, failure->ric_id.ric_req_id);
+  assert(rv.ok == true && "ric_req_id not registered in the registry");
+
+  printf("[xApp]: CONTROL FAILURE rx\n");
+
+  // A pending event is created along with a timer of 5000 ms,
+  // after which an event will be generated
+  pending_event_xapp_t ev = {.ev = E42_RIC_CONTROL_REQUEST_PENDING_EVENT, .id = rv.val.id };
+
+  // Stop the timer
+  rm_pending_event_xapp(xapp, &ev);
+
+  // Unblock UI thread
+  signal_sync_ui(&xapp->sync);
 
   e2ap_msg_t ans = {.type = NONE_E2_MSG_TYPE};
   return ans;

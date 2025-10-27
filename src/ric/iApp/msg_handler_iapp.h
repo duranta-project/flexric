@@ -118,5 +118,8 @@ e2ap_msg_t e2ap_handle_subscription_delete_response_iapp( e42_iapp_t* iapp, cons
 // iApp -> xApp 
 e2ap_msg_t e2ap_handle_e42_ric_control_ack_iapp(e42_iapp_t* iapp, const e2ap_msg_t* msg);
 
+// iApp -> xApp
+e2ap_msg_t e2ap_handle_e42_ric_control_failure_iapp(e42_iapp_t* iapp, const e2ap_msg_t* msg);
+
 #endif
 

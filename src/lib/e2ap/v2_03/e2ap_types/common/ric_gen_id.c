@@ -48,3 +48,14 @@ int cmp_ric_gen_id(const ric_gen_id_t* m0, const  ric_gen_id_t* m1)
 
   return 0;
 }
+
+ric_gen_id_t copy_ric_gen_id(const ric_gen_id_t* src)
+{
+  ric_gen_id_t dst = {
+    .ric_req_id = src->ric_req_id,
+    .ric_inst_id = src->ric_inst_id,
+    .ran_func_id = src->ran_func_id
+  };
+
+  return dst;
+}

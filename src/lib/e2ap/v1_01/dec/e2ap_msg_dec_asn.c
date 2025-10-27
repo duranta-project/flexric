@@ -1232,7 +1232,9 @@ e2ap_msg_t e2ap_dec_control_failure(const E2AP_PDU_t* pdu)
       *cf->call_process_id = copy_ostring_to_ba(cf_ie->value.choice.RICcallProcessID);
     } else if (cf_ie->id == ProtocolIE_ID_id_Cause){
       //Cause. Mandatory
-      assert(cf_ie->criticality == Criticality_ignore);
+      if (cf_ie->criticality != Criticality_ignore) {
+        printf("[warning] Expected \"id-Cause\" with criticality \"1\", but received \"%ld\".\n", cf_ie->criticality);
+      }
       assert(cf_ie->value.present == RICcontrolFailure_IEs__value_PR_Cause); 
       cf->cause = copy_cause(cf_ie->value.choice.Cause); 
     } else if (cf_ie->id ==  ProtocolIE_ID_id_RICcontrolOutcome){
@@ -1241,11 +1243,33 @@ e2ap_msg_t e2ap_dec_control_failure(const E2AP_PDU_t* pdu)
       assert(cf_ie->value.present == RICcontrolFailure_IEs__value_PR_RICcontrolOutcome);
       cf->control_outcome = calloc(1, sizeof(byte_array_t));
       *cf->control_outcome = copy_ostring_to_ba(cf_ie->value.choice.RICcontrolOutcome);
-    } else { // if cf_ie->id ==   ProtocolIE_ID_id_CriticalityDiagnostics)
-      assert(0 !=0 && "Not implemented");
     }
     elm += 1;
   }
+
+  printf("[NEAR-RIC]: CONTROL-FAILURE RAN_FUNC_ID %d RIC_REQ_ID %d rx with CAUSE ", cf->ric_id.ran_func_id, cf->ric_id.ric_req_id);
+
+  switch (cf->cause.present) {
+    case CAUSE_RICREQUEST:
+      printf("\"RIC Request\" (%d)\n", cf->cause.ricRequest);
+      break;
+    case CAUSE_RICSERVICE:
+      printf("\"RIC Service\" (%d)\n", cf->cause.ricService);
+      break;
+    case CAUSE_TRANSPORT:
+      printf("\"Transport\" (%d)\n", cf->cause.transport);
+      break;
+    case CAUSE_PROTOCOL:
+      printf("\"Protocol\" (%d)\n", cf->cause.protocol);
+      break;
+    case CAUSE_MISC:
+      printf("\"Misc\" (%d)\n", cf->cause.misc);
+      break;
+    default:
+      printf("\"Unknown\"\n");
+      break;
+  }
+
   return ret;
 }
   

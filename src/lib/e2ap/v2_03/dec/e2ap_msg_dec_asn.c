@@ -37,6 +37,8 @@
 #include "../ie/asn/E2nodeComponentConfigUpdate-Item.h"
 #include "../ie/asn/E2nodeComponentID.h"
 #include "../ie/asn/E2nodeComponentConfigurationAck.h"
+#include "../ie/asn/CriticalityDiagnostics-IE-List.h"
+#include "../ie/asn/CriticalityDiagnostics-IE-Item.h"
 
 #include "E2nodeComponentInterfaceNG.h"
 #include "E2nodeComponentInterfaceE1.h"
@@ -1290,8 +1292,6 @@ e2ap_msg_t e2ap_dec_control_failure(const E2AP_PDU_t* pdu)
 {
   assert(pdu != NULL);
 
-  assert(0!=0 && "Untested code");
-
   e2ap_msg_t ret = {.type = RIC_CONTROL_FAILURE};
   ric_control_failure_t* cf = &ret.u_msgs.ric_ctrl_fail;
 
@@ -1335,7 +1335,9 @@ e2ap_msg_t e2ap_dec_control_failure(const E2AP_PDU_t* pdu)
       *cf->call_process_id = copy_ostring_to_ba(cf_ie->value.choice.RICcallProcessID);
     } else if (cf_ie->id == ProtocolIE_ID_id_Cause){
       //Cause. Mandatory
-      assert(cf_ie->criticality == Criticality_ignore);
+      if (cf_ie->criticality != Criticality_ignore) {
+        printf("[warning] Expected \"id-Cause\" with criticality \"1\", but received \"%ld\".\n", cf_ie->criticality);
+      }
       assert(cf_ie->value.present == RICcontrolFailure_IEs__value_PR_Cause); 
       cf->cause = copy_cause(cf_ie->value.choice.Cause); 
     } else if (cf_ie->id ==  ProtocolIE_ID_id_RICcontrolOutcome){
@@ -1344,11 +1346,66 @@ e2ap_msg_t e2ap_dec_control_failure(const E2AP_PDU_t* pdu)
       assert(cf_ie->value.present == RICcontrolFailure_IEs__value_PR_RICcontrolOutcome);
       cf->control_outcome = calloc(1, sizeof(byte_array_t));
       *cf->control_outcome = copy_ostring_to_ba(cf_ie->value.choice.RICcontrolOutcome);
-    } else { // if cf_ie->id ==   ProtocolIE_ID_id_CriticalityDiagnostics)
-      assert(0 !=0 && "Not implemented");
+    } else if (cf_ie->id == ProtocolIE_ID_id_CriticalityDiagnostics) {
+      CriticalityDiagnostics_t *crit_diag = &cf_ie->value.choice.CriticalityDiagnostics;
+      cf->crit = calloc(1, sizeof(criticality_diagnostics_t));
+      if (crit_diag->procedureCode != NULL) {
+        cf->crit->procedure_code = calloc(1, sizeof(uint8_t));
+        *cf->crit->procedure_code = *crit_diag->procedureCode;
+      }
+      if (crit_diag->triggeringMessage != NULL) {
+        cf->crit->trig_msg = calloc(1, sizeof(triggering_message_e));
+        *cf->crit->trig_msg = *crit_diag->triggeringMessage;
+      }
+      if (crit_diag->procedureCriticality != NULL) {
+        cf->crit->proc_crit = calloc(1, sizeof(criticality_e));
+        *cf->crit->proc_crit = *crit_diag->procedureCriticality;
+      }
+      if (crit_diag->ricRequestorID != NULL) {
+        cf->crit->req_id = calloc(1, sizeof(ric_gen_id_t));
+        cf->crit->req_id->ric_req_id = crit_diag->ricRequestorID->ricRequestorID;
+        cf->crit->req_id->ric_inst_id = crit_diag->ricRequestorID->ricInstanceID;
+      }
+      if (crit_diag->iEsCriticalityDiagnostics != NULL) {
+        cf->crit->len_ie = crit_diag->iEsCriticalityDiagnostics->list.count;
+        cf->crit->ie = calloc(cf->crit->len_ie, sizeof(ie_criticality_diagnostics_t));
+        for (size_t i = 0; i < cf->crit->len_ie; i++) {
+          CriticalityDiagnostics_IE_Item_t *crit_diag_item = crit_diag->iEsCriticalityDiagnostics->list.array[i];
+          cf->crit->ie[i].crit = crit_diag_item->iECriticality;
+          cf->crit->ie[i].id = crit_diag_item->iE_ID;
+          cf->crit->ie[i].type = crit_diag_item->typeOfError;
+        }
+      }
     }
     elm += 1;
   }
+
+  printf("CONTROL-FAILURE RAN_FUNC_ID %d RIC_REQ_ID %d rx with CAUSE ", cf->ric_id.ran_func_id, cf->ric_id.ric_req_id);
+
+  switch (cf->cause.present) {
+    case CAUSE_RICREQUEST:
+      printf("\"RIC Request\" (%d)\n", cf->cause.ricRequest);
+      break;
+    case CAUSE_RICSERVICE:
+      printf("\"RIC Service\" (%d)\n", cf->cause.ricService);
+      break;
+    case CAUSE_E2NODE:
+      printf("\"E2 Node\" (%d)\n", cf->cause.e2Node);
+      break;
+    case CAUSE_TRANSPORT:
+      printf("\"Transport\" (%d)\n", cf->cause.transport);
+      break;
+    case CAUSE_PROTOCOL:
+      printf("\"Protocol\" (%d)\n", cf->cause.protocol);
+      break;
+    case CAUSE_MISC:
+      printf("\"Misc\" (%d)\n", cf->cause.misc);
+      break;
+    default:
+      printf("\"Unknown\"\n");
+      break;
+  }
+
   return ret;
 }
   

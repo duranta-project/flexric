@@ -37,7 +37,7 @@ typedef struct ie_criticality_diagnostics {
   type_of_error_t type;
 } ie_criticality_diagnostics_t;
 
-
+ie_criticality_diagnostics_t copy_ie_criticality_diagnostics(const ie_criticality_diagnostics_t* src);
 
 
 #endif

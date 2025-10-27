@@ -35,6 +35,7 @@ set(e2ap_src_types
   common/ric_action_admitted.c 
   common/ric_action_not_admitted.c 
   common/e2ap_criticality_diagnostics.c 
+  common/e2ap_ie_criticality_diagnostics.c
   common/e2ap_cause.c 
   common/e2ap_global_node_id.c
   common/e2ap_global_ric_id.c 

@@ -50,5 +50,7 @@ typedef struct {
 
 bool eq_criticality_diagnostics(const criticality_diagnostics_t* m0, const criticality_diagnostics_t* m1);
 
+criticality_diagnostics_t copy_criticality_diagnostics(const criticality_diagnostics_t* src);
+
 #endif
 

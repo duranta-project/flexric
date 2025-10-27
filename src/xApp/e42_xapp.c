@@ -532,7 +532,7 @@ sm_ans_xapp_t control_sm_sync_xapp(e42_xapp_t* xapp, global_e2_node_id_t* id, ui
   cond_wait_sync_ui(&xapp->sync, xapp->sync.wait_ms);
 
   // Answer received
-  printf("[xApp]: Successfully received CONTROL-ACK \n");
+  printf("[xApp]: Successfully received CONTROL response\n");
 
   // Remove the active procedure, control request  
   rm_act_proc(&xapp->act_proc, ric_id.ric_req_id ); 

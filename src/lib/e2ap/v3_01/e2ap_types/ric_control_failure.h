@@ -39,5 +39,7 @@ typedef struct {
 
 bool eq_control_failure(const ric_control_failure_t* m0, const ric_control_failure_t* m1);
 
+ric_control_failure_t copy_ric_control_failure(const ric_control_failure_t* src);
+
 #endif
 

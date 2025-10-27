@@ -23,6 +23,9 @@
 
 #include "ric_control_failure.h"
 
+#include <stdlib.h>
+#include <assert.h>
+
 bool eq_control_failure(const ric_control_failure_t* m0, const ric_control_failure_t* m1)
 {
   if(m0 == m1) return true;
@@ -45,4 +48,27 @@ bool eq_control_failure(const ric_control_failure_t* m0, const ric_control_failu
 
 
   return true;
+}
+
+ric_control_failure_t copy_ric_control_failure(const ric_control_failure_t* src)
+{
+  ric_control_failure_t dst = {0};
+
+  dst.ric_id = copy_ric_gen_id(&src->ric_id);
+
+  if (src->call_process_id != NULL) {
+    dst.call_process_id = calloc(1, sizeof(byte_array_t));
+    assert(dst.call_process_id != NULL && "Memory exhausted");
+    *dst.call_process_id = copy_byte_array(*src->call_process_id);
+  }
+
+  dst.cause = cp_cause(&src->cause);
+
+  if (src->control_outcome != NULL) {
+    dst.control_outcome = calloc(1, sizeof(byte_array_t));
+    assert(dst.control_outcome != NULL && "Memory exhausted");
+    *dst.control_outcome = copy_byte_array(*src->control_outcome);
+  }
+
+  return dst;
 }

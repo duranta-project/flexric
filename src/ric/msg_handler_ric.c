@@ -273,9 +273,19 @@ void publish_ind_msg(near_ric_t* ric,  uint16_t ran_func_id, sm_ag_if_rd_ind_t* 
   assert(ric != NULL);
   assert(msg != NULL);
   assert(msg->type == RIC_CONTROL_FAILURE);
-  assert(0!=0 && "not implemented" );
 
-  e2ap_msg_t ans = {0};
+  ric_control_failure_t const* failure = &msg->u_msgs.ric_ctrl_fail;
+
+  pending_event_ric_t ev = {.ev = CONTROL_REQUEST_PENDING_EVENT, .id = failure->ric_id };
+  stop_pending_event(ric, &ev);
+
+  printf("[NEAR-RIC]: CONTROL FAILURE rx\n");
+
+#ifndef TEST_AGENT_RIC
+  notify_msg_iapp_api(msg);
+#endif
+
+  e2ap_msg_t ans = {.type = NONE_E2_MSG_TYPE};
   return ans;
 }
   

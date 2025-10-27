@@ -1188,7 +1188,6 @@ byte_array_t e2ap_enc_control_failure_asn_msg(const e2ap_msg_t* msg)
 E2AP_PDU_t* e2ap_enc_control_failure_asn_pdu( const ric_control_failure_t* cf)
 {
   assert(cf != NULL);
-  assert(0!=0 && "Untested code");
 
   //Message Type. Mandatory
   E2AP_PDU_t* pdu = calloc(1, sizeof(E2AP_PDU_t));

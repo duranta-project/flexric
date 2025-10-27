@@ -49,7 +49,8 @@ bool check_valid_msg_type(e2_msg_type_t msg_type )
       || msg_type == E42_RIC_CONTROL_REQUEST
       || msg_type == RIC_CONTROL_ACKNOWLEDGE
       || msg_type == RIC_INDICATION
-      || msg_type == RIC_SUBSCRIPTION_DELETE_RESPONSE;
+      || msg_type == RIC_SUBSCRIPTION_DELETE_RESPONSE
+      || msg_type == RIC_CONTROL_FAILURE;
 }
 
 void init_handle_msg_iapp(size_t len, handle_msg_fp_iapp (*handle_msg)[len])
@@ -64,6 +65,7 @@ void init_handle_msg_iapp(size_t len, handle_msg_fp_iapp (*handle_msg)[len])
   (*handle_msg)[E42_RIC_SUBSCRIPTION_DELETE_REQUEST] = e2ap_handle_e42_ric_subscription_delete_request_iapp;
   (*handle_msg)[E42_RIC_CONTROL_REQUEST] = e2ap_handle_e42_ric_control_request_iapp;
   (*handle_msg)[RIC_CONTROL_ACKNOWLEDGE] = e2ap_handle_e42_ric_control_ack_iapp;
+  (*handle_msg)[RIC_CONTROL_FAILURE] = e2ap_handle_e42_ric_control_failure_iapp;
   (*handle_msg)[RIC_INDICATION] = e2ap_handle_ric_indication_iapp;
   (*handle_msg)[RIC_SUBSCRIPTION_DELETE_RESPONSE] = e2ap_handle_subscription_delete_response_iapp;
 
@@ -190,6 +192,42 @@ e2ap_msg_t e2ap_handle_e42_ric_control_ack_iapp(e42_iapp_t* iapp, const e2ap_msg
   e2ap_send_sctp_msg_iapp(&iapp->ep, &sctp_msg);
 
   printf("[iApp]: RIC_CONTROL_ACKNOWLEDGE tx\n");
+
+  rm_map_ric_id(&iapp->map_ric_id, &x);
+
+  e2ap_msg_t none = {.type = NONE_E2_MSG_TYPE};
+  return none;
+}
+
+e2ap_msg_t e2ap_handle_e42_ric_control_failure_iapp(e42_iapp_t* iapp, const e2ap_msg_t* msg)
+{
+  assert(iapp != NULL);
+  assert(msg != NULL);
+  assert(msg->type == RIC_CONTROL_FAILURE);
+
+  ric_control_failure_t const* src = &msg->u_msgs.ric_ctrl_fail;
+
+  xapp_ric_id_xpct_t const xpctd = find_xapp_map_ric_id(&iapp->map_ric_id, src->ric_id.ric_req_id);
+  assert(xpctd.has_value == true && "RIC Req Id not found!");
+  xapp_ric_id_t const x = xpctd.xapp_ric_id;
+
+  assert(src->ric_id.ran_func_id == x.ric_id.ran_func_id);
+  assert(src->ric_id.ric_inst_id == x.ric_id.ric_inst_id);
+
+  e2ap_msg_t ans = {.type = RIC_CONTROL_FAILURE };
+  ans.u_msgs.ric_ctrl_fail = copy_ric_control_failure(src);
+  defer( { e2ap_msg_free_iapp(&iapp->ap, &ans); } );
+  ric_control_failure_t* dst = &ans.u_msgs.ric_ctrl_fail;
+  dst->ric_id = x.ric_id;
+
+  sctp_msg_t sctp_msg = {0};
+  sctp_msg.info = find_map_xapps_sad(&iapp->ep.xapps, x.xapp_id);
+  sctp_msg.ba = e2ap_msg_enc_iapp(&iapp->ap, &ans);
+  defer({ free_sctp_msg(&sctp_msg); } );
+
+  e2ap_send_sctp_msg_iapp(&iapp->ep, &sctp_msg);
+
+  printf("[iApp]: RIC_CONTROL_FAILURE tx\n");
 
   rm_map_ric_id(&iapp->map_ric_id, &x);
 
