@@ -55,7 +55,7 @@ void xapp_unblock_wait_api(void)
 void xapp_wait_end_api(void)
 {
   const char* value = getenv("XAPP_DURATION");
-  int timeout = value ? atoi(value) : 20;
+  int timeout = value ? atoi(value) : INT_MAX;
 
   while (!stop_xapp && (timeout < 0 || timeout-- > 0))
     sleep(1);
