@@ -20,13 +20,15 @@
  */
 
 #include "fill_rnd_data_srs.h"
+#include "../../examples/xApp/c/positioning/srs_fapi/nfapi_srs_data.h"
+#include "../../examples/xApp/c/positioning/srs_fapi/srs_fapi_p7.h"
 #include "../../src/util/time_now_us.h"
 
 #include <assert.h>
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
-#define BUFFER_SIZE 140*1024  
+#define BUFFER_SIZE 1024  
 srs_event_trigger_t fill_rnd_srs_event_trigger(void)
 {
   srs_event_trigger_t et = {0};
@@ -75,12 +77,41 @@ srs_ind_msg_t fill_rnd_srs_ind_msg(void)
     srs_indication_stats_impl_t* indication_stats = &msg.indication_stats[i];
       
     // Fill dummy data in your data structure  
+
     indication_stats->ue_id = rand()%1000;
+    /*
     indication_stats->srs_indication_ba.len = BUFFER_SIZE;
     indication_stats->srs_indication_ba.buf = calloc(BUFFER_SIZE, sizeof(uint8_t));
     for (size_t i = 0; i < BUFFER_SIZE; ++i) {
       indication_stats->srs_indication_ba.buf[i] = 1 ;//rand() % 256;  // Random byte
-    }
+    }*/
+
+    nfapi_nr_srs_indication_t *nfapi_srs_ind = calloc(1, sizeof(nfapi_nr_srs_indication_t));
+    fill_srs_indication(nfapi_srs_ind);
+    size_t ba_len = get_srs_indication_size(nfapi_srs_ind);
+    byte_array_t ba = {.len = ba_len};
+    ba.buf = malloc(ba.len);
+    uint8_t *pPackedBuf = ba.buf;
+    uint8_t *pWritePackedMessage    = pPackedBuf;
+    uint8_t *pPackMessageEnd =  pPackedBuf + ba.len;
+
+    printf("[RIC DEBUG INFO] pointer = %p\n",(void*)nfapi_srs_ind);
+    printf("[RIC DEBUG INFO] ba initialized len: %zu bytes\n", ba.len);
+    printf("[RIC DEBUG INFO] Sending SFN: %u\n", nfapi_srs_ind->sfn);
+    printf("[RIC DEBUG INFO] Sending Slot: %u\n", nfapi_srs_ind->slot);
+    printf("[RIC DEBUG INFO] Sending num srs: %d\n", nfapi_srs_ind->number_of_pdus);
+
+    const uint8_t result = pack_nr_srs_indication(nfapi_srs_ind, &pWritePackedMessage, pPackMessageEnd);
+    assert(result != 0 && "Error in packing SRS Indication message"); 
+    size_t packedBufLen = pWritePackedMessage - pPackedBuf;// this should be eq to the ba.len
+
+    ba.len = packedBufLen;
+    printf("[RIC DEBUG INFO] ba updated len: %zu bytes\n", ba.len);
+    indication_stats->srs_indication_ba = copy_byte_array(ba);
+
+    // Clean up
+    free_byte_array(ba);
+    free_srs_indication(nfapi_srs_ind);
   }
 
   return msg;

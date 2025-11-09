@@ -42,6 +42,7 @@ add_executable(emu_agent_gnb
 
 target_link_libraries(emu_agent_gnb
                       PUBLIC
+                      srs_fapi
                       e2_agent
                       kpm_sm_static 
                       ${FlatCC} 
@@ -72,6 +73,7 @@ add_executable(emu_agent_gnb_cu
 
 target_link_libraries(emu_agent_gnb_cu
                         PUBLIC
+                        srs_fapi
                         e2_agent
                         kpm_sm_static 
                         ${FlatCC}
@@ -102,6 +104,7 @@ add_executable(emu_agent_gnb_du
 
 target_link_libraries(emu_agent_gnb_du
                         PUBLIC
+                        srs_fapi
                         e2_agent
                         kpm_sm_static 
                         ${FlatCC}
@@ -131,6 +134,7 @@ add_executable(emu_agent_enb
 
 target_link_libraries(emu_agent_enb
                         PUBLIC
+                        srs_fapi
                         e2_agent
                         kpm_sm_static 
                         ${FlatCC}

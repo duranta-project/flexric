@@ -16,7 +16,7 @@ elseif(SM_ENCODING_SRS STREQUAL "FLATBUFFERS")
 endif()
 
 target_compile_definitions(test_srs_sm PUBLIC ${SM_ENCODING_SRS})
-target_link_libraries(test_srs_sm PUBLIC srs_sm_static -pthread)
+target_link_libraries(test_srs_sm PUBLIC srs_sm_static srs_fapi -pthread)
 
 enable_testing()
 add_test(Unit_test_SRS test_srs_sm)

@@ -24,9 +24,77 @@
 #include "srs_fapi_p7.h"
 
 
-static uint8_t get_tlv_padding(uint16_t tlv_length)
+size_t get_srs_indication_size(const nfapi_nr_srs_indication_t *msg)
+{
+  // Get size of the message (allocated pointer included)
+  size_t total_size = 0;
+
+  // Header and fixed-size fields
+  total_size += sizeof(msg->header);
+  total_size += sizeof(msg->sfn);
+  total_size += sizeof(msg->slot);
+  total_size += sizeof(msg->control_length);
+  total_size += sizeof(msg->number_of_pdus);
+  total_size += msg->number_of_pdus * sizeof(*msg->pdu_list);
+
+  return total_size;
+}
+
+uint8_t get_tlv_padding(uint16_t tlv_length)
 {
   return (4 - (tlv_length % 4)) % 4;
+}
+
+static uint8_t pack_nr_srs_report_tlv(const nfapi_srs_report_tlv_t *report_tlv, uint8_t **ppWritePackedMsg, uint8_t *end) {
+
+  if(!(push16(report_tlv->tag, ppWritePackedMsg, end) &&
+        push32(report_tlv->length, ppWritePackedMsg, end))) {
+    return 0;
+  }
+
+  for (int i = 0; i < (report_tlv->length + 3) / 4; i++) {
+    if (!push32(report_tlv->value[i], ppWritePackedMsg, end)) {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+static uint8_t pack_nr_srs_indication_body(const nfapi_nr_srs_indication_pdu_t *value, uint8_t **ppWritePackedMsg, uint8_t *end) {
+
+  if(!(push32(value->handle, ppWritePackedMsg, end) &&
+        push16(value->rnti, ppWritePackedMsg, end) &&
+        push16(value->timing_advance_offset, ppWritePackedMsg, end) &&
+        pushs16(value->timing_advance_offset_nsec, ppWritePackedMsg, end) &&
+        push8(value->srs_usage, ppWritePackedMsg, end) &&
+        push8(value->report_type, ppWritePackedMsg, end))) {
+    return 0;
+  }
+
+  if (!pack_nr_srs_report_tlv(&value->report_tlv, ppWritePackedMsg, end)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+uint8_t pack_nr_srs_indication(void *msg, uint8_t **ppWritePackedMsg, uint8_t *end)
+{
+  nfapi_nr_srs_indication_t *pNfapiMsg = (nfapi_nr_srs_indication_t *)msg;
+
+  if (!(push16(pNfapiMsg->sfn, ppWritePackedMsg, end) && push16(pNfapiMsg->slot, ppWritePackedMsg, end)
+        && push16(pNfapiMsg->control_length, ppWritePackedMsg, end) && push8(pNfapiMsg->number_of_pdus, ppWritePackedMsg, end))) {
+    return 0;
+  }
+
+  for (int i = 0; i < pNfapiMsg->number_of_pdus; i++) {
+    if (!pack_nr_srs_indication_body(&(pNfapiMsg->pdu_list[i]), ppWritePackedMsg, end)) {
+      return 0;
+    }
+  }
+
+  return 1;
 }
 
 //static

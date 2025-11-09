@@ -35,6 +35,7 @@ if(E2AP_ENCODING STREQUAL "ASN")
 
   target_link_libraries(test_ag_ric_xapp
     PUBLIC
+    srs_fapi
     e2_agent
     near_ric
     e42_iapp

@@ -35,6 +35,7 @@ add_executable(test_near_ric
 
 target_link_libraries(test_near_ric
   PUBLIC 
+  srs_fapi
   e2_agent
   near_ric_test
   ${FlatCC} 

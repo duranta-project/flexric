@@ -31,6 +31,9 @@ extern "C" {
 #include "nfapi.h"
 #include "debug.h"
 
+size_t get_srs_indication_size(const nfapi_nr_srs_indication_t *msg);
+uint8_t get_tlv_padding(uint16_t tlv_length);
+uint8_t pack_nr_srs_indication(void *msg, uint8_t **ppWritePackedMsg, uint8_t *end);
 int unpack_nr_srs_normalized_channel_iq_matrix(void *pMessageBuf,
                                                uint32_t messageBufLen,
                                                void *pUnpackedBuf,
@@ -47,6 +50,7 @@ int fapi_nr_p7_message_unpack(void *pMessageBuf,
                               uint32_t unpackedBufLen);
 
 void free_srs_indication(nfapi_nr_srs_indication_t *msg);
+void fill_srs_indication(nfapi_nr_srs_indication_t *msg);
 #if defined(__cplusplus)
 }
 #endif

@@ -3,6 +3,7 @@ find_package(Torch REQUIRED)
 add_subdirectory(ai_ml)
 add_subdirectory(cc_mqtt)
 add_subdirectory(oai_dfts)
+add_subdirectory(srs_fapi)
 
 add_executable(xapp_srs_ind
 		xapp_srs_indication.c
