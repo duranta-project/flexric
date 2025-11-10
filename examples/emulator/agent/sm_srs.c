@@ -54,13 +54,13 @@ static
 void* emulate_ric_ind(void* ptr)
 {
  (void)ptr;
- for(size_t i = 0; i < 10; i++){
+ for(size_t i = 0; i < 3768; i++){
    usleep(rand()%5000);
    for(size_t j=0; j < sz_ric_req_id; j++){
      srs_ind_data_t* data = calloc(1,sizeof(srs_ind_data_t));
      assert(data != NULL && "Memory exhausted");
      data->hdr = fill_rnd_srs_ind_hdr();
-     data->msg = fill_rnd_srs_ind_msg();
+     data->msg = fill_rnd_srs_ind_msg(i);
 
      async_event_agent_api(ric_req_id_list[j], data);
      printf("Event for RIC Req ID %u generated\n", ric_req_id_list[j]);

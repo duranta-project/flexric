@@ -58,6 +58,28 @@ add_executable(xapp_srs_channel
                         m
                      )
 
+add_executable(xapp_srs_emulator
+                xapp_srs_emulator.cpp
+                srs_fapi/debug.c
+                srs_fapi/nfapi.c
+                srs_fapi/srs_fapi_p7.c
+                ai_ml/src/proc_srs_channel.c
+              )
+
+
+ target_include_directories(xapp_srs_emulator PRIVATE ai_ml/inc)
+ target_link_libraries(xapp_srs_emulator
+                      PRIVATE
+                        "${TORCH_LIBRARIES}"
+                         ml_cc
+                         gui_if
+                      PUBLIC
+                        e42_xapp
+                        -pthread
+                        -lsctp
+                        -ldl
+                        m
+                     )
 add_executable(xapp_srs_pos_cpp
                 xapp_srs_pos.cpp
                 srs_fapi/debug.c

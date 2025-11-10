@@ -26,7 +26,7 @@
  
  srs_ind_hdr_t fill_rnd_srs_ind_hdr(void);
 
- srs_ind_msg_t fill_rnd_srs_ind_msg(void);
+ srs_ind_msg_t fill_rnd_srs_ind_msg(int sample_idx);
 
  void fill_rnd_srs_ind_data(srs_ind_data_t* ind);
 

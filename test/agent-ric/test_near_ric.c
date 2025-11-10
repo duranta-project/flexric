@@ -120,7 +120,7 @@ bool read_ind_srs(void* ind)
   // fill_rnd_srs_ind_data(srs);
   // I can also do:
   srs->hdr = fill_rnd_srs_ind_hdr();
-  srs->msg = fill_rnd_srs_ind_msg();
+  srs->msg = fill_rnd_srs_ind_msg(0);
   return true;
 }
 
@@ -230,7 +230,7 @@ void* emulate_srs_fapi_msg(void* ptr)
     srs_ind_data_t* d = calloc(1, sizeof(srs_ind_data_t));
     assert(d != NULL && "Memory exhausted");
     d->hdr = fill_rnd_srs_ind_hdr();
-    d->msg = fill_rnd_srs_ind_msg();
+    d->msg = fill_rnd_srs_ind_msg(0);
     async_event_agent_api(srs_ric_id, d);
     //printf("Event for RIC Req ID %u generated\n", srs_ric_id);
   }

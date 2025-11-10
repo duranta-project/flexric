@@ -62,7 +62,7 @@ srs_ind_hdr_t fill_rnd_srs_ind_hdr(void)
   return hdr;
 }
 
-srs_ind_msg_t fill_rnd_srs_ind_msg(void)
+srs_ind_msg_t fill_rnd_srs_ind_msg(int sample_idx)
 {
   srs_ind_msg_t msg = {0};
   msg.len = 1;
@@ -78,7 +78,7 @@ srs_ind_msg_t fill_rnd_srs_ind_msg(void)
       
     // Fill dummy data in your data structure  
 
-    indication_stats->ue_id = rand()%1000;
+    indication_stats->ue_id = 1;
     /*
     indication_stats->srs_indication_ba.len = BUFFER_SIZE;
     indication_stats->srs_indication_ba.buf = calloc(BUFFER_SIZE, sizeof(uint8_t));
@@ -87,7 +87,7 @@ srs_ind_msg_t fill_rnd_srs_ind_msg(void)
     }*/
 
     nfapi_nr_srs_indication_t *nfapi_srs_ind = calloc(1, sizeof(nfapi_nr_srs_indication_t));
-    fill_srs_indication(nfapi_srs_ind);
+    fill_srs_indication(nfapi_srs_ind,sample_idx);
     size_t ba_len = get_srs_indication_size(nfapi_srs_ind);
     byte_array_t ba = {.len = ba_len};
     ba.buf = malloc(ba.len);

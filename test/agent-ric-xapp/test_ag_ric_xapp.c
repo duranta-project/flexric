@@ -259,7 +259,7 @@ void* emulate_srs_fapi_msg(void* ptr)
     srs_ind_data_t* d = calloc(1, sizeof(srs_ind_data_t));
     assert(d != NULL && "Memory exhausted");
     d->hdr = fill_rnd_srs_ind_hdr();
-    d->msg = fill_rnd_srs_ind_msg();
+    d->msg = fill_rnd_srs_ind_msg(i);
     async_event_agent_api(srs_ric_id, d);
     //printf("Event for RIC Req ID %u generated\n", srs_ric_id);
   }

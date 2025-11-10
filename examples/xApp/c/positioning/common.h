@@ -15,6 +15,11 @@ typedef struct complex16 {
   int16_t i;
 } c16_t;
 
+typedef struct complex8 {
+  int8_t r;
+  int8_t i;
+} c8_t;
+
 __attribute__((always_inline)) inline uint32_t c16amp2(const c16_t a) {
     return a.r * a.r + a.i * a.i;
 }

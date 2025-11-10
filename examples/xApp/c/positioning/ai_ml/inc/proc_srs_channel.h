@@ -34,10 +34,16 @@ int fill_srs_channel_array(const nfapi_nr_srs_normalized_channel_iq_matrix_t* ch
                            const uint16_t num_ue_srs_ports, const uint16_t ofdm_symbol_size,
                            c16_t srs_estimated_channel_freq[][1][N_FFT]);
 
+int fill_srs_cir(const nfapi_nr_srs_normalized_channel_iq_matrix_t* channel_iq_matrix,
+                           const uint16_t num_ue_srs_ports, const uint16_t ofdm_symbol_size,
+                           c16_t srs_estimated_channel_time[N_rx][N_FFT]);
 
 void preprocess_cir(const uint16_t ofdm_symbol_size, const uint16_t num_antennas, const c16_t srs_data[][1][N_FFT],
                     uint32_t srs_cir[][N_FFT], uint32_t cir_shifted[][N_SHIFT], uint32_t toa[N_rx]);
 
+
+void preprocess_cir_h5(const uint16_t ofdm_symbol_size, const uint16_t num_antennas, const c16_t srs_data[][N_FFT],
+                    uint32_t srs_cir[][N_FFT], uint32_t cir_shifted[][N_SHIFT], uint32_t toa[N_rx]);
 
 #if defined(__cplusplus)
 }
