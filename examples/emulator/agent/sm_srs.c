@@ -54,9 +54,10 @@ static
 void* emulate_ric_ind(void* ptr)
 {
  (void)ptr;
- for(size_t i = 0; i < 3768; i++){
-   usleep(rand()%5000);
+ for(size_t i = 0; i < 3760; i++){
+   usleep(40000);
    for(size_t j=0; j < sz_ric_req_id; j++){
+      printf("sz_ric_req_id is :%ld\n",sz_ric_req_id);
      srs_ind_data_t* data = calloc(1,sizeof(srs_ind_data_t));
      assert(data != NULL && "Memory exhausted");
      data->hdr = fill_rnd_srs_ind_hdr();
