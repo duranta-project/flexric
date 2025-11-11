@@ -162,9 +162,6 @@ static void fill_srs_indication_report_tlv(nfapi_srs_report_tlv_t *tlv, int samp
   tlv->length = 0;
   c16_t srs_estimated_channel_time[N_rx][N_FFT];
   load_cir_sample("/home/bouknana/ric_localization_tools/playback_data/srs_cir.h5", sample_idx, srs_estimated_channel_time);
-  printf("First antenna, first 5 FFT bins:\n");
-  for(int k=0; k<5; k++)
-    printf("%d + %di\n", srs_estimated_channel_time[0][k].r, srs_estimated_channel_time[0][k].i);
   nfapi_nr_srs_normalized_channel_iq_matrix_t nr_srs_channel_iq_matrix;
   nr_srs_channel_iq_matrix.normalized_iq_representation = 1;
   nr_srs_channel_iq_matrix.num_gnb_antenna_elements = N_rx;
