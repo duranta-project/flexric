@@ -39,30 +39,6 @@ struct ChannelApp : App {
     std::unordered_map<uint32_t, std::vector<std::pair<float,float>>> m_cc_map;
     std::unordered_map<uint32_t,std::tuple< std::vector<std::vector<float>>, std::vector<std::vector<float>>, std::vector<float>>> m_ue_map;
     // Add setters to update the data and plot it in real-time
-/*
-    void UpdateCIR(const std::vector<float>& srs_cir) {
-        std::lock_guard<std::mutex> lk(m_cir_mutex);
-        m_srs_cir = srs_cir;
-    }
- 
-    void UpdateCFR(const std::vector<float>& srs_cfr) {
-        std::lock_guard<std::mutex> lk(m_cfr_mutex);
-        m_srs_cfr = srs_cfr;
-    } 
-
-    void UpdateCC(const std::unordered_map<uint32_t, std::vector<float>>& ue_map) {
-        std::lock_guard<std::mutex> lk(m_cc_mutex);
- 
-      for(const auto& key_value: ue_map) {
-//        auto& history = m_ue_map[key_value.first];
-        m_ue_map[key_value.first].emplace_back(key_value.second [0], key_value.second[1]);
-
-        if (m_ue_map[key_value.first].size() > 5000) {
-            m_ue_map[key_value.first].erase(m_ue_map[key_value.first].begin());
-        }
-      }
-    }
-*/
     void UpdateData(const std::unordered_map<uint32_t,std::tuple< std::vector<std::vector<float>>, std::vector<std::vector<float>>, std::vector<float>>>& ue_map) {
         std::lock_guard<std::mutex> lk(m_cc_mutex);
         m_ue_map = ue_map;
@@ -71,23 +47,10 @@ struct ChannelApp : App {
         const auto& [srs_cir, srs_cfr, predictions] = key_value.second;
         m_cc_map[ue_id].emplace_back(predictions[0], predictions[1]);
 
-        if (m_cc_map[ue_id].size() > 5000) {
+        if (m_cc_map[ue_id].size() > 3) {
             m_cc_map[ue_id].erase(m_cc_map[ue_id].begin());
         }
       }
-/*
-        for(const auto& key_value: ue_map) {
-        uint32_t ue_id = key_value.first;
-        const auto& [srs_cir, srs_cfr, predictions] = key_value.second;
-        m_srs_cir = srs_cir;
-        m_srs_cfr = srs_cfr;
-        m_ue_map[ue_id].emplace_back(predictions[0], predictions[1]);
-
-        if (m_ue_map[ue_id].size() > 5000) {
-            m_ue_map[ue_id].erase(m_ue_map[ue_id].begin());
-        }
-      }
-*/
     }
 
     // Constructor
