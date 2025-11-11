@@ -54,7 +54,7 @@
 
 #define SRS_LOG
 // Moving average window size
-#define WINDOW_SIZE 1
+#define WINDOW_SIZE 10
 
 typedef uint32_t frame_t;
 typedef uint32_t slot_t;
@@ -186,8 +186,8 @@ void log_ric_indication(const srs_ind_msg_t* msg)
             return;
         }
        }
-*/
 
+*/
         //channel_amp2(srs_channel_est, ofdm_symbol_size, cir_amp2);
 
         std::vector<std::vector<float>> srs_pdp(N_rx, std::vector<float>(N_FFT));
@@ -362,7 +362,7 @@ static void *app_thread(void*)
 
 int main(int argc, char *argv[])
 {
-    module = load_torchscript_model("/home/bouknana/srs_data/trained_models/CC_EmbeddingModel_2D_cpu.pt");
+    module = load_torchscript_model("/home/bouknana/srs_data/trained_models/CC_EmbeddingModel_2D_bounded_disp_091025.pt");
     fr_args_t args = init_fr_args(argc, argv);
 
     // init the xApp
