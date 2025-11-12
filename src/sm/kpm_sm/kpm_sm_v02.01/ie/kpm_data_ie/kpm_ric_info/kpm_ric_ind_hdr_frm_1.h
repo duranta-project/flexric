@@ -11,7 +11,7 @@ extern "C" {
 // 8.2.1.3.1  E2SM-KPM Indication Header Format 1
 
 typedef struct {
-    uint32_t collectStartTime;  // 8.3.12
+    uint64_t collectStartTime;  // 8.3.12
     byte_array_t *fileformat_version;  /* OPTIONAL */
     byte_array_t *sender_name;         /* OPTIONAL */
     byte_array_t *sender_type;         /* OPTIONAL */

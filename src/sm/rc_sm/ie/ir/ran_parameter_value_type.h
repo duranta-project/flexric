@@ -8,11 +8,11 @@ typedef struct ran_param_struct_s ran_param_struct_t;
 typedef struct ran_param_list_s  ran_param_list_t;
 
 typedef enum{
+  END_RAN_PARAMETER_VAL_TYPE,   
   ELEMENT_KEY_FLAG_TRUE_RAN_PARAMETER_VAL_TYPE,
   ELEMENT_KEY_FLAG_FALSE_RAN_PARAMETER_VAL_TYPE, 
   STRUCTURE_RAN_PARAMETER_VAL_TYPE,
-  LIST_RAN_PARAMETER_VAL_TYPE,
-  END_RAN_PARAMETER_VAL_TYPE   
+  LIST_RAN_PARAMETER_VAL_TYPE
 } ran_parameter_val_type_e ;
 
 // 9.3.11

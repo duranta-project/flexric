@@ -236,8 +236,8 @@ void sm_cb_kpm(sm_ag_if_rd_t const* rd)
   static int counter = 1;
   {
     lock_guard(&mtx);
-
     printf("\n%7d KPM ind_msg latency = %ld [μs]\n", counter, now - hdr_frm_1->collectStartTime); // xApp <-> E2 Node
+
 
     // Reported list of measurements per UE
     for (size_t i = 0; i < msg_frm_3->ue_meas_report_lst_len; i++) {
