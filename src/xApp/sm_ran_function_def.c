@@ -25,6 +25,8 @@ void free_sm_ran_function_def(sm_ran_function_def_t* src)
     free_slice_func_def(&src->slice);
   } else if(src->type == TC_RAN_FUNC_DEF_E){
     free_tc_func_def(&src->tc);
+  } else if(src->type == CCC_RAN_FUNC_DEF_E){
+    free_ccc_func_def(&src->ccc);
   } else{
     assert(0 != 0 && "Unknown type");
   }
@@ -54,6 +56,8 @@ sm_ran_function_def_t cp_sm_ran_function_def(sm_ran_function_def_t const* src)
    dst.slice = cp_slice_func_def(&src->slice);
   } else if(src->type == TC_RAN_FUNC_DEF_E){
    dst.tc = cp_tc_func_def(&src->tc);
+  } else if(src->type == CCC_RAN_FUNC_DEF_E){
+   dst.ccc = cp_ccc_func_def(&src->ccc);
   } else{
     assert(0 != 0 && "Unknown type");
   }
@@ -87,6 +91,8 @@ bool eq_sm_ran_function_def(sm_ran_function_def_t const* m0,sm_ran_function_def_
     return eq_slice_func_def(&m0->slice, &m1->slice);
   } else if(m0->type == TC_RAN_FUNC_DEF_E){
     return eq_tc_func_def(&m0->tc, &m1->tc);
+  } else if(m0->type == CCC_RAN_FUNC_DEF_E){
+    return eq_ccc_func_def(&m0->ccc, &m1->ccc);
   } else{
     assert(0 != 0 && "Unknown type");
   }
