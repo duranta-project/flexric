@@ -11,7 +11,7 @@
 #include "string_parser.h"                               // for to_string_ma..
 
 #include "../../util/time_now_us.h"
-
+#include "../../sm/ccc_sm/ie/ccc_data_ie.h"
 #include <assert.h>                                      // for assert
 #include <stdint.h>                                      // for uint32_t
 #include <stdio.h>                                       // for NULL, fputs
@@ -328,7 +328,19 @@ void notify_stdout_listener(sm_ag_if_rd_ind_t const* data)
 //    print_kpm_stats(&data->kpm_ind);
   } else if (data->type == RAN_CTRL_STATS_V1_03){
     // assert(0!=0 && "Not implemented");
-  } else {
+  } else if (data->type == CCC_STATS_V6) {
+    if (data->ccc.msg.format == FORMAT_1_E2SM_CCC_IND_MSG &&
+      data->ccc.msg.format1.list_of_configuration_structures_reported.data != NULL) {
+      printf("[CCC IND]: %.*s\n",
+             (int)data->ccc.msg.format1.list_of_configuration_structures_reported.len,
+             data->ccc.msg.format1.list_of_configuration_structures_reported.data);
+  } else if (data->ccc.msg.format == FORMAT_2_E2SM_CCC_IND_MSG &&
+             data->ccc.msg.format2.list_of_cells_reported.data != NULL) {
+      printf("[CCC IND]: %.*s\n",
+             (int)data->ccc.msg.format2.list_of_cells_reported.len,
+             data->ccc.msg.format2.list_of_cells_reported.data);
+  }
+ } else {
     assert(0 != 0 && "Unknown data type");
   }
 }

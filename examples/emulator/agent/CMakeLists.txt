@@ -24,6 +24,7 @@ add_library(test_agent_obj OBJECT
   sm_rlc.c
   sm_slice.c
   sm_tc.c
+  sm_ccc.c
   )
 
 target_compile_definitions(test_agent_obj PRIVATE ${E2AP_VERSION}  ${KPM_VERSION}  )

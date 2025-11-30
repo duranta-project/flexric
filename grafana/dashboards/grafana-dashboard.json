@@ -37,7 +37,7 @@
     {
       "datasource": {
         "type": "frser-sqlite-datasource",
-        "uid": "desvo1ed8r5dsc"
+        "uid": "flexric-sqlite"
       },
       "fieldConfig": {
         "defaults": {
@@ -132,7 +132,7 @@
     {
       "datasource": {
         "type": "frser-sqlite-datasource",
-        "uid": "desvo1ed8r5dsc"
+        "uid": "flexric-sqlite"
       },
       "fieldConfig": {
         "defaults": {
@@ -227,7 +227,7 @@
     {
       "datasource": {
         "type": "frser-sqlite-datasource",
-        "uid": "desvo1ed8r5dsc"
+        "uid": "flexric-sqlite"
       },
       "fieldConfig": {
         "defaults": {
@@ -335,7 +335,7 @@
     {
       "datasource": {
         "type": "frser-sqlite-datasource",
-        "uid": "depbmy9sb6m0wb"
+        "uid": "flexric-sqlite"
       },
       "fieldConfig": {
         "defaults": {
@@ -430,7 +430,7 @@
     {
       "datasource": {
         "type": "frser-sqlite-datasource",
-        "uid": "depbmy9sb6m0wb"
+        "uid": "flexric-sqlite"
       },
       "fieldConfig": {
         "defaults": {
@@ -512,7 +512,7 @@
     {
       "datasource": {
         "type": "frser-sqlite-datasource",
-        "uid": "depbmy9sb6m0wb"
+        "uid": "flexric-sqlite"
       },
       "fieldConfig": {
         "defaults": {
@@ -713,7 +713,7 @@
         {
           "datasource": {
             "type": "frser-sqlite-datasource",
-            "uid": "edthsvykzynswc"
+            "uid": "flexric-sqlite"
           },
           "queryText": "SELECT\n    tstamp AS \"time\",\n    ran_ue_id,\n    AVG(measure_value)*1000000 AS UE\nFROM KPM_MeasRecord\nWHERE meas_name = 'DRB.PdcpSduVolumeDL'\nGROUP BY tstamp, ran_ue_id\nORDER BY tstamp",
           "queryType": "time series",
@@ -851,7 +851,7 @@
         {
           "datasource": {
             "type": "frser-sqlite-datasource",
-            "uid": "edthsvykzynswc"
+            "uid": "flexric-sqlite"
           },
           "queryText": "SELECT\n    tstamp AS \"time\",\n    ran_ue_id,\n    AVG(measure_value)*1000000 AS UE\nFROM KPM_MeasRecord\nWHERE meas_name = 'DRB.PdcpSduVolumeUL'\nGROUP BY tstamp, ran_ue_id\nORDER BY tstamp",
           "queryType": "time series",
@@ -988,7 +988,7 @@
         {
           "datasource": {
             "type": "frser-sqlite-datasource",
-            "uid": "edthsvykzynswc"
+            "uid": "flexric-sqlite"
           },
           "queryText": "SELECT\n    tstamp AS \"time\",\n    ran_ue_id,\n    AVG(measure_value) AS UE\nFROM KPM_MeasRecord\nWHERE meas_name = 'DRB.UEThpDl'\nGROUP BY tstamp, ran_ue_id\nORDER BY tstamp",
           "queryType": "time series",
@@ -1125,7 +1125,7 @@
         {
           "datasource": {
             "type": "frser-sqlite-datasource",
-            "uid": "edthsvykzynswc"
+            "uid": "flexric-sqlite"
           },
           "queryText": "SELECT\n    tstamp AS \"time\",\n    ran_ue_id,\n    AVG(measure_value) AS UE\nFROM KPM_MeasRecord\nWHERE meas_name = 'DRB.UEThpUl'\nGROUP BY tstamp, ran_ue_id\nORDER BY tstamp",
           "queryType": "time series",
@@ -1262,7 +1262,7 @@
         {
           "datasource": {
             "type": "frser-sqlite-datasource",
-            "uid": "edthsvykzynswc"
+            "uid": "flexric-sqlite"
           },
           "queryText": "SELECT\n   tstamp AS \"time\",\n   ran_ue_id,\n   AVG(measure_value) AS UE\nFROM KPM_MeasRecord\nWHERE meas_name = 'RRU.PrbTotDl'\nGROUP BY tstamp, ran_ue_id\nORDER BY tstamp",
           "queryType": "time series",
@@ -1399,7 +1399,7 @@
         {
           "datasource": {
             "type": "frser-sqlite-datasource",
-            "uid": "edthsvykzynswc"
+            "uid": "flexric-sqlite"
           },
           "queryText": "SELECT\n   tstamp AS \"time\",\n   ran_ue_id,\n   AVG(measure_value) AS UE\nFROM KPM_MeasRecord\nWHERE meas_name = 'RRU.PrbTotUl'\nGROUP BY tstamp, ran_ue_id\nORDER BY tstamp",
           "queryType": "time series",
@@ -1468,7 +1468,7 @@
               }
             ]
           },
-          "unit": "µs"
+          "unit": "\u00b5s"
         },
         "overrides": [
           {
@@ -1536,7 +1536,7 @@
         {
           "datasource": {
             "type": "frser-sqlite-datasource",
-            "uid": "edthsvykzynswc"
+            "uid": "flexric-sqlite"
           },
           "queryText": "SELECT\n    tstamp AS \"time\",\n    ran_ue_id,\n    AVG(measure_value) AS UE\nFROM KPM_MeasRecord\nWHERE meas_name = 'DRB.RlcSduDelayDl'\nGROUP BY tstamp, ran_ue_id\nORDER BY tstamp",
           "queryType": "time series",
@@ -1550,6 +1550,258 @@
       ],
       "title": "DRB.RlcSduDelayDl",
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 50
+      },
+      "id": 100,
+      "panels": [],
+      "title": "E2SM-CCC (JSON)",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "flexric-sqlite"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 16,
+        "x": 0,
+        "y": 51
+      },
+      "id": 101,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "12.0.1+security-01",
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "flexric-sqlite"
+          },
+          "queryText": "SELECT\n  datetime(tstamp / 1000000, 'unixepoch', '+3 hours') AS event_time,\n  mcc,\n  mnc,\n  nb_id,\n  cu_du_id,\n  ran_cfg_struct,\n  payload\nFROM CCC_IND\nORDER BY tstamp DESC\nLIMIT 100;",
+          "rawQueryText": "SELECT\n  datetime(tstamp / 1000000, 'unixepoch', '+3 hours') AS event_time,\n  mcc,\n  mnc,\n  nb_id,\n  cu_du_id,\n  ran_cfg_struct,\n  payload\nFROM CCC_IND\nORDER BY tstamp DESC\nLIMIT 100;",
+          "queryType": "table",
+          "refId": "A",
+          "timeColumns": []
+        }
+      ],
+      "title": "CCC Indication (JSON payload)",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "flexric-sqlite"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "bars",
+            "fillOpacity": 50,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 8,
+        "x": 16,
+        "y": 51
+      },
+      "id": 102,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.1+security-01",
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "flexric-sqlite"
+          },
+          "queryText": "SELECT\n  CAST(tstamp / 1000000 AS INTEGER) AS \"time\",\n  'nb_id=' || CAST(nb_id AS TEXT) AS metric,\n  COUNT(*) AS indications\nFROM CCC_IND\nWHERE CAST(tstamp / 1000000 AS INTEGER) >= $__from / 1000\n  AND CAST(tstamp / 1000000 AS INTEGER) <= $__to / 1000\nGROUP BY 1, 2\nORDER BY \"time\" ASC;",
+          "rawQueryText": "SELECT\n  CAST(tstamp / 1000000 AS INTEGER) AS \"time\",\n  'nb_id=' || CAST(nb_id AS TEXT) AS metric,\n  COUNT(*) AS indications\nFROM CCC_IND\nWHERE CAST(tstamp / 1000000 AS INTEGER) >= $__from / 1000\n  AND CAST(tstamp / 1000000 AS INTEGER) <= $__to / 1000\nGROUP BY 1, 2\nORDER BY \"time\" ASC;",
+          "queryType": "time series",
+          "refId": "A",
+          "timeColumns": [
+            "time",
+            "ts"
+          ]
+        }
+      ],
+      "title": "CCC Indications / node",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "flexric-sqlite"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 61
+      },
+      "id": 103,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "12.0.1+security-01",
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "flexric-sqlite"
+          },
+          "queryText": "SELECT\n  ran_cfg_struct,\n  mcc,\n  mnc,\n  nb_id,\n  COUNT(*) AS count,\n  datetime(MAX(tstamp) / 1000000, 'unixepoch', '+3 hours') AS last_seen\nFROM CCC_IND\nGROUP BY ran_cfg_struct, mcc, mnc, nb_id\nORDER BY MAX(tstamp) DESC;",
+          "rawQueryText": "SELECT\n  ran_cfg_struct,\n  mcc,\n  mnc,\n  nb_id,\n  COUNT(*) AS count,\n  datetime(MAX(tstamp) / 1000000, 'unixepoch', '+3 hours') AS last_seen\nFROM CCC_IND\nGROUP BY ran_cfg_struct, mcc, mnc, nb_id\nORDER BY MAX(tstamp) DESC;",
+          "queryType": "table",
+          "refId": "A",
+          "timeColumns": []
+        }
+      ],
+      "title": "CCC RAN config structures (by node)",
+      "type": "table"
     }
   ],
   "preload": false,
@@ -1560,7 +1812,7 @@
     "list": []
   },
   "time": {
-    "from": "now-1m",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {
@@ -1581,5 +1833,5 @@
   "timezone": "browser",
   "title": "KPI measurements",
   "uid": "cdtipm2on2f40e",
-  "version": 2
+  "version": 3
 }

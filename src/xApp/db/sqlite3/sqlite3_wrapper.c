@@ -14,6 +14,7 @@
 
 #include "NR_UL-DCCH-Message.h"
 #include "../../../lib/sm/dec/dec_ue_id.h"
+#include "../../../sm/ccc_sm/ie/ccc_data_ie.h"
 
 #define MAX_SQL_LENGTH 512
 
@@ -1294,16 +1295,21 @@ void process_format_1_message(sqlite3* db, global_e2_node_id_t const* id, kpm_in
   for(size_t i = 0; i < frm_1->meas_data_lst_len; i++){
     meas_data_lst_t* meas_data_item = &frm_1->meas_data_lst[i];
     char* incomplete_flag_str = (meas_data_item->incomplete_flag != NULL && *meas_data_item->incomplete_flag == TRUE_ENUM_VALUE) ? "TRUE" : "FALSE";
-
+// The previous indexing (z + i) could access the wrong measurement record when
+// multiple labels exist. Iterate through the measurement record list sequentially
+// to maintain the correct mapping.
+    size_t record_idx = 0;
     for (size_t z = 0; z < frm_1->meas_info_lst_len; z++) {
       const meas_info_format_1_lst_t* meas_info_item = &frm_1->meas_info_lst[z];
       char *name_str = get_meas_name(meas_info_item->meas_type);
       for (size_t j = 0; j < meas_info_item->label_info_lst_len; j++) {
-        meas_record_lst_t* meas_record_item = &meas_data_item->meas_record_lst[z + j];
+        if (record_idx >= meas_data_item->meas_record_len) break;
+        meas_record_lst_t* meas_record_item = &meas_data_item->meas_record_lst[record_idx];
         to_sql_string_kpm_measRecord(id, name_str, meas_record_item, &meas_info_item->label_info_lst[j],
                                      collectStartTime, 1, NULL, NULL, NULL, incomplete_flag_str, 
                                      buffer, MAX_SQL_LENGTH);
         insert_db(db, buffer);
+        record_idx++;
       }
       free(name_str);
     }
@@ -1360,16 +1366,19 @@ void process_format_3_message(sqlite3* db, global_e2_node_id_t const* id, kpm_in
     for(size_t j = 0; j < frm_1->meas_data_lst_len; j++){
       meas_data_lst_t* meas_data_item = &frm_1->meas_data_lst[j];
       char* incomplete_flag_str = (meas_data_item->incomplete_flag != NULL && *meas_data_item->incomplete_flag == TRUE_ENUM_VALUE) ? "TRUE" : "FALSE";
-      
+
+      size_t record_idx = 0;
       for (size_t z = 0; z < frm_1->meas_info_lst_len; z++) {
         const meas_info_format_1_lst_t* meas_info_item = &frm_1->meas_info_lst[z];
         char *name_str = get_meas_name(meas_info_item->meas_type);
         for (size_t i = 0; i < meas_info_item->label_info_lst_len; i++){
-          meas_record_lst_t* meas_record_item = &meas_data_item->meas_record_lst[z + i];
+          if (record_idx >= meas_data_item->meas_record_len) break;
+          meas_record_lst_t* meas_record_item = &meas_data_item->meas_record_lst[record_idx];
           to_sql_string_kpm_measRecord(id, name_str, meas_record_item, &meas_info_item->label_info_lst[i],
                                         collectStartTime, 3, ue_id_info.id, ue_id_info.group, ue_id_info.ran_ue_id, incomplete_flag_str, 
                                         buffer, MAX_SQL_LENGTH);
           insert_db(db, buffer);
+          record_idx++;
         }
         free(name_str);
       }
@@ -1484,6 +1493,89 @@ void write_rc_stats(sqlite3* db, global_e2_node_id_t const* id, rc_ind_data_t co
   free_ue_id_e2sm(&ue_id);
 }
 
+static
+void create_ccc_table(sqlite3* db)
+{
+  assert(db != NULL);
+
+  char* sql_ccc =
+    "DROP TABLE IF EXISTS CCC_IND;"
+    "CREATE TABLE CCC_IND("
+    "  tstamp         INT  CHECK(tstamp > 0),"
+    "  ngran_node     INT,"
+    "  mcc            INT,"
+    "  mnc            INT,"
+    "  mnc_digit_len  INT,"
+    "  nb_id          INT,"
+    "  cu_du_id       TEXT,"
+    "  ran_cfg_struct TEXT,"   /* ranConfigurationStructureName */
+    "  payload        TEXT"    /* full JSON payload */
+    ");";
+
+  create_table(db, sql_ccc);
+}
+
+static
+void write_ccc_stats(sqlite3* db, global_e2_node_id_t const* id, ccc_ind_data_t const* ind)
+{
+  assert(db != NULL);
+  assert(id  != NULL);
+  assert(ind != NULL);
+
+  int64_t tstamp = time_now_us();
+
+
+  const char* payload      = NULL;
+  size_t      payload_len  = 0;
+
+  if (ind->msg.format == FORMAT_1_E2SM_CCC_IND_MSG) {
+    payload     = ind->msg.format1.list_of_configuration_structures_reported.data;
+    payload_len = ind->msg.format1.list_of_configuration_structures_reported.len;
+  } else if (ind->msg.format == FORMAT_2_E2SM_CCC_IND_MSG) {
+    payload     = ind->msg.format2.list_of_cells_reported.data;
+    payload_len = ind->msg.format2.list_of_cells_reported.len;
+  } else if (ind->msg.json_payload != NULL) {
+    payload     = ind->msg.json_payload;
+    payload_len = ind->msg.payload_len;
+  }
+
+  if (payload == NULL || payload_len == 0)
+    return;
+
+  /* cu_du_id is optional in global_e2_node_id_t */
+  char cu_du_id_str[32] = "NULL";
+  if (id->cu_du_id != NULL)
+    snprintf(cu_du_id_str, sizeof(cu_du_id_str), "%lu", *id->cu_du_id);
+
+  /* Sanitise payload for SQL: replace single quotes with '' */
+  size_t safe_len = payload_len * 2 + 1;
+  char*  safe_payload = malloc(safe_len);
+  assert(safe_payload != NULL && "Memory exhausted");
+  size_t si = 0;
+  for (size_t i = 0; i < payload_len && si < safe_len - 2; ++i) {
+    if (payload[i] == '\'') { safe_payload[si++] = '\''; safe_payload[si++] = '\''; }
+    else                    { safe_payload[si++] = payload[i]; }
+  }
+  safe_payload[si] = '\0';
+
+  char buffer[8192];
+  snprintf(buffer, sizeof(buffer),
+           "INSERT INTO CCC_IND VALUES("
+           "%ld, %d, %d, %d, %d, %u, %s, 'ccc_indication', '%s'"
+           ");",
+           tstamp,
+           id->type,
+           id->plmn.mcc,
+           id->plmn.mnc,
+           id->plmn.mnc_digit_len,
+           id->nb_id.nb_id,
+           cu_du_id_str,
+           safe_payload);
+
+  free(safe_payload);
+  insert_db(db, buffer);
+}
+
 void init_db_sqlite3(sqlite3** db, char const* db_filename)
 {
   assert(db != NULL);
@@ -1537,6 +1629,11 @@ void init_db_sqlite3(sqlite3** db, char const* db_filename)
   // RC Measurement Report
   ////
   create_rc_meas_report_table(*db);
+
+  ////
+  // CCC Indication
+  ////
+  create_ccc_table(*db);
 }
 
 void close_db_sqlite3(sqlite3* db)
@@ -1553,10 +1650,10 @@ void write_db_sqlite3(sqlite3* db, global_e2_node_id_t const* id, sm_ag_if_rd_t 
   assert(ag_rd->type == INDICATION_MSG_AGENT_IF_ANS_V0);
 
   sm_ag_if_rd_ind_t const* rd = &ag_rd->ind; 
-  assert(rd->type == MAC_STATS_V0   || rd->type == RLC_STATS_V0 
-      || rd->type == PDCP_STATS_V0  || rd->type == SLICE_STATS_V0 
+  assert(rd->type == MAC_STATS_V0   || rd->type == RLC_STATS_V0
+      || rd->type == PDCP_STATS_V0  || rd->type == SLICE_STATS_V0
       || rd->type == KPM_STATS_V3_0 || rd->type == GTP_STATS_V0
-      || rd->type == RAN_CTRL_STATS_V1_03);
+      || rd->type == RAN_CTRL_STATS_V1_03 || rd->type == CCC_STATS_V6);
 
   if(rd->type == MAC_STATS_V0){
     write_mac_stats(db, id, &rd->mac);
@@ -1572,6 +1669,8 @@ void write_db_sqlite3(sqlite3* db, global_e2_node_id_t const* id, sm_ag_if_rd_t 
     write_kpm_stats(db, id, &ag_rd->ind.kpm.ind);
   } else if(rd->type ==  RAN_CTRL_STATS_V1_03){
     write_rc_stats(db, id, &rd->rc.ind);
+  } else if (rd->type == CCC_STATS_V6) {
+    write_ccc_stats(db, id, &rd->ccc);
   } else {
     assert(0!=0 && "Unknown statistics type received ");
   }

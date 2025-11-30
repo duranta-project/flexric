@@ -4,7 +4,7 @@
 
 This repository contains [O-RAN Alliance](https://www.o-ran.org/) compliant E2 Node Agent emulators, a nearRT-RIC, and xApps written in C/C++ and Python.
 
-It implements various service models (O-RAN standard E2SM-KPM v2.01/v2.03/v3.00 and E2SM-RC v1.03, as well as customized NG/GTP, PDCP, RLC, MAC, SC and TC). 
+It implements various service models (O-RAN standard E2SM-KPM v2.01/v2.03/v3.00, E2SM-RC v1.03 and E2SM-CCC v6 as well as customized NG/GTP, PDCP, RLC, MAC, SC and TC). 
 
 Depending on the service model, different encoding schemes have been developed (ASN.1, flatbuffer, plain). 
 
@@ -24,6 +24,7 @@ Below is the list of features available in this version divided per component an
 |:----------|:-------|:-------|:-------------------|:-----------|:---------------|:----------------|:-------------------|
 | E2SM-KPM  | Y      | Y      | Y                  | Y          | Y              | N               | Y                  |
 | E2SM-RC   | Y      | Y      | Y                  | Y          | Y              | N               | Y                  |
+| E2SM-CCC   | Y      | N      | Y                  | Y          | Y              | N               | Y                  |
 | MAC       | Y      | N      | Y                  | Y          | Y              | Y               | N                  |
 | RLC       | Y      | N      | Y                  | Y          | Y              | Y               | N                  |
 | PDCP      | Y      | N      | Y                  | Y          | Y              | Y               | N                  |
@@ -170,12 +171,39 @@ The following specifications are recommended:
 - `O-RAN.WG3.E2AP-version` - E2AP protocol description
 - `O-RAN.WG3.E2SM-KPM-version` - E2SM-KPM Service Model description
 - `O-RAN.WG3.E2SM-RC-v01.03` - E2SM-RC Service Model description
+- `O-RAN.WG3.E2SM-CCC-v06` - E2SM-CCC Service Model description
 
 #### 3.1.1 E2SM-KPM
 As mentioned in section [2.2 Build FlexRIC](#22-build-flexric), we support E2SM-KPM v2.01/v2.03/v3.00 which all use ASN.1 encoding.
 
 #### 3.1.2 E2SM-RC
 We support E2SM-RC v1.03 which uses ASN.1 encoding.
+
+#### 3.1.3 E2SM-CCC 
+We support E2SM-CCC v6.00 which uses JSON encoding (nlohmann/json)
+
+**Purpose:** E2SM-CCC lets a nearRT-RIC / xApp **read and change RAN configuration**
+at node or cell level (e.g. DU/CU functions, BWP, energy-saving / NES policies),
+as defined in `O-RAN.WG3.E2SM-CCC`. Unlike E2SM-KPM (measurements) and E2SM-RC
+(control actions on UE/radio procedures), CCC focuses on **configuration structures**
+exposed by the E2 node.
+**Supported features in this implementation:**
+- REPORT / subscription with event-trigger styles:
+  - Style 1: node-level configuration change
+  - Style 2: cell-level configuration change
+  - Style 3: periodic reporting
+- Indication message formats:
+  - Format 1: `listOfConfigurationStructuresReported` (node-level)
+  - Format 2: `listOfCellsReported` / `listOfCellsControlled` (cell-level)
+- CONTROL styles:
+  - Style 1: node-level (e.g. `O-GnbDuFunction`, `O-RRMPolicyRatio`)
+  - Style 2: cell-level (e.g. `O-Bwp`, `O-NESPolicy`, `O-CellDTXDRXConfig`)
+- Example configuration structures: `O-GnbDuFunction`, `O-GnbCuCpFunction`,
+  `O-GnbCuUpFunction`, `O-RUInfo`, `O-NrCellDu` / `O-NrCellCu`, `O-CESManagementFunction`,
+  `O-PRBBlankingPolicy`, …
+- Persistence: CCC indications can be stored in SQLite (`CCC_IND`) and shown in Grafana
+- Example xApps: `examples/xApp/c/orange/xapp_test_ccc`,
+  `examples/xApp/c/orange/xapp_rf_reconfiguration
 
 ### 3.2 Custom Service Models
 In addition, we support custom service models, such are MAC, RLC, PDCP, GTP, SLICE and TC (traffic control). All use plain encoding, i.e., no ASN.1, but write the binary data into network messages.
@@ -214,7 +242,7 @@ Same applies to E2 agent emulators.
   ```
 
 Check that you see the E2 Setup Request and Response messages in Wireshark. 
-Within E2 Setup Request message, E2 node sends the list of supported service models (its "capabilities"), such are E2SM-KPM and E2SM-RC supported RAN Functions.
+Within E2 Setup Request message, E2 node sends the list of supported service models (its "capabilities"), such are E2SM-KPM, E2SM-RC and E2SM-CCC supported RAN Functions.
 
 As this section is dedicated for testing with E2 agent emulators, **all RIC INDICATION messages contain random data, as there is no UE connected**.
 
@@ -254,6 +282,14 @@ To override specific default values, you can use the following command-line opti
   XAPP_DURATION=20 ./build/examples/xApp/c/rc_handover/xapp_rc_handover
   ```
 
+  * start the E2SM-CCC test xApp - Cell Configuration and Control (subscription + control); JSON-based E2SM-CCC
+  ```bash
+  XAPP_DURATION=30 ./build/examples/xApp/c/orange/xapp_test_ccc -d /db_dir/ -n xapp_db
+  ```
+  * start the E2SM-CCC RF reconfiguration xApp (example)
+  ```bash
+  XAPP_DURATION=30 ./build/examples/xApp/c/orange/xapp_rf_reconfiguration -d /db_dir/ -n xapp_db
+  ```
   * start the (MAC + RLC + PDCP + GTP) monitor xApp
   ```bash
   XAPP_DURATION=20 ./build/examples/xApp/c/monitor/xapp_gtp_mac_rlc_pdcp_moni
@@ -299,7 +335,7 @@ Additionally, all the data received in the xApp is also written to `DB_DIR/DB_NA
 #### 4.1.1 Grafana
 [The official Grafana installation instructions](https://grafana.com/docs/grafana/latest/setup-grafana/installation/).
 
-At the moment, we support real time monitoring for E2SM-KPM Service Model in Grafana. After the Grafana installation, please follow the additional steps: 
+At the moment, we support real time monitoring for E2SM-KPM and E2SM-CCC Service Model in Grafana(CCC indications are stored in the `CCC_IND` SQLite table). After the Grafana installation, please follow the additional steps: 
 ```bash
 sudo grafana-cli plugins install frser-sqlite-datasource
 sudo vi /etc/grafana/grafana.ini # set the min_refresh_interval to 1s

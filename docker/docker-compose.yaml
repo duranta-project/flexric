@@ -5,7 +5,7 @@ services:
         image: grafana/grafana-oss:latest
         container_name: grafana
         environment:
-            - TZ=Europe/Paris
+            - TZ=Asia/Riyadh
             - GF_INSTALL_PLUGINS=frser-sqlite-datasource
             - GF_DASHBOARDS_MIN_REFRESH_INTERVAL=1s
         volumes:
@@ -13,6 +13,8 @@ services:
             - ../grafana/dashboards/dashboard.yml:/etc/grafana/provisioning/dashboards/dashboard.yml
             - ../grafana/dashboards/grafana-dashboard.json:/var/lib/grafana/dashboards/dashboard.json
             - db_dir:/var/lib/grafana/
+            # Mount whole host DB dir so SQLite WAL/SHM stay with the DB file
+            - /db_dir:/xapp_db_dir
         networks:
             e2_net:
                 ipv4_address: 192.168.72.158
