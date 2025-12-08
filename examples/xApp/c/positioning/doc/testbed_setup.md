@@ -44,7 +44,9 @@
    ```
    Start the CC xApp:
 
+   Note: the xApp uses the [OAI DFTs](https://gitlab.eurecom.fr/schmidtr/oai_dfts) to convert the frequency domain channel to time domain. The dependency is managed in CMake, but you need to specify the path to the dfts library as a command line argument.
+
    ```
    cd flexric/build/examples/xApp/c/positioning
-   XAPP_DURATION=-1 ./xapp_srs_channel
+   XAPP_DURATION=-1 ./xapp_cc_testbed ./path/to/libdfts.so
    ```

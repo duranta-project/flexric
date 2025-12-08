@@ -68,12 +68,34 @@ add_executable(xapp_srs_emulator
               )
 
 
- target_include_directories(xapp_srs_emulator PRIVATE ai_ml/inc "${oai-dfts_SOURCE_DIR}/inc")
+ target_include_directories(xapp_srs_emulator PRIVATE ai_ml/inc)
  target_link_libraries(xapp_srs_emulator
                       PRIVATE
                         "${TORCH_LIBRARIES}"
                          ml_cc
                          gui_if
+                      PUBLIC
+                        e42_xapp
+                        -pthread
+                        -lsctp
+                        -ldl
+                        m
+                     )
+
+add_executable(xapp_srs_torch_minimal
+                xapp_srs_torch_minimal.cpp
+                srs_fapi/debug.c
+                srs_fapi/nfapi.c
+                srs_fapi/srs_fapi_p7.c
+                ai_ml/src/proc_srs_channel.c
+              )
+
+
+ target_include_directories(xapp_srs_torch_minimal PRIVATE ai_ml/inc)
+ target_link_libraries(xapp_srs_torch_minimal
+                      PRIVATE
+                        "${TORCH_LIBRARIES}"
+                         ml_cc
                       PUBLIC
                         e42_xapp
                         -pthread

@@ -11,6 +11,7 @@
 
    ```
    cmake -DCMAKE_PREFIX_PATH=/path/to/libtorch .. -GNinja
+   ninja
    sudo ninja install
    ```
 
@@ -30,5 +31,5 @@
    Start the CC xApp:
    ```
    cd flexric/build/examples/xApp/c/positioning
-   ./xapp_srs_emulator
+   ./xapp_srs_emulator // or ./xapp_srs_torch_minimal
    ```
