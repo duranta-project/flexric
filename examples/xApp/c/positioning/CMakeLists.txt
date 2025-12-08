@@ -1,10 +1,22 @@
 find_package(Torch REQUIRED)
 
 add_subdirectory(ai_ml)
-add_subdirectory(cc_mqtt)
-add_subdirectory(oai_dfts)
 add_subdirectory(srs_fapi)
 
+###################################################################
+# OAI DFTs
+###################################################################
+include(FetchContent)
+
+Set(FETCHCONTENT_QUIET FALSE)
+
+FetchContent_Declare(oai-dfts
+    GIT_REPOSITORY https://gitlab.eurecom.fr/schmidtr/oai_dfts
+    GIT_TAG dfts_flexric
+    GIT_PROGRESS TRUE)
+FetchContent_MakeAvailable(oai-dfts)
+
+###################################################################
 add_executable(xapp_srs_ind
 		xapp_srs_indication.c
                 ../../../../src/util/alg_ds/alg/defer.c
@@ -21,35 +33,22 @@ add_executable(xapp_srs_ind
                       -ldl
                       )
 
-add_executable(xapp_srs_test
-		xapp_srs_test.c
-                ../../../../src/util/alg_ds/alg/defer.c
-              )
-
- target_link_libraries(xapp_srs_test
-                      PUBLIC
-                      e42_xapp
-                      -pthread
-                      -lsctp
-                      -ldl
-                      )
-
-add_executable(xapp_srs_channel
-                xapp_srs_channel.cpp
+add_executable(xapp_cc_testbed
+                xapp_cc_testbed.cpp
                 srs_fapi/debug.c
                 srs_fapi/nfapi.c
                 srs_fapi/srs_fapi_p7.c
                 ai_ml/src/proc_srs_channel.c
+                "${oai-dfts_SOURCE_DIR}/src/dfts_load.c"
               )
 
 
- target_include_directories(xapp_srs_channel PRIVATE ai_ml/inc)
- target_link_libraries(xapp_srs_channel
+ target_include_directories(xapp_cc_testbed PRIVATE ai_ml/inc "${oai-dfts_SOURCE_DIR}/inc")
+ target_link_libraries(xapp_cc_testbed
                       PRIVATE
                         "${TORCH_LIBRARIES}"
                          ml_cc
                          gui_if
-                         freq2time
                       PUBLIC
                         e42_xapp
                         -pthread
@@ -57,6 +56,8 @@ add_executable(xapp_srs_channel
                         -ldl
                         m
                      )
+
+add_dependencies(xapp_cc_testbed dfts)
 
 add_executable(xapp_srs_emulator
                 xapp_srs_emulator.cpp
@@ -67,52 +68,12 @@ add_executable(xapp_srs_emulator
               )
 
 
- target_include_directories(xapp_srs_emulator PRIVATE ai_ml/inc)
+ target_include_directories(xapp_srs_emulator PRIVATE ai_ml/inc "${oai-dfts_SOURCE_DIR}/inc")
  target_link_libraries(xapp_srs_emulator
                       PRIVATE
                         "${TORCH_LIBRARIES}"
                          ml_cc
                          gui_if
-                      PUBLIC
-                        e42_xapp
-                        -pthread
-                        -lsctp
-                        -ldl
-                        m
-                     )
-add_executable(xapp_srs_pos_cpp
-                xapp_srs_pos.cpp
-                srs_fapi/debug.c
-                srs_fapi/nfapi.c
-                srs_fapi/srs_fapi_p7.c
-              )
- target_include_directories(xapp_srs_pos_cpp PRIVATE ai_ml/inc)
- target_link_libraries(xapp_srs_pos_cpp
-                      PRIVATE
-                        "${TORCH_LIBRARIES}"
-                         ml_cc
-                      PUBLIC
-                        e42_xapp
-                        -pthread
-                        -lsctp
-                        -ldl
-                     )
-
-add_executable(xapp_cc_mqtt
-                xapp_cc_mqtt.c
-                srs_fapi/debug.c
-                srs_fapi/nfapi.c
-                srs_fapi/srs_fapi_p7.c
-                cc_mqtt/src/mqtt_utils.c
-                ai_ml/src/proc_srs_channel.c
-              )
-
- target_link_libraries(xapp_cc_mqtt
-                      PRIVATE
-                        paho-mqtt3c
-                        ml_cc
-                        cjson
-                        freq2time
                       PUBLIC
                         e42_xapp
                         -pthread

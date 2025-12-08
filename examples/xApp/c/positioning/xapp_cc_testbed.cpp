@@ -42,12 +42,14 @@
 #include "ai_ml/inc/proc_srs_channel.h"
 #include "ai_ml/localization_plots/inc/cc_gui_app.h"
 
+#include "utils.h"
+#include "tools_defs.h"
+
 #include <torch/torch.h>
 #include <torch/script.h>
 
 #include "proc_srs_channel.h"
 #include "cc_inference.hpp"
-#include "oai_dfts/inc/freq2time.h"
 
 #include <unordered_map>
 #include <tuple>
@@ -176,9 +178,10 @@ void log_ric_indication(const srs_ind_msg_t* msg)
         c16_t srs_channel_est[N_rx][1][N_FFT];
         fill_srs_channel_array(&nr_srs_channel_iq_matrix,1,N_FFT,srs_est_freq);
 
+        const idft_size_idx_t idft_size = get_idft(ofdm_symbol_size);
         // Convert to the time domain, considers 1 UE port only
         for(size_t ant = 0; ant < N_rx; ant++){
-        freq2time(ofdm_symbol_size,(int16_t*)srs_est_freq[ant][0], (int16_t*)srs_est_time[ant][0]);
+        idft(idft_size, (int16_t*)srs_est_freq[ant][0], (int16_t*)srs_est_time[ant][0], 1);
         memcpy(srs_channel_est[ant][0],
              &srs_est_time[ant][0][ofdm_symbol_size >> 1],
              (ofdm_symbol_size >> 1) * sizeof(c16_t));
@@ -194,7 +197,7 @@ void log_ric_indication(const srs_ind_msg_t* msg)
         uint32_t cir_shifted[N_rx][N_SHIFT];
         uint32_t toa[N_rx];
         preprocess_cir(N_FFT, N_rx, srs_channel_est, cir_amp2, cir_shifted, toa);
-
+/*
        for(size_t i = 0; i < N_rx; i++){
         if (toa[i] < 2000 || toa[i] > 2100) {
             // If an invalid peak is detected, don't continue with the inference 
@@ -202,6 +205,7 @@ void log_ric_indication(const srs_ind_msg_t* msg)
             return;
         }
        }
+*/
        // Testbed: index i RFSim: copying from 1 antenna only, and we are only considering 1 antenna port, no sqrt
        for(size_t i = 0; i < N_rx; i++){
          for(size_t j = 0; j < N_FFT; j++){
@@ -231,24 +235,24 @@ void log_ric_indication(const srs_ind_msg_t* msg)
       std::vector<float> prediction = {0.0f, 0.0f}; // Array to store the predictions
 
       int result;
-      result = cc_inference(module, cir_shifted, prediction);
+      result = dummy_cc_inference(module, prediction);
 
       // Do a simple moving average over the predictions
       std::vector<float> smoothed_prediction(2, 0.0f);
 
-      update_moving_average(prediction, smoothed_prediction);
-      if (!smoothed_prediction.empty()) {
+      //update_moving_average(prediction, smoothed_prediction);
+      /*if (!smoothed_prediction.empty()) {
           std::cout << "( cc_x = " << smoothed_prediction[0] << ", cc_y = " << smoothed_prediction[1] << ")\n";
           ue_map2[ue_id] = std::make_tuple(srs_pdp, srs_cfr, smoothed_prediction);
           // Only save SMA predictions
           std::string filename = "cc_predictions.csv";
 
           save_predictions(filename, frame, slot, ue_id, smoothed_prediction[0] , smoothed_prediction[1]);
-      } else {
+      } else {*/
       // Update the hashmap
       ue_map[ue_id] = prediction;
       ue_map2[ue_id] = std::make_tuple(srs_pdp, srs_cfr, prediction);
-      }
+      //}
        // Start the plot App: 1 antenna data
        // Update plot data
        pthread_mutex_lock(&gui_mutex);
@@ -370,10 +374,6 @@ static void *app_thread(void*)
 
    if(gui_ready == false){
       app = new ChannelApp("Localization with Channel Charting",0,{nullptr}, N_FFT);
- //     std::vector<float> zeros(N_FFT, 0.0f);
- //     app->UpdateCIR(zeros);
- //     app->UpdateCC(ue_map);
-
       pthread_mutex_lock(&gui_mutex);
       gui_ready = true;
       pthread_cond_signal(&gui_ready_cond);
@@ -385,7 +385,7 @@ static void *app_thread(void*)
 
 int main(int argc, char *argv[])
 {
-    load_dftslib(); // Loads dft shared lib from a specific path
+    load_dftslib(argv[1]); // Loads dft shared lib from a specific path
     module = load_torchscript_model("/home/bouknana/srs_data/trained_models/CC_EmbeddingModel_2D_cpu.pt");
     fr_args_t args = init_fr_args(argc, argv);
 
