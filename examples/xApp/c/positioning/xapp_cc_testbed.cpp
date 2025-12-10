@@ -54,6 +54,7 @@
 #include <unordered_map>
 #include <tuple>
 #include <deque>
+#include "unistd.h"
 
 #define SRS_LOG
 // Moving average window size
@@ -385,8 +386,40 @@ static void *app_thread(void*)
 
 int main(int argc, char *argv[])
 {
-    load_dftslib(argv[1]); // Loads dft shared lib from a specific path
-    module = load_torchscript_model("/home/bouknana/srs_data/trained_models/CC_EmbeddingModel_2D_cpu.pt");
+    char *model_path = NULL;
+    char *libdfts_path = NULL;
+    int opt;
+    while((opt = getopt(argc, argv, "m:p:h")) != -1 ){
+      switch(opt){
+        case 'p':
+          libdfts_path = strdup(optarg);
+          assert(libdfts_path != NULL);
+          break;
+        case 'm':
+          model_path = strdup(optarg);
+          assert(model_path != NULL);
+          break;
+        case 'h':
+          std::cout << "Usage: " << argv[0] << " -p <path to libdfts.so> -m <path to torchscript model>" << std::endl;
+          std::cout << "-p path to libdfts.so" <<std::endl;
+          std::cout << "-m path to the trained torchscript model" <<std::endl;
+          std::cout << "-h shows this help message" <<std::endl;
+          exit(EXIT_SUCCESS);
+          break;
+        default:
+          std::cerr << "Invalid option" << std::endl;
+          std::cerr << "Use -h for help" << std::endl;
+          exit(EXIT_FAILURE);
+      }
+    }
+    if(!libdfts_path || !model_path) {
+        std::cerr << "Error: need to specify the paths" << std::endl;
+        std::cerr << "Use -h for help." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    load_dftslib(libdfts_path); // Loads dft shared lib from a specific path
+    module = load_torchscript_model(model_path);
+
     fr_args_t args = init_fr_args(argc, argv);
 
     // init the xApp
@@ -401,9 +434,6 @@ int main(int argc, char *argv[])
     pthread_join(sm_thread,NULL);
     pthread_join(app_tid,NULL);
 
-    for(const auto& key_value: ue_map) {
-      std::cout << "UE with ID: " << key_value.first << " has predictions " << key_value.second << std::endl;
-    }
     std::cout << "Channel Charting xApp run Successfully" << std::endl;
     return 0;
 }
