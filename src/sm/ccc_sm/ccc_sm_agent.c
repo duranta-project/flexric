@@ -7,6 +7,9 @@
 #include "../../util/byte_array.h"
 #include "../../util/time_now_us.h"
 
+#include "enc/ccc_enc_plain.h"
+#include "dec/ccc_dec_plain.h"
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,16 +22,7 @@
 
 typedef struct {
   sm_agent_t base;
-
-#ifdef CCC_SM_ENCODING_ASN
-  void* enc_asn;
-#elif CCC_SM_ENCODING_FLATBUFFERS
-  void* enc_fb;
-#else
-  // PLAIN encoding - JSON-based, simple C structures
-  void* enc; // placeholder for plain encoding
-#endif
-
+  ccc_enc_plain_t enc;
 } sm_ccc_agent_t;
 
 static
@@ -36,8 +30,7 @@ sm_ag_if_ans_subs_t on_subscription_ccc_sm_ag(sm_agent_t const* sm_agent, sm_sub
 {
   assert(sm_agent != NULL);
   assert(data != NULL);
-
-  sm_ccc_agent_t* sm = (sm_ccc_agent_t*)sm_agent;
+  (void)sm_agent;  // Unused - encoding type not needed for CCC plain
 
   // For CCC SM using JSON schema, decode subscription data
   sm_ag_if_ans_subs_t ans = {.type = PERIODIC_SUBSCRIPTION_FLRC};
@@ -131,30 +124,14 @@ exp_ind_data_t on_indication_ccc_sm_ag(sm_agent_t const* sm_agent, void* act_def
     }
   });
 
-  // For CCC SM with JSON/PLAIN encoding, create simple byte arrays
-  // Header encoding (simplified for JSON-based CCC)
-  char hdr_json[256];
-  snprintf(hdr_json, sizeof(hdr_json), 
-           "{\"timestamp\":%u}", 
-           ccc.ind.hdr.timestamp);
-  
-  size_t hdr_len = strlen(hdr_json);
-  ret.data.ind_hdr = calloc(hdr_len + 1, sizeof(uint8_t));
-  assert(ret.data.ind_hdr != NULL && "Memory exhausted");
-  memcpy(ret.data.ind_hdr, hdr_json, hdr_len);
-  ret.data.len_hdr = hdr_len;
+  // Encode indication header and message using plain encoder
+  byte_array_t ba_hdr = ccc_enc_ind_hdr_plain(&ccc.ind.hdr);
+  ret.data.ind_hdr = ba_hdr.buf;
+  ret.data.len_hdr = ba_hdr.len;
 
-  // Message encoding
-  if (ccc.ind.msg.payload_len > 0 && ccc.ind.msg.json_payload != NULL) {
-    ret.data.ind_msg = calloc(ccc.ind.msg.payload_len + 1, sizeof(uint8_t));
-    assert(ret.data.ind_msg != NULL && "Memory exhausted");
-    memcpy(ret.data.ind_msg, ccc.ind.msg.json_payload, ccc.ind.msg.payload_len);
-    ret.data.len_msg = ccc.ind.msg.payload_len;
-  } else {
-    // Default empty message
-    ret.data.ind_msg = calloc(1, sizeof(uint8_t));
-    ret.data.len_msg = 0;
-  }
+  byte_array_t ba_msg = ccc_enc_ind_msg_plain(&ccc.ind.msg);
+  ret.data.ind_msg = ba_msg.buf;
+  ret.data.len_msg = ba_msg.len;
 
   // No call process ID for CCC
   ret.data.call_process_id = NULL;
@@ -173,42 +150,23 @@ sm_ctrl_out_data_t on_control_ccc_sm_ag(sm_agent_t const* sm_agent, sm_ctrl_req_
 
   sm_ctrl_out_data_t out = {0};
   
-  // Decode control header and message (JSON-based)
-  // Based on E2SmCccControlHeaderFormat1 and E2SmCccControlMessageFormat1/Format2
+  // Decode control header and message using plain decoder
+  ccc_ctrl_hdr_t ctrl_hdr = ccc_dec_ctrl_hdr_plain(data->len_hdr, data->ctrl_hdr);
+  ccc_ctrl_msg_t ctrl_msg = ccc_dec_ctrl_msg_plain(data->len_msg, data->ctrl_msg);
   
-  if (data->len_hdr > 0 && data->ctrl_hdr != NULL) {
-    // Parse JSON control header
-    // Expected format: {"ric_style_type": 1}
-    printf("[CCC SM Agent]: Control header received: %.*s\n", (int)data->len_hdr, (char*)data->ctrl_hdr);
-  }
+  printf("[CCC SM Agent]: Control header received (type: %d)\n", ctrl_hdr.control_type);
   
-  if (data->len_msg > 0 && data->ctrl_msg != NULL) {
-    // Parse JSON control message
-    // Expected format based on your schema:
-    // Format1: {"list_of_configuration_structures": [...]}
-    // Format2: {"list_of_cells_controlled": [...]}
-    
-    printf("[CCC SM Agent]: Control message received: %.*s\n", (int)data->len_msg, (char*)data->ctrl_msg);
+  if (ctrl_msg.payload_len > 0 && ctrl_msg.json_payload != NULL) {
+    printf("[CCC SM Agent]: Control message received: %.*s\n", (int)ctrl_msg.payload_len, ctrl_msg.json_payload);
     
     // Execute control action through I/O interface if available
     if (sm->base.io.write_ctrl != NULL) {
-      // Create CCC control request data structure
       ccc_ctrl_req_data_t req = {0};
-      req.hdr.control_type = 1; // Default control type
-      
-      // Copy JSON payload
-      req.msg.json_payload = calloc(data->len_msg + 1, sizeof(char));
-      assert(req.msg.json_payload != NULL && "Memory exhausted");
-      memcpy(req.msg.json_payload, data->ctrl_msg, data->len_msg);
-      req.msg.payload_len = data->len_msg;
+      req.hdr = ctrl_hdr;
+      req.msg = ctrl_msg;
       
       // Call the control function
       sm_ag_if_ans_t ans = sm->base.io.write_ctrl(&req);
-      
-      // Cleanup
-      if (req.msg.json_payload != NULL) {
-        free(req.msg.json_payload);
-      }
       
       // Generate control outcome based on result
       if (ans.type == CTRL_OUTCOME_SM_AG_IF_ANS_V0 && ans.ctrl_out.type == CCC_AGENT_IF_CTRL_ANS_V0 && ans.ctrl_out.ccc.outcome == 0) {
@@ -277,6 +235,11 @@ sm_ctrl_out_data_t on_control_ccc_sm_ag(sm_agent_t const* sm_agent, sm_ctrl_req_
     memcpy(out.ctrl_out, minimal_outcome, out.len_out);
   }
   
+  // Cleanup decoded data
+  if (ctrl_msg.json_payload != NULL) {
+    free(ctrl_msg.json_payload);
+  }
+  
   return out;
 }
 
@@ -284,8 +247,7 @@ static
 sm_e2_setup_data_t on_e2_setup_ccc_sm_ag(sm_agent_t const* sm_agent)
 {
   assert(sm_agent != NULL);
-
-  sm_ccc_agent_t* sm = (sm_ccc_agent_t*)sm_agent;
+  (void)sm_agent;  // Unused - no I/O needed for E2 setup
 
   sm_e2_setup_data_t setup = {0};
   
@@ -312,8 +274,7 @@ static
 sm_ric_service_update_data_t on_ric_service_update_ccc_sm_ag(sm_agent_t const* sm_agent)
 {
   assert(sm_agent != NULL);
-
-  sm_ccc_agent_t* sm = (sm_ccc_agent_t*)sm_agent;
+  (void)sm_agent;  // Unused - no I/O needed for service update
 
   sm_ric_service_update_data_t update = {0};
   

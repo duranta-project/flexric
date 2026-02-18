@@ -1,23 +1,4 @@
-/*
- * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The OpenAirInterface Software Alliance licenses this file to You under
- * the OAI Public License, Version 1.1  (the "License"); you may not use this file
- * except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.openairinterface.org/?page_id=698
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *-------------------------------------------------------------------------------
- * For more information about the OpenAirInterface (OAI) Software Alliance:
- *      contact@openairinterface.org
- */
+
 
 #include "ccc_sm_ric.h"
 #include "ccc_sm_id.h"
@@ -27,6 +8,9 @@
 #include "../../util/alg_ds/alg/defer.h"
 #include "../../util/byte_array.h"
 
+#include "enc/ccc_enc_plain.h"
+#include "dec/ccc_dec_plain.h"
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,15 +18,7 @@
 
 typedef struct {
   sm_ric_t base;
-
-#ifdef CCC_SM_ENCODING_ASN
-  ccc_enc_asn_t enc;
-#elif CCC_SM_ENCODING_FLATBUFFERS
-  ccc_enc_fb_t enc;
-#else
-  void* enc; // placeholder for plain encoding
-#endif
-
+  ccc_enc_plain_t enc;
 } sm_ccc_ric_t;
 
 static
@@ -50,7 +26,7 @@ sm_subs_data_t on_subscription_ccc_sm_ric(sm_ric_t const* sm_ric, void* cmd)
 {
   assert(sm_ric != NULL); 
   assert(cmd != NULL); 
-  sm_ccc_ric_t* sm = (sm_ccc_ric_t*)sm_ric;
+  (void)sm_ric;  // Unused - CCC uses plain encoding only
 
   // For now, treat the cmd as a string - this may need to be adapted
   const char* cmd_str = (const char*)cmd;
@@ -96,22 +72,13 @@ sm_ag_if_rd_ind_t on_indication_ccc_sm_ric(sm_ric_t const* sm_ric, sm_ind_data_t
 {
   assert(sm_ric != NULL); 
   assert(data != NULL); 
-
-  sm_ccc_ric_t* sm = (sm_ccc_ric_t*)sm_ric;
+  (void)sm_ric;  // Unused - CCC uses plain encoding only
 
   sm_ag_if_rd_ind_t dst = {0};
   dst.type = CCC_STATS_V0;
 
-  // Initialize header (timestamp will be handled by framework)
-  dst.ccc.hdr.timestamp = 0;  // Let the framework set this
-  
-  if(data->len_msg > 0 && data->ind_msg != NULL) {
-    dst.ccc.msg.json_payload = calloc(data->len_msg + 1, sizeof(char));
-    memcpy(dst.ccc.msg.json_payload, data->ind_msg, data->len_msg);
-    dst.ccc.msg.payload_len = data->len_msg;
-  }
-
-  // Note: proc_id field doesn't exist in ccc_ind_data_t structure
+  dst.ccc.hdr = ccc_dec_ind_hdr_plain(data->len_hdr, data->ind_hdr);
+  dst.ccc.msg = ccc_dec_ind_msg_plain(data->len_msg, data->ind_msg);
 
   return dst;
 }
@@ -121,31 +88,19 @@ sm_ctrl_req_data_t ric_on_control_req_ccc_sm_ric(sm_ric_t const* sm_ric, void* c
 {
   assert(sm_ric != NULL); 
   assert(ctrl != NULL); 
+  (void)sm_ric;  // Unused - CCC uses plain encoding only
   
   ccc_ctrl_req_data_t const* req = (ccc_ctrl_req_data_t const*)ctrl;
-  sm_ccc_ric_t* sm = (sm_ccc_ric_t*)sm_ric;  
 
   sm_ctrl_req_data_t dst = {0};
 
-  // Create dummy header and message for now
-  dst.ctrl_hdr = calloc(4, sizeof(uint8_t));
-  dst.len_hdr = 4;
-  memcpy(dst.ctrl_hdr, &req->hdr.control_type, sizeof(req->hdr.control_type));
+  byte_array_t ba_hdr = ccc_enc_ctrl_hdr_plain(&req->hdr);
+  dst.ctrl_hdr = ba_hdr.buf;
+  dst.len_hdr = ba_hdr.len;
 
-  // For control message, create simple payload
-  size_t msg_len = sizeof(req->msg.payload_len);
-  if(req->msg.json_payload != NULL) {
-    msg_len += req->msg.payload_len;
-  }
-  
-  dst.ctrl_msg = calloc(msg_len, sizeof(uint8_t));
-  dst.len_msg = msg_len;
-  
-  // Copy payload length first, then payload if present
-  memcpy(dst.ctrl_msg, &req->msg.payload_len, sizeof(req->msg.payload_len));
-  if(req->msg.json_payload != NULL && req->msg.payload_len > 0) {
-    memcpy(dst.ctrl_msg + sizeof(req->msg.payload_len), req->msg.json_payload, req->msg.payload_len);
-  }
+  byte_array_t ba_msg = ccc_enc_ctrl_msg_plain(&req->msg);
+  dst.ctrl_msg = ba_msg.buf;
+  dst.len_msg = ba_msg.len;
 
   return dst;
 }
@@ -155,8 +110,7 @@ sm_ag_if_ans_ctrl_t ric_on_control_out_ccc_sm_ric(sm_ric_t const* sm_ric, sm_ctr
 {
   assert(sm_ric != NULL); 
   assert(out != NULL); 
-
-  sm_ccc_ric_t* sm = (sm_ccc_ric_t*)sm_ric;
+  (void)sm_ric;  // Unused - CCC uses plain encoding only
 
   sm_ag_if_ans_ctrl_t ag_if = {.type = CCC_AGENT_IF_CTRL_ANS_V0};  
   ag_if.ccc.outcome = 0; // Success
