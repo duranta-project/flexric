@@ -80,16 +80,16 @@ pipeline {
           echo "RAN Branch          :   ${ran_branch}"
           echo "RAN Commit ID       :   ${ran_commitID}"
 
-          echo "FlexRIC Tag         : ${flexric_tag}"
-          echo "FlexRIC Branch      : ${flexric_branch}"
+          echo "FlexRIC Tag         :   ${flexric_tag}"
+          echo "FlexRIC Branch      :   ${flexric_branch}"
         }
       }
     }
     stage ('Prepare Source Code') {
       steps {
+        deleteDir() // Wipes the workspace clean
+        checkout scm // Checks out the repository
         script {
-          sh "git fetch"
-          sh "git clean -dfx > /dev/null 2>&1"
           sh "git checkout -f ${flexric_branch}"
           sh "git submodule update --init --recursive"
           def flexric_commit = sh(script: "git log -1 --pretty=format:'%H'", returnStdout: true).trim()
@@ -106,10 +106,7 @@ pipeline {
             ['oai-gnb', 'oai-nr-ue', 'oai-flexric'].each { img ->
               def tag = (img == 'oai-flexric') ? flexric_tag : ran_branch
               sh "docker pull --quiet ${ran_flexric_registry}/${img}:${tag}"
-              sh "docker tag ${ran_flexric_registry}/${img}:${tag} oai-ci/${img}:${tag}"
-              sh "docker rmi ${ran_flexric_registry}/${img}:${tag} || true"
             }
-            sh "docker logout ${ran_flexric_registry}"
         }
        }
       }
@@ -152,7 +149,7 @@ pipeline {
       steps {
        lock(ubuntuResource) {
         script {
-          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "nearRT-RIC", flexric_tag, ran_branch)
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "nearRT-RIC", flexric_tag, ran_branch, ran_flexric_registry)
         }
       }
      }
@@ -161,7 +158,7 @@ pipeline {
       steps {
        lock(ubuntuResource) {
         script {
-          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "oai-gnb", flexric_tag, ran_branch)
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "oai-gnb", flexric_tag, ran_branch, ran_flexric_registry)
         }
       }
      }
@@ -170,7 +167,7 @@ pipeline {
       steps {
        lock(ubuntuResource) {
         script {
-          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-rc-moni", flexric_tag, ran_branch)
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-rc-moni", flexric_tag, ran_branch, ran_flexric_registry)
         }
       }
      }
@@ -179,7 +176,7 @@ pipeline {
       steps {
        lock(ubuntuResource) {
         script {
-          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "oai-nr-ue oai-nr-ue2", flexric_tag, ran_branch)
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "oai-nr-ue oai-nr-ue2", flexric_tag, ran_branch, ran_flexric_registry)
         }
       }
      }
@@ -205,7 +202,7 @@ pipeline {
       steps {
        lock(ubuntuResource) {
         script {
-          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-kpm-moni", flexric_tag, ran_branch)
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-kpm-moni", flexric_tag, ran_branch, ran_flexric_registry)
         }
       }
      }
@@ -214,7 +211,7 @@ pipeline {
       steps {
        lock(ubuntuResource) {
         script {
-          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-kpm-rc", flexric_tag, ran_branch)
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-kpm-rc", flexric_tag, ran_branch, ran_flexric_registry)
         }
       }
      }
@@ -223,7 +220,7 @@ pipeline {
       steps {
        lock(ubuntuResource) {
         script {
-          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-gtp-mac-rlc-pdcp-moni", flexric_tag, ran_branch)
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-gtp-mac-rlc-pdcp-moni", flexric_tag, ran_branch, ran_flexric_registry)
         }
       }
      }
@@ -371,20 +368,24 @@ pipeline {
           archiveArtifacts artifacts: 'docker_logs.zip'
         }
         sh "docker image prune --force || true"
-        sh "docker rmi oai-ci/oai-gnb:${ran_branch} || true"
-        sh "docker rmi oai-ci/oai-nr-ue:${ran_branch} || true"
-        sh "docker rmi oai-ci/oai-flexric:${flexric_tag} || true"
+        sh """
+        docker rmi \
+          ${ran_flexric_registry}/oai-gnb:${ran_branch} \
+          ${ran_flexric_registry}/oai-nr-ue:${ran_branch} \
+          ${ran_flexric_registry}/oai-flexric:${flexric_tag} || true
+        """
         sh "docker compose -f ./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml down --volumes --rmi all --remove-orphans || true"
         sh "docker compose -f ./ci-scripts/oai-cn5g-resources/docker-compose.yaml down --volumes --rmi all --remove-orphans || true"
+        sh "docker logout ${ran_flexric_registry}"
         }
       }
     }
 }
 
-def deployObjects(String composeFile, String serviceName, String flexricTag, String ranTag) {
+def deployObjects(String composeFile, String serviceName, String flexricTag, String ranTag, String ranFlexRicRegistry) {
         script {
             sh """
-            REGISTRY="oai-ci/" \
+            REGISTRY=${ranFlexRicRegistry}/ \
             FLEXRIC_TAG=${flexricTag} \
             RAN_TAG=${ranTag} \
             docker compose -f ${composeFile} up -d --wait --wait-timeout 60 -- ${serviceName}
