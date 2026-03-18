@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+
 #include "lock_guard.h"
 
 #include <stdio.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef NR_CGI_KPM_V2_H
 #define NR_CGI_KPM_V2_H
 

@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+
 FlexRIC supports O-RAN RC SM v1.03.
 
 At the moment, OAI RAN supports:

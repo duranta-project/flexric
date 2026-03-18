@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 
 #include "../../util/alg_ds/alg/defer.h"
 #include "../../util/alg_ds/alg/find.h"

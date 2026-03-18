@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 services:
     grafana:
         image: grafana/grafana-oss:latest

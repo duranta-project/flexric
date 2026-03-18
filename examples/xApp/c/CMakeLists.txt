@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 add_subdirectory(ctrl)
 add_subdirectory(helloworld)
 add_subdirectory(keysight)

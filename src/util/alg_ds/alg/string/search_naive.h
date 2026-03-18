@@ -1,5 +1,9 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+
 #ifndef NAIVE_SEARCH_ALG_H
-#define NAIVE_SEARCH_ALG_H 
+#define NAIVE_SEARCH_ALG_H
 
 #include <stddef.h>
 

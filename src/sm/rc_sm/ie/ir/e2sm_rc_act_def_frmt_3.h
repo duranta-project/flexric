@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef E2SM_RAN_CONTROL_ACTION_DEFINITION_FORMAT_3
 #define E2SM_RAN_CONTROL_ACTION_DEFINITION_FORMAT_3
 

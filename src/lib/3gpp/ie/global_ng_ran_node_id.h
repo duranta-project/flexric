@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef GLOBAL_NG_RAN_NODE_ID_H
 #define GLOBAL_NG_RAN_NODE_ID_H
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include "enc_ue_id_gran_period_lst.h"
 #include "../../../../../lib/sm/enc/enc_ue_id.h"
 #include "../../ie/asn/asn_constant.h"

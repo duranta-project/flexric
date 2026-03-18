@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include "enc_ric_action_def_frm_5.h"
 
 #include "../../../../../lib/sm/enc/enc_ue_id.h"

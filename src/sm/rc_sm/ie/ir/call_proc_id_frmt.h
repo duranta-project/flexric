@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef CALL_PROC_ID_FRMT_E2SM_RC_H
 #define CALL_PROC_ID_FRMT_E2SM_RC_H
 

@@ -1,7 +1,9 @@
+# SPDX-License-Identifier: MIT
+
 apiVersion: 1
 datasources:
   - name: SQLite
-    type: frser-sqlite-datasource 
+    type: frser-sqlite-datasource
     access: proxy
     url: ''
     isDefault: true

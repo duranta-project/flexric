@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef NOTIFICATION_HANDLER_RIC_H
 #define NOTIFICATION_HANDLER_RIC_H
 

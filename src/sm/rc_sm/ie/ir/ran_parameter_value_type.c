@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include "ran_parameter_value_type.h"
 
 #include "ran_parameter_value.h"

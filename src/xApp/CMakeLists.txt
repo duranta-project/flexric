@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 add_subdirectory(db)
 if(XAPP_MULTILANGUAGE)
   add_subdirectory(swig)

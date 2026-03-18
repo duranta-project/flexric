@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 # From a very bad design of conversion taken from OAI, it only gets worse with time...
 if(E2AP_VERSION STREQUAL "E2AP_V1")
   include_directories("../lib/e2ap/v1_01/ie/asn")

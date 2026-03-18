@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef TC_SERVICE_MODEL_AGENT_H
 #define TC_SERVICE_MODEL_AGENT_H
 

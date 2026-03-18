@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef RAN_PARAM_COND_CRIT_DEF_H
 #define RAN_PARAM_COND_CRIT_DEF_H
 

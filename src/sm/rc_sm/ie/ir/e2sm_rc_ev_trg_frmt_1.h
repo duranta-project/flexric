@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef RAN_CONTROL_EVENT_TRIGGER_FORMAT_1_SM_H
 #define RAN_CONTROL_EVENT_TRIGGER_FORMAT_1_SM_H 
 

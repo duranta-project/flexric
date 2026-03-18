@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 set(e2ap_src_types
   ric_subscription_request.c
   ric_subscription_response.c

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef DECODE_RAN_FUNCTION_NAME_E2SM_H
 #define DECODE_RAN_FUNCTION_NAME_E2SM_H
 

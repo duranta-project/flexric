@@ -1,3 +1,6 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
 #include "sm_gtp.h"
 #include "../../../test/rnd/fill_rnd_data_gtp.h"
 #include <assert.h>

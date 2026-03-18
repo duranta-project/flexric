@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
+/*
  * Implementation agent side of SM KPM
 
  * Note that the agent side functionalities at E2AP level is already implemented with generic code

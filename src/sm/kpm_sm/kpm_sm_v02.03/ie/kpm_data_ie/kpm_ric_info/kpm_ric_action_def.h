@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef RIC_ACTION_DEFINITION_MIR_KPM_V2_H
 #define RIC_ACTION_DEFINITION_MIR_KPM_V2_H
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include "../ie/asn/E2SM-KPM-EventTriggerDefinition-Format1.h"
 #include "../ie/asn/E2SM-KPM-EventTriggerDefinition.h"
 #include "../ie/asn/E2SM-KPM-IndicationHeader.h"

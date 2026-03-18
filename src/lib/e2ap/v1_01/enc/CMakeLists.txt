@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 if(E2AP_ENCODING STREQUAL "ASN")
 
   add_library(e2ap_msg_enc_obj OBJECT 

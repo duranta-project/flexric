@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef POLICY_ACTION_E2SM_RC_H
 #define POLICY_ACTION_E2SM_RC_H
 

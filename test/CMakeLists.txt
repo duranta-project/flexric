@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 add_subdirectory(agent-ric-xapp)
 add_subdirectory(agent-ric)
 add_subdirectory(encode_decode)

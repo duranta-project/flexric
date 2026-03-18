@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 if(KPM_VERSION STREQUAL "KPM_V2_01")
   add_subdirectory(kpm_sm_v02.01)
 elseif(KPM_VERSION STREQUAL "KPM_V2_03")

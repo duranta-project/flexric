@@ -1,3 +1,6 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
 #include "sm_kpm.h"
 #include "../../../test/rnd/fill_rnd_data_kpm.h"
 #include "../../../src/util/time_now_us.h"

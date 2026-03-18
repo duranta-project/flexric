@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include "tc_data_ie.h"
 
 #include "../../../util/alg_ds/alg/eq_float.h"

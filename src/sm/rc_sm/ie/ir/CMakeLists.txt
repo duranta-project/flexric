@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 set (IR_RC_SRC
   call_proc_break.c 
   e2_node_info_chng.c

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef S_NSSAI_E2SM_H
 #define S_NSSAI_E2SM_H
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef FILL_RND_RC_EVENT_TRIGGERR_H
 #define FILL_RND_RC_EVENT_TRIGGERR_H
 

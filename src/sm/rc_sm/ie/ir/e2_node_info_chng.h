@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef E2_NODE_INFO_CHANGE_H
 #define E2_NODE_INFO_CHANGE_H
 

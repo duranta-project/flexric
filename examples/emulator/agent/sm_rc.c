@@ -1,3 +1,6 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
 #include "sm_rc.h"
 #include "../../../test/rnd/fill_rnd_data_rc.h"
 #include "../../../src/sm/rc_sm/ie/ir/lst_ran_param.h"

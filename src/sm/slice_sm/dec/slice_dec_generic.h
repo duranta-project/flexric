@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef SLICE_DECODING_GENERIC
 #define SLICE_DECODING_GENERIC 
 

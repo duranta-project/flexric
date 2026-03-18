@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef ENCODING_MATCHING_CONDITION_FORMAT_4_KPM_V2_H
 #define ENCODING_MATCHING_CONDITION_FORMAT_4_KPM_V2_H
 

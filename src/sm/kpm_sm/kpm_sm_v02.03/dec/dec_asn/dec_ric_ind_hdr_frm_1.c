@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include "../../../../../util/conversions.h"
 #include <assert.h>
 #include "../../../../../util/conversions.h"

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 file(GLOB KPM_RIC_INFO_COMMON_SRCS *.c)
 
 set(KPM_RIC_INFO_COMMON_SRCS 

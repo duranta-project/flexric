@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef E2SM_RC_INDICATION_MSG_FORMAT_3_H
 #define E2SM_RC_INDICATION_MSG_FORMAT_3_H
 

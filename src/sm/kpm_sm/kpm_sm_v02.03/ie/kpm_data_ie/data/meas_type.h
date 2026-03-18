@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef MEASUREMENT_TYPE_KPM_V2_H
 #define MEASUREMENT_TYPE_KPM_V2_H
 

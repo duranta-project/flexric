@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 set(SM_ENCODING_PDCP "PLAIN" CACHE STRING "The PDCP SM encoding to use")
 set_property(CACHE SM_ENCODING_PDCP PROPERTY STRINGS "PLAIN" "ASN" "FLATBUFFERS")
 message(STATUS "Selected PDCP SM_ENCODING: ${SM_ENCODING_PDCP}")

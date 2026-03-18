@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 add_subdirectory(e2ap_types)
 add_subdirectory(ie)
 add_subdirectory(enc)

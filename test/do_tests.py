@@ -1,5 +1,7 @@
 #!/bin/python3
 
+# SPDX-License-Identifier: MIT
+
 import os
 import atexit
 from colorama import Fore, Style

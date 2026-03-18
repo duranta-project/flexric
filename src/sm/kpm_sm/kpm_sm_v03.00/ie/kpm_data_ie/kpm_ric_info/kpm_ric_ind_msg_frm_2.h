@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef RIC_INDICATION_MESSAGE_FORMAT_2_KPM_V3_H
 #define RIC_INDICATION_MESSAGE_FORMAT_2_KPM_V3_H
 

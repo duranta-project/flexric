@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef PARAMETER_REPORT_DEFINITION_H
 #define PARAMETER_REPORT_DEFINITION_H
 

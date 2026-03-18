@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef RAN_PARAM_ELM_KEY_FALSE_E2RC_H
 #define RAN_PARAM_ELM_KEY_FALSE_E2RC_H
 

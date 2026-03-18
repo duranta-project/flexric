@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+
 ## 1. Command used to generate the C structs from the ASN.1 types 
 
 /opt/asn1c/bin/asn1c -no-gen-BER  -no-gen-UPER -no-gen-OER -no-gen-JER -fcompound-names -no-gen-example -findirect-choice -fno-include-deps e2sm_kpm_v03.00_modified.asn1

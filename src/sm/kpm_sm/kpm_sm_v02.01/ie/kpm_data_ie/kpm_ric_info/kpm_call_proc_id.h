@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef KPM_CALL_PROC_ID_E2SM_H
 #define KPM_CALL_PROC_ID_E2SM_H
 

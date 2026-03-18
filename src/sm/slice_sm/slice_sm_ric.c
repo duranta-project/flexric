@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include "slice_sm_ric.h"
 #include "slice_sm_id.h"
 

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 if(E2AP_ENCODING STREQUAL "ASN")
   add_subdirectory(asn)
   add_library(e2ap_ie_obj OBJECT 

@@ -1,6 +1,8 @@
+# SPDX-License-Identifier: MIT
+
 import os
 
-# Change the path to the static library 
+# Change the path to the static library
 path_lib = "/home/mir/workspace/flr/build/src/lib/e2ap/v3_01/ie/asn/libe2ap_asn1_obj.a"
 path = "/home/mir/workspace/flr/src/lib/e2ap/v3_01/"
 suffix = "_e2ap_v3_01"
@@ -8,7 +10,7 @@ suffix = "_e2ap_v3_01"
 # Find functions in the static library
 os.system("nm -C " + path_lib + " | grep -e r -e T -e d -e D > /tmp/tmp.txt")
 
-# Load functions names present in the static library 
+# Load functions names present in the static library
 funcs = []
 with open('/tmp/tmp.txt') as fp:
     for line in fp:
@@ -43,6 +45,6 @@ funcs.sort(key=str.lower)
 
 # Replace function names with the new suffix name to avoid clashes while linking
 for f in funcs:
-    str1 = "find " + path + " -type f ! -name \"*txt\" | xargs sed -i -E \'/(include)/!s/" + f + "/" + f + suffix + "/g\'" 
+    str1 = "find " + path + " -type f ! -name \"*txt\" | xargs sed -i -E \'/(include)/!s/" + f + "/" + f + suffix + "/g\'"
     os.system(str1)
 

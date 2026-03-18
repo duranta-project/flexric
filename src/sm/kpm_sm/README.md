@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+
 FlexRIC supports multiple O-RAN KPM SM versions - v2.01/v2.03/v3.00.
 
 By default, KPM v2.03 is compiled. If you would like to change the version, please, execute this command:

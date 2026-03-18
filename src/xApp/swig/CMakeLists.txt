@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 # This is a CMake example for Python
 CMAKE_MINIMUM_REQUIRED(VERSION 3.8)
 CMAKE_POLICY(VERSION 3.8)

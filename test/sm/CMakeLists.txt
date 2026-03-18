@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 add_subdirectory(mac_sm)
 add_subdirectory(rlc_sm)
 add_subdirectory(pdcp_sm)

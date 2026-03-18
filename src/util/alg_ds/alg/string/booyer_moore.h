@@ -1,6 +1,10 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+
 
 /*
- * A Naive C implementation from the following article 
+ * A Naive C implementation from the following article
  *
  * author = {Boyer, Robert S. and Moore, J. Strother},
  * title = {A Fast String Searching Algorithm},
@@ -9,9 +13,9 @@
  * publisher = {Association for Computing Machinery},
  * address = {New York, NY, USA},
 */
-  
+
 #ifndef BOOYER_MOORE_ALG_H
-#define BOOYER_MOORE_ALG_H 
+#define BOOYER_MOORE_ALG_H
 
 #include <stddef.h>
 

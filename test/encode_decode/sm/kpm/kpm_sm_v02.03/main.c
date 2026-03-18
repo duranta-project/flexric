@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include "../../../../../src/util/alg_ds/alg/defer.h"
 #include "../../../../../src/util/byte_array.h"
 #include "../../../../../src/sm/kpm_sm/kpm_sm_v02.03/enc/kpm_enc_asn.h"

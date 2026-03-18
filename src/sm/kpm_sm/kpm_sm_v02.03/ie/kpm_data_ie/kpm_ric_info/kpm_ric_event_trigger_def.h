@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef RIC_EVENT_TRIGGER_DEFINITION_KPM_V2_H
 #define RIC_EVENT_TRIGGER_DEFINITION_KPM_V2_H
 

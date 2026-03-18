@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 
 add_executable(xapp_tc_all 
                 xapp_tc_all.c

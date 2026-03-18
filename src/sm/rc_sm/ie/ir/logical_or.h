@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef LOGICAL_OR_E2RC_H
 #define  LOGICAL_OR_E2RC_H
 

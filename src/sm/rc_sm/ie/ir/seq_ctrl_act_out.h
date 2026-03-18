@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef SEQ_CTRL_ACT_OUT_E2SM_RC_H
 #define SEQ_CTRL_ACT_OUT_E2SM_RC_H
 

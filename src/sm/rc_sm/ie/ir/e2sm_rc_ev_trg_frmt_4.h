@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef E2SM_RC_EV_TRG_FRMT_4
 #define E2SM_RC_EV_TRG_FRMT_4
 

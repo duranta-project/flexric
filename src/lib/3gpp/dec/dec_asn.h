@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef DECODE_3GPP_ASN_MIR_H
 #define DECODE_3GPP_ASN_MIR_H 
 

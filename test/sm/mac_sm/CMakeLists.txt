@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 set(SM_ENCODING_MAC "PLAIN" CACHE STRING "The MAC SM encoding to use")
 set_property(CACHE SM_ENCODING_MAC PROPERTY STRINGS "PLAIN" "ASN" "FLATBUFFERS")
 message(STATUS "Selected MAC SM_ENCODING: ${SM_ENCODING_MAC}")

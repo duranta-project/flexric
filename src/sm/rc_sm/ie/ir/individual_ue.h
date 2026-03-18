@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef INDIVIDUAL_UE_E2RC_H
 #define INDIVIDUAL_UE_E2RC_H
 

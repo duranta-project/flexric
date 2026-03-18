@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+
 #include "eq_float.h"
 
 #include <assert.h>
@@ -15,7 +19,7 @@ bool eq_float(float a, float b, double eps)
   float const absB = fabs(b);
   double const diff = fabs(a - b);
 
-  if(a == b){ 
+  if(a == b){
     // Infinite case and normal equality
     return true;
   }else if(a == 0 || b == 0 || diff < FLT_MIN ){

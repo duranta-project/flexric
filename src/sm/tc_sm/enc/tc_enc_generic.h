@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef TC_ENCODING_GENERIC
 #define TC_ENCODING_GENERIC 
 

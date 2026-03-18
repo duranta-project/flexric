@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 set(3GPP_DERIVED_IE_DEC_ASN_SRCS
   dec_enb.c
   dec_en_gnb.c

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 if(KPM_VERSION STREQUAL "KPM_V2_01")
   set(KPM_SRC ../../src/sm/kpm_sm/kpm_sm_v02.01/ie/kpm_data_ie.c)
   set(KPM_ASN_DIR  "../../src/sm/kpm_sm/kpm_sm_v02.01/ie/asn")

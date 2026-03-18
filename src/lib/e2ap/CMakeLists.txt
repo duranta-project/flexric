@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 if(E2AP_VERSION STREQUAL "E2AP_V1")
   add_subdirectory(v1_01)
 elseif(E2AP_VERSION STREQUAL "E2AP_V2")

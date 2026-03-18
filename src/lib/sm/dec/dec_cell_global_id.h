@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef DECODING_CELL_GLOBAL_ID_H
 #define DECODING_CELL_GLOBAL_ID_H
 

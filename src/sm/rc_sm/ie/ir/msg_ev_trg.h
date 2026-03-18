@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef MESSAGE_EVENT_TRIGGER_FORMAT_1_E2SM_H
 #define MESSAGE_EVENT_TRIGGER_FORMAT_1_E2SM_H 
 

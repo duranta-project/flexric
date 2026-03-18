@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 add_executable(xapp_slice_moni_ctrl 
              xapp_slice_moni_ctrl.c
                 ../../../../src/util/alg_ds/alg/defer.c

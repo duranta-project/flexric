@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 add_library(e2ap_fb_obj INTERFACE)
 #Header files library
 target_include_directories(e2ap_fb_obj INTERFACE .)

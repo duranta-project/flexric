@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef RAN_FUNC_DEF_INSERT_H
 #define RAN_FUNC_DEF_INSERT_H
 
