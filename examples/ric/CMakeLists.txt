@@ -1,13 +1,17 @@
 ###########
-# nearRT-RIC 
+# nearRT-RIC
 ###########
 
-add_executable(nearRT-RIC near_ric.c )
-target_link_libraries(nearRT-RIC 
-                     PUBLIC 
+add_subdirectory(o1)
+
+add_executable(nearRT-RIC near_ric.c)
+target_link_libraries(nearRT-RIC
+                     PUBLIC
+                      telnet_o1
                       near_ric
-                      ${FlatCC} 
+                      ${FlatCC}
                       -pthread
                       -lsctp
                       -ldl)
+target_include_directories(nearRT-RIC PRIVATE ${CMAKE_SOURCE_DIR}/o1)
 

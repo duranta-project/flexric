@@ -34,6 +34,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "o1/telnet_o1.h"
+
 const uint16_t MAC_ran_func_id = 142;
 const uint16_t RLC_ran_func_id = 143;
 const uint16_t PDCP_ran_func_id = 144;
@@ -51,7 +53,7 @@ void stop_and_exit()
   exit(EXIT_SUCCESS);
 }
 
-static 
+static
 pthread_once_t once = PTHREAD_ONCE_INIT;
 
 static
@@ -65,11 +67,14 @@ void sig_handler(int sig_num)
 
 int main(int argc, char *argv[])
 {
+  pthread_t telnet_thread;
+  pthread_create(&telnet_thread, NULL, telnet_server_thread, NULL);
+  pthread_detach(telnet_thread);
   // Signal handler
   signal(SIGINT, sig_handler);
 
   fr_args_t args = init_fr_args(argc, argv);
- 
+
   // Init the RIC
   init_near_ric_api(&args);
 
