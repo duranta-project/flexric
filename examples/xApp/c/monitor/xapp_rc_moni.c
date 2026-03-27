@@ -108,10 +108,24 @@ void log_meas_report(const NR_MeasResults_t *results)
     NR_MeasQuantityResults_t *mqr = measresultnr->measResult.cellResults.resultsSSB_Cell;
 
     if (mqr != NULL) {
-      const long rrsrp = *mqr->rsrp - 156;
-      const float rrsrq = (float) (*mqr->rsrq - 87) / 2.0f;
-      const float rsinr = (float) (*mqr->sinr - 46) / 2.0f;
-      printf("resultsSSB-Cell: RSRP %ld [dBm] RSRQ %.1f [dB] SINR %.1f [dB]\n", rrsrp, rrsrq, rsinr);
+      char rrsrp[32], rrsrq[16], rsinr[16];
+
+      if (mqr->rsrp)
+        snprintf(rrsrp, sizeof(rrsrp), "%ld [dBm]", *mqr->rsrp - 156);
+      else
+        snprintf(rrsrp, sizeof(rrsrp), "not provided");
+
+      if (mqr->rsrq)
+        snprintf(rrsrq, sizeof(rrsrq), "%.1f [dB]", (*mqr->rsrq - 87) / 2.0f);
+      else
+        snprintf(rrsrq, sizeof(rrsrq), "not provided");
+
+      if (mqr->sinr)
+        snprintf(rsinr, sizeof(rsinr), "%.1f [dB]", (*mqr->sinr - 46) / 2.0f);
+      else
+        snprintf(rsinr, sizeof(rsinr), "not provided");
+
+      printf("RSRP %s, RSRQ %s, SINR %s\n", rrsrp, rrsrq, rsinr);
     } else {
       printf("resultsSSB-Cell: empty.\n");
     }
