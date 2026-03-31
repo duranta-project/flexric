@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 set(SM_COMMON_DEC_ASN_SRCS
     dec_cell_global_id.c
     dec_ran_func_name.c

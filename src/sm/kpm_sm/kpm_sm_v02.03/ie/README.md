@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
 
 ## Types that change from non optional (KPM v2.01) to optional(KPM v2.02 KPM v2.03)
 

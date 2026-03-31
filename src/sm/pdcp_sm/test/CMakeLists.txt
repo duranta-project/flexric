@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 cmake_minimum_required(VERSION 3.15)
 
 project (TEST_PDCP_SM)

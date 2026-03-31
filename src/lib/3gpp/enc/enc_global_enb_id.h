@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef ENCODING_GLOBAL_ENB_ID_H
 #define ENCODING_GLOBAL_ENB_ID_H
 

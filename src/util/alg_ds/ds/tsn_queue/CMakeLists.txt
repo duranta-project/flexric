@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 cmake_minimum_required(VERSION 3.0)
 
 project(tsn_queue)
@@ -37,13 +39,13 @@ endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-add_executable(tsn_queue 
-  test_tsn_queue.c  
+add_executable(tsn_queue
+  test_tsn_queue.c
   ../../seq_container/seq_ring.c
   tsn_queue.c
   ../../alg/defer.c
   )
-  
+
 target_link_libraries(tsn_queue -lpthread )
 
 # Create YouCompleteMe json files

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 set(SM_ENCODING_RC "ASN" CACHE STRING "The RC SM encoding to use")
 set_property(CACHE SM_ENCODING_RC PROPERTY STRINGS "PLAIN" "ASN" "FLATBUFFERS")
 message(STATUS "Selected RC SM_ENCODING: ${SM_ENCODING_RC}")

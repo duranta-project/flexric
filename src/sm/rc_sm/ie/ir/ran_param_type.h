@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef RAN_PARAM_TYPE_H_MIR
 #define RAN_PARAM_TYPE_H_MIR 
 

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 set(SM_COMMON_ENC_ASN_SRCS
     enc_cell_global_id.c
     enc_ue_id.c

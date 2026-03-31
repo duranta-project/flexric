@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef RAN_FUNCTION_DEFINITION_KPM_V3_H
 #define RAN_FUNCTION_DEFINITION_KPM_V3_H
 

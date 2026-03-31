@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef ACTION_DEFINITION_FORMAT_5_KPM_V2_01_H
 #define ACTION_DEFINITION_FORMAT_5_KPM_V2_01_H
 

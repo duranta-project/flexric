@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 include_directories(src/xApp)
 
 add_executable(xapp_es_with_cell_util

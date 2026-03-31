@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef SEQ_INS_STYLE_IND_MSG_E2SM_RC_H
 #define SEQ_INS_STYLE_IND_MSG_E2SM_RC_H
 

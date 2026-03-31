@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef UE_INFORMATION_CHANGE_E2SM_H
 #define UE_INFORMATION_CHANGE_E2SM_H
 

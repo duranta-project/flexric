@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 set(KPM_ENC_COMMON_ASN_SRCS 
   enc_label_info.c
   enc_matching_cond_frm_3.c

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef GLOBAL_EN_GNB_ID_E2SM_H
 #define GLOBAL_EN_GNB_ID_E2SM_H
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef LABEL_INFORMATION_LIST_KPM_V2_H
 #define LABEL_INFORMATION_LIST_KPM_V2_H
 

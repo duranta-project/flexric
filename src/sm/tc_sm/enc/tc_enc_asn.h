@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef TC_ENCRYPTIOIN_ASN_H
 #define TC_ENCRYPTIOIN_ASN_H
 

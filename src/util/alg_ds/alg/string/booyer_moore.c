@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+
 #include "booyer_moore.h"
 #include <assert.h>
 #include <stdlib.h>

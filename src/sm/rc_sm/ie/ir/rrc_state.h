@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef RRC_STATE_E2SM_H
 #define RRC_STATE_E2SM_H 
 

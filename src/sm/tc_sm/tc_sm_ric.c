@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include "tc_sm_ric.h"
 #include "tc_sm_id.h"
 

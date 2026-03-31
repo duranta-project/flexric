@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include <assert.h>
 
 #include "../../../../../lib/sm/dec/dec_cell_global_id.h"

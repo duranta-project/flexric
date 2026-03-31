@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 set(SM_ENCODING_TC "PLAIN" CACHE STRING "The TC SM encoding to use")
 set_property(CACHE SM_ENCODING_TC PROPERTY STRINGS "PLAIN" "ASN" "FLATBUFFERS")
 message(STATUS "Selected TC SM_ENCODING: ${SM_ENCODING_TC}")

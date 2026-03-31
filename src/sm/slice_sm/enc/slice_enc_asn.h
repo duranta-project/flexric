@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef SLICE_ENCRYPTIOIN_ASN_H
 #define SLICE_ENCRYPTIOIN_ASN_H
 

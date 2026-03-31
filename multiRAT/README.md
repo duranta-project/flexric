@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+
 ## 1. OpenAirInterface
 
 Follow the instructions https://gitlab.eurecom.fr/oai/openairinterface5g/-/tree/develop/openair2/E2AP?ref_type=heads.
@@ -9,6 +11,3 @@ Follow the instructions https://docs.srsran.com/projects/project/en/latest/tutor
 ## 3. Keysight RICtest
 
 The nearRT-RIC has been successfully tested with Keysight's RICtest RAN emulator https://www.keysight.com/us/en/product/P8828S/rictest-ran-intelligent-controller-test-solutions.html.
-
-
-

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include <assert.h>
 
 #include "../../../sm/rc_sm/ie/asn/asn_constant.h"

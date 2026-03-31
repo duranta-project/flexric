@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef NETWORK_INTERFACE_MESSAGE_ID_E2SM_H
 #define NETWORK_INTERFACE_MESSAGE_ID_E2SM_H
 

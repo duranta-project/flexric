@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include <assert.h>
 
 #include "enc_ric_action_def_frm_1.h"

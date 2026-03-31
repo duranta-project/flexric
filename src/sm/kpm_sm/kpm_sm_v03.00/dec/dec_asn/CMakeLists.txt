@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 set(KPM_DEC_IE_ASN_SRCS 
   dec_ric_action_def_frm_1.c
   dec_ric_action_def_frm_2.c

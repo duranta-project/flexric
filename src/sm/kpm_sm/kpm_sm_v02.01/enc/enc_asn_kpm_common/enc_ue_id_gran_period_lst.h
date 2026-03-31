@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef ENCODE_UE_ID_GRANULARITY_PERIOD_LIST_KPM_V2_01_H
 #define ENCODE_UE_ID_GRANULARITY_PERIOD_LIST_KPM_V2_01_H
 

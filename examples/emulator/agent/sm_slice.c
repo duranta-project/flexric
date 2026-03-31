@@ -1,3 +1,6 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
 #include "sm_slice.h"
 #include "../../../test/rnd/fill_rnd_data_slice.h"
 #include <assert.h>

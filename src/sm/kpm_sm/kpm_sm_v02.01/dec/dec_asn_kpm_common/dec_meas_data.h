@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef DECODE_MEASUREMENT_DATA_FORMAT_1_KPM_V2_01_H
 #define DECODE_MEASUREMENT_DATA_FORMAT_1_KPM_V2_01_H
 

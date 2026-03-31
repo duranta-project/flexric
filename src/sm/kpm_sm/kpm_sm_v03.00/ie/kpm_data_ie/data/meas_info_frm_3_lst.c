@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include <assert.h>
 
 #include "meas_info_frm_3_lst.h"

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 set(ASN_MODULE_SRCS
   AMFPointer.c
   AMFRegionID.c

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef RAN_PARAMETER_E2RC_H
 #define RAN_PARAMETER_E2RC_H 
 

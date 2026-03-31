@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include <arpa/inet.h>
 #include <assert.h>
 #include <stdint.h>

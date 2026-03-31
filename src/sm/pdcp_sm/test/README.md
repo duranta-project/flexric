@@ -1,10 +1,12 @@
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+
 To build the project
 
 ## Profiling
 ```bash
   gprof ./build/test_pdcp_sm gmon.out > analysis.txt
 ```
-  
+
 ## Coverage
 
 ```bash

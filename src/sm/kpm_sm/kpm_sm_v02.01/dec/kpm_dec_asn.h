@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef KPM_DECODE_ASN_V2_H
 #define KPM_DECODE_ASN_V2_H
 

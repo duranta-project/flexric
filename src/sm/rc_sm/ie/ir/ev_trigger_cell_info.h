@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef EVENT_TRIGGER_CELL_INFO_H
 #define EVENT_TRIGGER_CELL_INFO_H
 

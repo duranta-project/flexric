@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef SLICE_SERVICE_MODEL_ID_H
 #define SLICE_SERVICE_MODEL_ID_H 
 

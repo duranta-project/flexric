@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 add_executable(xapp_mac_ctrl
   mac_ctrl.c
   ../../../../src/util/alg_ds/alg/defer.c

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include "ran_param_elm_key_true.h"
 
 #include <assert.h>

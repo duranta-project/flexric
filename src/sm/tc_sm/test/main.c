@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include "../../../../test/common/fill_ind_data.h"
 #include "../../tc_sm/tc_sm_agent.h"
 #include "../../tc_sm/tc_sm_ric.h"

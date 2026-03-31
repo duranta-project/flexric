@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef MEASUREMENT_BIN_RANGE_INFO_LIST_KPM_V3_H
 #define MEASUREMENT_BIN_RANGE_INFO_LIST_KPM_V3_H
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef ERROR_MACROS_MIR_H
 #define ERROR_MACROS_MIR_H 
 

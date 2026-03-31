@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef NEIGHBOUR_RELATION_TABLE_E2SM_RC_H
 #define NEIGHBOUR_RELATION_TABLE_E2SM_RC_H
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef SEQUENCE_OF_POLICY_CONDITION_H
 #define SEQUENCE_OF_POLICY_CONDITION_H
 

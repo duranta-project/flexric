@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef EUTRA_CGI_KPM_V2_H
 #define EUTRA_CGI_KPM_V2_H
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include "enc_meas_info_cond_ue.h"
 #include "../../../../../lib/sm/enc/enc_ue_id.h"
 #include "../../ie/kpm_data_ie/data/meas_type.h"

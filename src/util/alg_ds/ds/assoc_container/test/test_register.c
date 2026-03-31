@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+
 
 #include "assoc_reg.h"
 #include "../../alg/find.h"

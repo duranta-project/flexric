@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include "seq_ctrl_sty_mul_out.h"
 
 #include <assert.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef GNB_CU_UP_h
 #define GNB_CU_UP_h
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef ENCODE_MEASUREMENT_INFO_COND_UE_KPM_V2_H
 #define ENCODE_MEASUREMENT_INFO_COND_UE_KPM_V2_H
 

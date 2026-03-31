@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include "enc_meas_data.h"
 #include "../../ie/asn/asn_constant.h"
 #include "../../ie/asn/MeasurementDataItem.h"

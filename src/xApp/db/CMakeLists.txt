@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 
 if(XAPP_DB STREQUAL "SQLITE3_XAPP")
   set(UE_ID_COMMON_E2SM_SRCS

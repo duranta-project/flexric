@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 set(KPM_RIC_INFO_SRCS 
   kpm_ran_function_def.c
   kpm_ric_action_def.c

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #include "e2sm_rc_ind_hdr_frmt_2.h"
 
 #include <assert.h>

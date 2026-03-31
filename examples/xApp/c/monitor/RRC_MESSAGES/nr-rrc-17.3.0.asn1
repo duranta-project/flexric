@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 -- TAG-NR-RRC-DEFINITIONS-START
 
 NR-RRC-Definitions DEFINITIONS AUTOMATIC TAGS ::=

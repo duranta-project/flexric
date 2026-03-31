@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+
 # FlexRIC Documentation
 
 This repository contains [O-RAN Alliance](https://www.o-ran.org/) compliant E2 Node Agent emulators, a nearRT-RIC, and xApps written in C/C++ and Python.
@@ -28,6 +30,19 @@ Below is the list of features available in this version divided per component an
 | GTP       | Y      | N      | Y                  | Y          | Y              | Y               | N                  |
 | SLICE     | N      | N      | Y                  | Y          | Y              | Y               | N                  |
 | TC        | N      | N      | Y                  | Y          | Y              | N               | N                  |
+
+# License 
+
+ *  [OAI License Model](http://www.openairinterface.org/?page_id=101)
+ *  [CSSL v1.0](http://www.openairinterface.org/?page_id=698)
+
+The source code is distributed under [**CSSL v1.0**](LICENSE).
+Files under src/util/alg_ds, docker-compose yaml files and some ci-scripts
+are distributed under [MIT license](preferred)(MIT.txt).
+Documentation is distributed under
+[Creative Commons Attribution 4.0 International license](LICENSES/preferred/CC-BY-4.0.txt).
+
+Please see [NOTICE](NOTICE) for third party softwares that are used by flexric. 
 
 [[_TOC_]]
 

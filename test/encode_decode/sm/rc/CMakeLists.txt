@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
+
 project (test_enc_dec_rc_sm)
 
 add_executable(test_enc_dec_rc_sm 

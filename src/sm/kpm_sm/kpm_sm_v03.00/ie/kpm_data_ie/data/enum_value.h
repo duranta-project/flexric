@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef ENUM_VALUE_KPM_V3_H
 #define ENUM_VALUE_KPM_V3_H
 

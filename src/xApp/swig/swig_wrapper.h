@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef SWIG_WRAPPER_H
 #define SWIG_WRAPPER_H 
 

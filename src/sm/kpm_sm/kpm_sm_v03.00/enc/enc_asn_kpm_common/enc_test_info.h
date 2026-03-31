@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
+
 #ifndef ENCODING_TEST_INFORMATION_H
 #define ENCODING_TEST_INFORMATION_H
 

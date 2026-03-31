@@ -1,3 +1,6 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
 #ifndef SM_SLICE_READ_WRITE_AGENT_H
 #define SM_SLICE_READ_WRITE_AGENT_H
 

@@ -1,3 +1,6 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ */
 #include "sm_pdcp.h"
 #include "../../../test/rnd/fill_rnd_data_pdcp.h"
 #include <assert.h>
