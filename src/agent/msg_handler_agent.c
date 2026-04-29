@@ -32,15 +32,6 @@ bool check_valid_msg_type(e2_msg_type_t msg_type )
       || msg_type == E2_CONNECTION_UPDATE;
 }
 
-static inline
-bool not_aperiodic_ind_event(int fd)
-{
-  assert(fd > -1);
-
-  // 0 value used for aperiodic indication events
-  return fd != 0;
-}
-
 static
 bool stop_ind_event(e2_agent_t* ag, ric_gen_id_t id)
 {
@@ -59,20 +50,18 @@ bool stop_ind_event(e2_agent_t* ag, ric_gen_id_t id)
   assert(it_r != end_r);
   ind_event_t* ind_ev = assoc_rb_tree_key(&ag->ind_event.right, it_r);
 
-  // These 4 lines need refactoring
-  if(ind_ev->sm->free_act_def != NULL)
-    ind_ev->sm->free_act_def(ind_ev->sm, ind_ev->act_def);
-  //
-  if(ind_ev->type == APERIODIC_SUBSCRIPTION_FLRC)
+  if (ind_ev->type == PERIODIC_SUBSCRIPTION_FLRC) {
+    if (ind_ev->sm->free_act_def != NULL)
+      ind_ev->sm->free_act_def(ind_ev->sm, ind_ev->act_def);
+  } else if(ind_ev->type == APERIODIC_SUBSCRIPTION_FLRC) {
     ind_ev->free_subs_aperiodic(id.ric_req_id);
-
+  } else {
+    assert(0!=0 && "Unknown subscritpion type");
+  }
 
   void (*free_ind_event)(void*) = NULL;
   int* fd = bi_map_extract_right(&ag->ind_event, &tmp, sizeof(tmp), free_ind_event);
-  assert(*fd > -1);
-  //printf("fd value in stopping pending event = %d \n", *fd);
- 
-  if(not_aperiodic_ind_event(*fd))
+  if (*fd > -1)
     rm_fd_asio_agent(&ag->io, *fd);
   free(fd);
 
@@ -190,11 +179,14 @@ e2ap_msg_t e2ap_handle_subscription_request_agent(e2_agent_t* ag, const e2ap_msg
     ev.free_subs_aperiodic = subs.aper.free_aper_subs;
     // Aperiodic indication generated i.e., the RAN will generate it via 
     // void async_event_agent_api(uint32_t ric_req_id, void* ind_data);
-    int fd = 0;
+    // however, the fd has to be unique per subscription (e.g. two xApp running in parallel
+    // can subscribe to the same parameters, but when deleting one via bi_map_extract_right()
+    // it will not find the correct one due to cmp_fd())
+    int fd = -ev.ric_id.ric_req_id;
     lock_guard(&ag->mtx_ind_event);
     bi_map_insert(&ag->ind_event, &fd, sizeof(int), &ev, sizeof(ev));
   } else {
-    assert(0!=0 && "Unknown subscritpion timer value");
+    assert(0!=0 && "Unknown subscritpion type");
   }
 
   printf("[E2-AGENT]: RIC_SUBSCRIPTION_REQUEST rx\n");
