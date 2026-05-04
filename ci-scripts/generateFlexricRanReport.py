@@ -17,7 +17,7 @@ PING_LOGS = {
 }
 PING_OPTIONS = "-c 20"
 CONTAINER_EXPECTED_TEXTS = {
-    "nearRT-RIC": "[NEAR-RIC]: Removing E2 Node MCC 1 MNC 1 NB_ID 3584",
+    "nearRT-RIC": "The nearRT-RIC run SUCCESSFULLY",
     "default": "Test xApp run SUCCESSFULLY"
 }
 # Ordered list of services to check in container logs
