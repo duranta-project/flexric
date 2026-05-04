@@ -20,7 +20,7 @@ services:
             - "3000:3000"
 
     emu-gnb-mono:
-        image: oai-flexric:dev
+        image: oai-flexric:latest
         command: "stdbuf -o0 /usr/local/flexric/emulator/agent/emu_agent_gnb"
         container_name: emu-gnb-mono
         depends_on:
@@ -32,7 +32,7 @@ services:
             - ./flexric.conf:/usr/local/etc/flexric/flexric.conf
 
     emu-cu:
-        image: oai-flexric:dev
+        image: oai-flexric:latest
         command: "stdbuf -o0 /usr/local/flexric/emulator/agent/emu_agent_gnb_cu"
         container_name: emu-cu
         depends_on:
@@ -44,7 +44,7 @@ services:
             - ./flexric.conf:/usr/local/etc/flexric/flexric.conf
 
     emu-du:
-        image: oai-flexric:dev
+        image: oai-flexric:latest
         command: "stdbuf -o0 /usr/local/flexric/emulator/agent/emu_agent_gnb_du"
         container_name: emu-du
         depends_on:
@@ -56,7 +56,7 @@ services:
             - ./flexric.conf:/usr/local/etc/flexric/flexric.conf
 
     nearRT-RIC:
-        image: oai-flexric:dev
+        image: oai-flexric:latest
         command: "stdbuf -o0 nearRT-RIC"
         container_name: nearRT-RIC
         networks:
@@ -66,7 +66,7 @@ services:
             - ./flexric.conf:/usr/local/etc/flexric/flexric.conf
 
     xapp-kpm-moni:
-        image: oai-flexric:dev
+        image: oai-flexric:latest
         command: "stdbuf -o0 /usr/local/flexric/xApp/c/monitor/xapp_kpm_moni -d /db_dir/ -n xapp_db"
         container_name: xapp-kpm-moni
         environment:
@@ -84,7 +84,7 @@ services:
             - db_dir:/db_dir
 
     xapp-rc-moni:
-        image: oai-flexric:dev
+        image: oai-flexric:latest
         command: "stdbuf -o0 /usr/local/flexric/xApp/c/monitor/xapp_rc_moni"
         container_name: xapp-rc-moni
         environment:
@@ -101,7 +101,7 @@ services:
             - ./flexric.conf:/usr/local/etc/flexric/flexric.conf
 
     xapp-gtp-mac-rlc-pdcp-moni:
-        image: oai-flexric:dev
+        image: oai-flexric:latest
         command: "stdbuf -o0 /usr/local/flexric/xApp/c/monitor/xapp_gtp_mac_rlc_pdcp_moni"
         container_name: xapp-gtp-mac-rlc-pdcp-moni
         environment:
