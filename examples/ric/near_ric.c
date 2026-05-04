@@ -31,6 +31,8 @@ void stop_and_exit()
   // Stop the RIC
   stop_near_ric_api();
 
+  printf("The nearRT-RIC run SUCCESSFULLY\n");
+
   exit(EXIT_SUCCESS);
 }
 
@@ -50,6 +52,7 @@ int main(int argc, char *argv[])
 {
   // Signal handler
   signal(SIGINT, sig_handler);
+  signal(SIGTERM, sig_handler);
 
   fr_args_t args = init_fr_args(argc, argv);
  
