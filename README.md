@@ -301,11 +301,11 @@ Import the Grafana configuration:
 FlexRIC is supported on the following distributions: Ubuntu, Red Hat, and Rocky Linux. You can build the images as:
 ```bash
 # Ubuntu
-docker buildx build --no-cache --target oai-flexric --tag oai-flexric:dev --file docker/Dockerfile.flexric.ubuntu .
+docker buildx build --no-cache --target oai-flexric --tag oai-flexric:latest --file docker/Dockerfile.flexric.ubuntu .
 # Red Hat
-docker buildx build --no-cache --target oai-flexric --tag oai-flexric:dev --file docker/Dockerfile.flexric.rhel .
+docker buildx build --no-cache --target oai-flexric --tag oai-flexric:latest --file docker/Dockerfile.flexric.rhel .
 # Rocky Linux
-docker buildx build --no-cache --target oai-flexric --tag oai-flexric:dev --file docker/Dockerfile.flexric.rocky .
+docker buildx build --no-cache --target oai-flexric --tag oai-flexric:latest --file docker/Dockerfile.flexric.rocky .
 ```
 
 In order to reproduce the [bare-metal testbed](#41-bare-metal-testbed) in docker environment, follow the next steps:
