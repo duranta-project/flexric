@@ -1,0 +1,368 @@
+#!/bin/groovy
+/*
+ * SPDX-License-Identifier: MIT
+ */
+
+//-------------------------------------------------------------------------------
+
+def ubuntuNode = params.UbuntuBuildNode
+def ubuntuResource = params.UbuntuResource
+
+// Tags/Branches to use
+def flexric_tag = params.flexric_tag ?: "develop"   // Use upstream value if exists, otherwise default "develop"
+def flexric_branch = params.flexric_branch ?: "dev" // Use upstream value if exists, otherwise default "dev"
+
+def ran_repository = params.ran_repository
+def ran_branch = params.ran_branch
+
+def ran_commitID = ""
+
+// Private Local Registry URL
+def ran_flexric_registry = params.ran_flexric_registry
+
+//-------------------------------------------------------------------------------
+// Pipeline start
+pipeline {
+  agent {
+    label ubuntuNode
+  }
+  options {
+    disableConcurrentBuilds()
+    timestamps()
+    lock(resource: ubuntuResource)
+    ansiColor('xterm')
+    gitLabConnection('OAI GitLab')
+  }
+
+  stages {
+    stage ('Verify Parameters') {
+      steps {
+        script {
+
+          def JOB_TIMESTAMP = sh(
+            returnStdout: true,
+            script: "date --utc --rfc-3339=seconds | sed -e 's/+00:00//'"
+          ).trim()
+          echo "Current UTC Date/Time: ${JOB_TIMESTAMP}"
+
+          if (!ubuntuNode) {
+            echo '\u26D4 \u001B[31mNo Node is specified!\u001B[0m'
+            error "Node not specified. Stopping pipeline!"
+          } else {
+            echo "Node: ${ubuntuNode}"
+          }
+
+          ran_commitID = sh(
+            returnStdout: true,
+            script: "git ls-remote ${ran_repository} refs/heads/${ran_branch} | awk '{print \$1}'"
+          ).trim()
+
+          if (!ran_commitID) {
+            error "Could not retrieve commit ID for ${ran_branch} from ${ran_repository}"
+          }
+
+          echo "RAN Repository      :   ${ran_repository}"
+          echo "RAN Branch          :   ${ran_branch}"
+          echo "RAN Commit ID       :   ${ran_commitID}"
+
+          echo "FlexRIC Tag         :   ${flexric_tag}"
+          echo "FlexRIC Branch      :   ${flexric_branch}"
+        }
+      }
+    }
+    stage ('Prepare Source Code') {
+      steps {
+        deleteDir() // Wipes the workspace clean
+        checkout scm // Checks out the repository
+        script {
+          sh "git checkout -f ${flexric_branch}"
+          sh "git submodule update --init --recursive"
+          def flexric_commit = sh(script: "git log -1 --pretty=format:'%H'", returnStdout: true).trim()
+          echo "Current FlexRIC commit: ${flexric_commit}"
+          sh "mkdir -p archives/ archives/oai5g-flexric archives/oai-cn5g"
+        }
+      }
+    }
+    stage ('Pull Images from Local Registry') {
+      steps {
+        script {
+            sh "docker login -u oaicicd -p oaicicd ${ran_flexric_registry}"
+            def images = ['oai-gnb', 'oai-nr-ue', 'oai-flexric']
+            for (int i = 0; i < images.size(); i++) {
+                def img = images[i]
+                def tag = (img == 'oai-flexric') ? flexric_tag : ran_branch
+                sh "docker pull --quiet ${ran_flexric_registry}/${img}:${tag}"
+            }
+       }
+      }
+    }
+    stage ('Pull Core Network Images') {
+      steps {
+        script {
+            withCredentials([
+                [$class: 'UsernamePasswordMultiBinding', credentialsId: "${params.DockerHubCredentials}", usernameVariable: 'DH_Username', passwordVariable: 'DH_Password']
+              ]) {
+                sh "echo ${DH_Password} | docker login --username ${DH_Username} --password-stdin"
+            }
+            sh "docker compose -f ./ci-scripts/oai-cn5g-resources/docker-compose.yaml pull --quiet"
+            sh """
+            OUTPUT_FILE=archives/oai-cn5g/oai_cn5g_images.txt
+            grep 'image:' ./ci-scripts/oai-cn5g-resources/docker-compose.yaml | awk '{print \$2}' | grep '^oaisoftwarealliance/' | while read img; do
+              echo "===== \$img =====" >> \$OUTPUT_FILE
+              docker inspect --format='{{json .Config.Labels}}' "\$img" >> \$OUTPUT_FILE
+              echo "\\n" >> \$OUTPUT_FILE
+            done
+            """
+            sh "docker logout"
+        }
+     }
+    }
+    stage ('Deploy OAI 5G Core Network') {
+      steps {
+        script {
+            sh "docker compose -f ./ci-scripts/oai-cn5g-resources/docker-compose.yaml up -d --wait --wait-timeout 60 -- mysql oai-nrf oai-udr oai-udm oai-ausf oai-amf oai-smf oai-upf oai-ext-dn"
+            sh "sleep 5"
+            sh 'docker compose -f ./ci-scripts/oai-cn5g-resources/docker-compose.yaml ps --all --format "table {{.Service}}\t{{.Image}}\t{{.Status}}"'
+      }
+     }
+    }
+    stage ('Deploy OAI nearRT-RIC') {
+      steps {
+        script {
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "nearRT-RIC", flexric_tag, ran_branch, ran_flexric_registry)
+        }
+     }
+    }
+    stage ('Deploy OAI 5G gNB in RF sim SA') {
+      steps {
+        script {
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "oai-gnb", flexric_tag, ran_branch, ran_flexric_registry)
+        }
+     }
+    }
+    stage ('Deploy RC Monitoring') {
+      steps {
+        script {
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-rc-moni", flexric_tag, ran_branch, ran_flexric_registry)
+        }
+     }
+    }
+    stage ('Deploy 2 OAI 5G NR-UEs in RF sim SA') {
+      steps {
+        script {
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "oai-nr-ue oai-nr-ue2", flexric_tag, ran_branch, ran_flexric_registry)
+        }
+     }
+    }
+    stage ('Attach UEs') {
+      steps {
+        script {
+          sh "docker start rfsim5g-oai-nr-ue2"
+          sh "docker start rfsim5g-oai-nr-ue"
+          sh """
+          docker compose -f ./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml \
+          ps -a --format "table {{.Service}}\t{{.Image}}\t{{.Status}}" \
+          -- oai-gnb oai-nr-ue oai-nr-ue2 nearRT-RIC
+          """
+          sh "docker exec rfsim5g-oai-nr-ue ip a show dev oaitun_ue1"
+          sh "docker exec rfsim5g-oai-nr-ue2 ip a show dev oaitun_ue1"
+        }
+     }
+    }
+    stage ('Deploy KPM Monitoring') {
+      steps {
+        script {
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-kpm-moni", flexric_tag, ran_branch, ran_flexric_registry)
+        }
+     }
+    }
+    stage ('Deploy KPM Monitoring and RC control') {
+      steps {
+        script {
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-kpm-rc", flexric_tag, ran_branch, ran_flexric_registry)
+        }
+     }
+    }
+    stage ('Deploy Custom SMs Monitoring') {
+      steps {
+        script {
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-gtp-mac-rlc-pdcp-moni", flexric_tag, ran_branch, ran_flexric_registry)
+        }
+     }
+    }
+    stage ('Ping Tests') {
+      steps {
+        script {
+          def oaiExtDn = 'oai-ext-dn'
+          sh "docker exec ${oaiExtDn} ip a show dev eth0"
+          def oaiExtDnIp = sh(
+          script: "docker exec ${oaiExtDn} ip -4 -o addr show eth0 | awk '{print \$4}' | cut -d/ -f1",
+          returnStdout: true
+        ).trim()
+          sh 'docker ps --filter "name=oai-ext-dn|oai-gnb|rfsim5g-oai-nr-ue|rfsim5g-oai-nr-ue2" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"'
+          sh "docker exec rfsim5g-oai-nr-ue2 ping -I oaitun_ue1 -c 20 ${oaiExtDnIp} > archives/oai5g-flexric/ping_rfsim5g_ue2.log 2>&1"
+          sh "docker exec rfsim5g-oai-nr-ue ping -I oaitun_ue1 -c 20 ${oaiExtDnIp} > archives/oai5g-flexric/ping_rfsim5g_ue.log 2>&1"
+        }
+     }
+     post {
+         success {
+            script {
+                def ues = ["rfsim5g_ue", "rfsim5g_ue2"]
+                for (int i = 0; i < ues.size(); i++) {
+                    def ue = ues[i]
+                    def logFile = "archives/oai5g-flexric/ping_${ue}.log"
+                    if (fileExists(logFile)) {
+                        def logContent = readFile(logFile)
+                        def packetLossLine = logContent.readLines().find { it.contains("packet loss") }
+                        def rttLine = logContent.readLines().find { it.startsWith("rtt") }
+                        def msg = "\u001B[46mINFO: ping result for UE ${ue}\u001B[0m\n"
+                        if (packetLossLine)
+                            msg += "\u001B[46mINFO:    ${packetLossLine.trim()}\u001B[0m\n"
+                        if (rttLine) {
+                            def rttParts = rttLine.split("=")[1].trim().split("/")
+                            msg += "\u001B[46mINFO:    RTT(Min) : ${rttParts[0]} ms\u001B[0m\n"
+                            msg += "\u001B[46mINFO:    RTT(Avg) : ${rttParts[1]} ms\u001B[0m\n"
+                            msg += "\u001B[46mINFO:    RTT(Max) : ${rttParts[2]} ms\u001B[0m\n"
+                        }
+                        echo msg
+                    }
+                }
+            }
+         }
+         failure {
+             script {
+                 def ues = ["rfsim5g_ue", "rfsim5g_ue2"]
+                 for (int i = 0; i < ues.size(); i++) {
+                     def ue = ues[i]
+                     def logFile = "archives/oai5g-flexric/ping_${ue}.log"
+                     if (fileExists(logFile)) {
+                         def logContent = readFile(logFile)
+                         def packetLossLine = logContent.readLines().find { it.contains("packet loss") }
+                         echo "\u001B[41mERROR: ping test failed for UE ${ue}\u001B[0m"
+                         if (packetLossLine)
+                             echo "\u001B[41mERROR:    ${packetLossLine.trim()}\u001B[0m"
+                     }
+                 }
+              }
+          }
+       }
+    }
+   stage('Disconnect OAI UE 1 and 2') {
+     steps {
+        script {
+          sh "docker stop rfsim5g-oai-nr-ue2"
+          sh "docker stop rfsim5g-oai-nr-ue"
+        }
+     }
+   }
+  }
+  post {
+    always {
+      script {
+        def coreServices = ["mysql","oai-nrf","oai-udr","oai-udm","oai-ausf","oai-amf","oai-smf","oai-upf","oai-ext-dn"]
+        def flexricRanServices = ["xapp-rc-moni","xapp-kpm-moni","xapp-kpm-rc","xapp-gtp-mac-rlc-pdcp-moni","oai-nr-ue","oai-nr-ue2","oai-gnb","nearRT-RIC"]
+        def composeFile = "./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml"
+        def coreNetworkComposeFile = "./ci-scripts/oai-cn5g-resources/docker-compose.yaml"
+
+        // Undeploy, collect logs, capture container exit codes, and stop and remove the containers
+        sh "docker compose -f ${composeFile} config --services"
+        for (svc in flexricRanServices) {
+          sh "docker compose -f ${composeFile} stop --timeout 60 ${svc}"
+          // Uses SIGTERM with 60s grace period
+          // If the process doesn’t exit within the grace period, Docker sends a SIGKILL to forcefully terminate it.
+           sh "sleep 5"
+           sh "docker compose -f ${composeFile} logs ${svc} --no-log-prefix > archives/oai5g-flexric/${svc}.log 2>&1 || true"
+        }
+        captureExitCodes(
+          flexricRanServices.findAll { !(it in ["oai-nr-ue","oai-nr-ue2","oai-gnb"]) },
+          "archives/oai5g-flexric/container_exit_status.log"
+        )
+        sh "docker compose -f ${coreNetworkComposeFile} stop --timeout 60"
+        // Sends SIGTERM with 60s grace; SIGKILL if container doesn’t exit"
+        sh "sleep 15"
+        for (serviceName in coreServices) {
+           sh "docker compose -f ${coreNetworkComposeFile} logs ${serviceName} --no-log-prefix > archives/oai-cn5g/${serviceName}.log 2>&1 || true"
+        }
+        sh "docker compose -f ${composeFile} down"
+        sh "docker compose -f ${coreNetworkComposeFile} down"
+        }
+      }
+    cleanup {
+      script {
+        // Zipping all archived log files
+        sh "zip -r -qq docker_logs.zip archives"
+        if (fileExists('docker_logs.zip')) {
+          archiveArtifacts artifacts: 'docker_logs.zip'
+        }
+        sh "./ci-scripts/generateFlexricRanReport.py --job-name ${JOB_NAME} --build-id ${BUILD_ID} --build-url ${BUILD_URL}"
+        if (fileExists('test_results_oai_flexric_ran.html')) {
+          archiveArtifacts artifacts: 'test_results_oai_flexric_ran.html'
+        }
+        sh "docker image prune --force || true"
+        sh """
+        docker rmi \
+          ${ran_flexric_registry}/oai-gnb:${ran_branch} \
+          ${ran_flexric_registry}/oai-nr-ue:${ran_branch} \
+          ${ran_flexric_registry}/oai-flexric:${flexric_tag} || true
+        """
+        sh "docker compose -f ./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml down --volumes --rmi all --remove-orphans || true"
+        sh "docker compose -f ./ci-scripts/oai-cn5g-resources/docker-compose.yaml down --volumes --rmi all --remove-orphans || true"
+        sh "docker logout ${ran_flexric_registry}"
+        }
+      }
+  }
+}
+
+def deployObjects(String composeFile, String serviceName, String flexricTag, String ranTag, String ranFlexRicRegistry) {
+            sh """
+            REGISTRY=${ranFlexRicRegistry}/ \
+            FLEXRIC_TAG=${flexricTag} \
+            RAN_TAG=${ranTag} \
+            docker compose -f ${composeFile} up -d --wait --wait-timeout 60 -- ${serviceName}
+            """
+            sh "sleep 5"
+            sh "docker compose -f ${composeFile} ps --all --format \"table {{.Service}}\\t{{.Image}}\\t{{.Status}}\" -- ${serviceName}"
+}
+
+// Function to capture exit codes of a list of containers and write messages to a log file
+def captureExitCodes(List services, String logFile) {
+    // Capture exit codes and write messages
+    for (container in services) {
+        def containerStatus = sh(
+        script: "docker inspect ${container} --format '{{.State.ExitCode}}' 2>/dev/null || echo -999",
+        returnStdout: true
+        ).trim()
+        def containerImage = sh(
+          script: "docker inspect ${container} --format '{{.Config.Image}}' 2>/dev/null || echo n/a",
+          returnStdout: true
+        ).trim()
+        containerStatus = containerStatus?.trim()?.isInteger() ? containerStatus.toInteger() : -999
+        // Generate messages
+        def message = ""
+        if (containerStatus == 0) {
+            message = "The container completed its process successfully."
+        } else if (containerStatus == 137) {
+            message = "The container was forcefully killed (SIGKILL)."
+        } else if (containerStatus == 143) {
+            message = "The container was stopped gracefully (SIGTERM)."
+        } else if (containerStatus == -999) {
+            message = "Container not found or state could not be retrieved"
+        } else if (containerStatus > 0 && containerStatus < 128) {
+            message = "Application error inside container (exit code ${containerStatus})."
+        } else if (containerStatus >= 128) {
+            def signal = containerStatus - 128
+            message = "Container terminated by signal ${signal} (exit code ${containerStatus})."
+        } else {
+            message = "Container exited with unknown code ${containerStatus}."
+        }
+
+        // Append to log file
+        sh """
+        echo "Container: ${container}
+        Image: ${containerImage}
+        Exit Code: ${containerStatus}
+        Message: ${message}
+        ---" >> ${logFile}
+        """
+    }
+}

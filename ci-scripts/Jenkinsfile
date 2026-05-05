@@ -96,11 +96,12 @@ pipeline {
             shortenShaOne = sh returnStdout: true, script: 'git log -1 --pretty=format:"%h" --abbrev=8 ' + env.GIT_COMMIT
             shortenShaOne = shortenShaOne.trim()
             flexric_tag       = 'develop-' + shortenShaOne
-            flexric_branch    = env.GIT_COMMIT
+            flexric_commit    = env.GIT_COMMIT
+            flexric_branch    = env.GIT_BRANCH
 
             echo "======== THIS IS A PUSH REQUEST ========"
-            echo "Git Branch      is ${GIT_BRANCH}"
-            echo "Git Commit      is ${GIT_COMMIT}"
+            echo "Git Branch      is ${flexric_branch}"
+            echo "Git Commit      is ${flexric_commit}"
             echo "CI develop TAG  is ${flexric_tag}"
           }
           prepareWorkspaceMergeCase()
@@ -244,16 +245,10 @@ pipeline {
           steps {
             script {
               gitlabCommitStatus(name: "Flexric-OAI-RAN-5G-Integration") {
-                if ("MERGE".equals(env.gitlabActionType)) {
-                  MR_NUMBER = 'flexric-' + env.gitlabMergeRequestIid
-                } else {
-                  MR_NUMBER = 'flexric-dev'
-                }
-                localStatus = build job: 'OAI-FLEXRIC-RAN-Integration-Test',
+                localStatus = build job: 'OAI-FlexRIC-RAN',
                   parameters: [
-                    string(name: 'Flexric_Tag', value: String.valueOf(flexric_tag)),
-                    string(name: 'eNB_MR', value: String.valueOf(MR_NUMBER)),
-                    booleanParam(name: 'eNB_mergeRequest', value: "MERGE".equals(env.gitlabActionType))
+                    string(name: 'flexric_tag', value: String.valueOf(flexric_tag)),
+                    string(name: 'flexric_branch', value: String.valueOf(flexric_branch))
                   ], propagate: false
                 localResult = localStatus.getResult()
 
@@ -268,8 +263,8 @@ pipeline {
           post {
             always {
               script {
-                copyArtifacts(projectName: 'OAI-FLEXRIC-RAN-Integration-Test',
-                              filter: 'test_results-OAI-FLEXRIC-RAN-Integration-Test.html',
+                copyArtifacts(projectName: 'OAI-FlexRIC-RAN',
+                              filter: 'test_results_oai_flexric_ran.html',
                               selector: lastCompleted())
               }
             }
