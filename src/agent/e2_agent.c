@@ -412,8 +412,6 @@ void e2_event_loop_agent(e2_agent_t* ag)
     }
   }
 
-
-  printf("ag->agent_stopped = true \n");
   ag->agent_stopped = true;
 }
 

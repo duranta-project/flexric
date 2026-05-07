@@ -4,6 +4,7 @@
 
 
 #include "../../src/ric/near_ric_api.h"
+#include "../../src/lib/sig_handler.h"
 
 #include <arpa/inet.h>
 #include <assert.h>
@@ -24,44 +25,20 @@ const uint16_t SLICE_ran_func_id = 145; // Not implemented yet
 const uint16_t KPM_ran_func_id = 147;
 const char* cmd = "5_ms";
 
-
-static
-void stop_and_exit()
-{
-  // Stop the RIC
-  stop_near_ric_api();
-
-  printf("The nearRT-RIC run SUCCESSFULLY\n");
-
-  exit(EXIT_SUCCESS);
-}
-
-static 
-pthread_once_t once = PTHREAD_ONCE_INIT;
-
-static
-void sig_handler(int sig_num)
-{
-  printf("\n[NEAR-RIC]: Abruptly ending with signal number = %d\n", sig_num);
-  // For the impatient, do not break my code
-  pthread_once(&once, stop_and_exit);
-}
-
-
 int main(int argc, char *argv[])
 {
-  // Signal handler
-  signal(SIGINT, sig_handler);
-  signal(SIGTERM, sig_handler);
+  init_sig_handler();
 
   fr_args_t args = init_fr_args(argc, argv);
  
   // Init the RIC
   init_near_ric_api(&args);
 
-  while(1){
-    poll(NULL, 0, 1000);
-  }
+  poll_and_wait_sig();
+
+  stop_near_ric_api();
+  printf("The nearRT-RIC run SUCCESSFULLY\n");
+
   return EXIT_SUCCESS;
 }
 
