@@ -265,6 +265,17 @@ pipeline {
         sh "docker compose -f ./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml down --volumes --rmi all --remove-orphans || true"
         sh "docker compose -f ./ci-scripts/oai-cn5g-resources/docker-compose.yaml down --volumes --rmi all --remove-orphans || true"
         sh "docker logout ${ran_flexric_registry}"
+        def log_check = sh(
+          script: 'grep -q "FAIL" test_results_oai_flexric_ran.html',
+          returnStatus: true
+         )
+        if (log_check == 0) {
+          currentBuild.result = 'FAILURE'
+          echo "One or more test failures detected in the HTML report"
+        }
+        else {
+          echo "No test failures in the HTML report"
+        }
         }
       }
   }
