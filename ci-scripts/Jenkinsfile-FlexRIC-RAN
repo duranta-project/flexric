@@ -190,62 +190,17 @@ pipeline {
         }
      }
     }
-    stage ('Ping Tests') {
+    stage ('Iperf3 Tests') {
       steps {
         script {
-          def oaiExtDn = 'oai-ext-dn'
-          sh "docker exec ${oaiExtDn} ip a show dev eth0"
-          def oaiExtDnIp = sh(
-          script: "docker exec ${oaiExtDn} ip -4 -o addr show eth0 | awk '{print \$4}' | cut -d/ -f1",
-          returnStdout: true
-        ).trim()
-          sh 'docker ps --filter "name=oai-ext-dn|oai-gnb|rfsim5g-oai-nr-ue|rfsim5g-oai-nr-ue2" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"'
-          sh "docker exec rfsim5g-oai-nr-ue2 ping -I oaitun_ue1 -c 20 ${oaiExtDnIp} > archives/oai5g-flexric/ping_rfsim5g_ue2.log 2>&1"
-          sh "docker exec rfsim5g-oai-nr-ue ping -I oaitun_ue1 -c 20 ${oaiExtDnIp} > archives/oai5g-flexric/ping_rfsim5g_ue.log 2>&1"
+          sh '''
+            bash -c '
+              set -o pipefail
+              python3 ci-scripts/oai_iperf_test.py 2>&1 | tee archives/oai5g-flexric/iperf3_tests.log
+            '
+          '''
         }
-     }
-     post {
-         success {
-            script {
-                def ues = ["rfsim5g_ue", "rfsim5g_ue2"]
-                for (int i = 0; i < ues.size(); i++) {
-                    def ue = ues[i]
-                    def logFile = "archives/oai5g-flexric/ping_${ue}.log"
-                    if (fileExists(logFile)) {
-                        def logContent = readFile(logFile)
-                        def packetLossLine = logContent.readLines().find { it.contains("packet loss") }
-                        def rttLine = logContent.readLines().find { it.startsWith("rtt") }
-                        def msg = "\u001B[46mINFO: ping result for UE ${ue}\u001B[0m\n"
-                        if (packetLossLine)
-                            msg += "\u001B[46mINFO:    ${packetLossLine.trim()}\u001B[0m\n"
-                        if (rttLine) {
-                            def rttParts = rttLine.split("=")[1].trim().split("/")
-                            msg += "\u001B[46mINFO:    RTT(Min) : ${rttParts[0]} ms\u001B[0m\n"
-                            msg += "\u001B[46mINFO:    RTT(Avg) : ${rttParts[1]} ms\u001B[0m\n"
-                            msg += "\u001B[46mINFO:    RTT(Max) : ${rttParts[2]} ms\u001B[0m\n"
-                        }
-                        echo msg
-                    }
-                }
-            }
-         }
-         failure {
-             script {
-                 def ues = ["rfsim5g_ue", "rfsim5g_ue2"]
-                 for (int i = 0; i < ues.size(); i++) {
-                     def ue = ues[i]
-                     def logFile = "archives/oai5g-flexric/ping_${ue}.log"
-                     if (fileExists(logFile)) {
-                         def logContent = readFile(logFile)
-                         def packetLossLine = logContent.readLines().find { it.contains("packet loss") }
-                         echo "\u001B[41mERROR: ping test failed for UE ${ue}\u001B[0m"
-                         if (packetLossLine)
-                             echo "\u001B[41mERROR:    ${packetLossLine.trim()}\u001B[0m"
-                     }
-                 }
-              }
-          }
-       }
+      }
     }
    stage('Disconnect OAI UE 1 and 2') {
      steps {
