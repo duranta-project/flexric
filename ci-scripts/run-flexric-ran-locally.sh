@@ -141,7 +141,7 @@ cleanup() {
   echo "[CLEANUP] Stopping the services and collecting logs"
 
   for s in "${SERVICES[@]}"; do
-    docker compose -f "$RAN_COMPOSE" stop --timeout 60 "$s" || true
+    docker compose -f "$RAN_COMPOSE" stop --timeout 10 "$s" || true
 
     sleep 5
 
@@ -151,7 +151,7 @@ cleanup() {
 
   echo "[CLEANUP] Stopping 5G Core services and collecting logs"
 
-  docker compose -f "$CN5G_COMPOSE" stop --timeout 60
+  docker compose -f "$CN5G_COMPOSE" stop --timeout 10
 
   for s in "${CORE_SERVICES[@]}"; do
     docker compose -f "$CN5G_COMPOSE" logs "$s" --no-log-prefix \
@@ -184,44 +184,40 @@ docker compose -f "$CN5G_COMPOSE" ps
 # -----------------------------
 
 echo "[STEP] Deploy nearRT-RIC"
-docker compose -f "$RAN_COMPOSE" up -d --wait --wait-timeout 60 -- nearRT-RIC
+docker compose -f "$RAN_COMPOSE" up -d --wait --wait-timeout 20 -- nearRT-RIC
 sleep 5
 docker compose -f "$RAN_COMPOSE" ps -- nearRT-RIC
 
 echo "[STEP] Deploy OAI 5G gNB in RF sim SA"
-docker compose -f "$RAN_COMPOSE" up -d --wait --wait-timeout 60 -- oai-gnb
+docker compose -f "$RAN_COMPOSE" up -d --wait --wait-timeout 20 -- oai-gnb
 sleep 5
 docker compose -f "$RAN_COMPOSE" ps -- oai-gnb
 
 echo "[STEP] Deploy RC Monitoring"
-docker compose -f "$RAN_COMPOSE" up -d --wait --wait-timeout 60 -- xapp-rc-moni
+docker compose -f "$RAN_COMPOSE" up -d --wait --wait-timeout 20 -- xapp-rc-moni
 sleep 5
 docker compose -f "$RAN_COMPOSE" ps -- xapp-rc-moni
 
 echo "[STEP] Deploy 2 OAI 5G NR-UEs in RF sim SA"
-docker compose -f "$RAN_COMPOSE" up -d --wait --wait-timeout 60 -- oai-nr-ue oai-nr-ue2
+docker compose -f "$RAN_COMPOSE" up -d --wait --wait-timeout 20 -- oai-nr-ue oai-nr-ue2
 sleep 5
 docker compose -f "$RAN_COMPOSE" ps -- oai-nr-ue
-
-echo "[STEP] Attach UEs"
-docker start rfsim5g-oai-nr-ue
-docker start rfsim5g-oai-nr-ue2
 
 docker exec rfsim5g-oai-nr-ue ip a show dev oaitun_ue1
 docker exec rfsim5g-oai-nr-ue2 ip a show dev oaitun_ue1
 
 echo "[STEP] Deploy KPM Monitoring"
-docker compose -f "$RAN_COMPOSE" up -d --wait --wait-timeout 60 -- xapp-kpm-moni
+docker compose -f "$RAN_COMPOSE" up -d --wait --wait-timeout 20 -- xapp-kpm-moni
 sleep 5
 docker compose -f "$RAN_COMPOSE" ps -- xapp-kpm-moni
 
 echo "[STEP] Deploy KPM Monitoring and RC control"
-docker compose -f "$RAN_COMPOSE" up -d --wait --wait-timeout 60 -- xapp-kpm-rc
+docker compose -f "$RAN_COMPOSE" up -d --wait --wait-timeout 20 -- xapp-kpm-rc
 sleep 5
 docker compose -f "$RAN_COMPOSE" ps -- xapp-kpm-rc
 
 echo "[STEP] Deploy Custom SMs Monitoring"
-docker compose -f "$RAN_COMPOSE" up -d --wait --wait-timeout 60 -- xapp-gtp-mac-rlc-pdcp-moni
+docker compose -f "$RAN_COMPOSE" up -d --wait --wait-timeout 20 -- xapp-gtp-mac-rlc-pdcp-moni
 sleep 5
 docker compose -f "$RAN_COMPOSE" ps -- xapp-gtp-mac-rlc-pdcp-moni
 
