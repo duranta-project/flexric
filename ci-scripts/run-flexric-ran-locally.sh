@@ -226,15 +226,37 @@ sleep 5
 docker compose -f "$RAN_COMPOSE" ps -- xapp-gtp-mac-rlc-pdcp-moni
 
 # -----------------------------
-# Ping tests
+# Iperf3 tests
 # -----------------------------
-echo "[STEP] Running ping tests"
+echo "[STEP] Running iperf3 tests"
 
 EXT_IP=$(docker exec oai-ext-dn ip -4 -o addr show eth0 | awk '{print $4}' | cut -d/ -f1)
 echo "[INFO] External DN IP: $EXT_IP"
+docker exec oai-ext-dn iperf3 -s -B $EXT_IP -p 5002 >> /dev/null &
+docker exec oai-ext-dn iperf3 -s -B $EXT_IP -p 5003 >> /dev/null &
 
-docker exec rfsim5g-oai-nr-ue ping -I oaitun_ue1 -c 20 "$EXT_IP" \
-  2>&1 | tee "$ARCHIVES/oai5g-flexric/ping_ue.log"
+UE1_IP=$(docker exec rfsim5g-oai-nr-ue ip -4 -o addr show oaitun_ue1 | awk '{print $4}' | cut -d/ -f1)
+UE2_IP=$(docker exec rfsim5g-oai-nr-ue2 ip -4 -o addr show oaitun_ue1 | awk '{print $4}' | cut -d/ -f1)
 
-docker exec rfsim5g-oai-nr-ue2 ping -I oaitun_ue1 -c 20 "$EXT_IP" \
-  2>&1 | tee "$ARCHIVES/oai5g-flexric/ping_ue2.log"
+docker exec rfsim5g-oai-nr-ue iperf3 -B $UE1_IP -c $EXT_IP -p 5002 -t 20 -R \
+    > $ARCHIVES/oai5g-flexric/iperf3_dl_ue.log 2>&1 &
+PID1=$!
+
+docker exec rfsim5g-oai-nr-ue2 iperf3 -B $UE2_IP -c $EXT_IP -p 5003 -t 20 -R \
+    > $ARCHIVES/oai5g-flexric/iperf3_dl_ue2.log 2>&1 &
+PID2=$!
+
+wait $PID1
+wait $PID2
+
+docker exec rfsim5g-oai-nr-ue iperf3 -B $UE1_IP -c $EXT_IP -p 5002 -t 20 \
+    > $ARCHIVES/oai5g-flexric/iperf3_ul_ue.log 2>&1 &
+PID1=$!
+
+docker exec rfsim5g-oai-nr-ue2 iperf3 -B $UE2_IP -c $EXT_IP -p 5003 -t 20 \
+    > $ARCHIVES/oai5g-flexric/iperf3_ul_ue2.log 2>&1 &
+PID2=$!
+
+wait $PID1
+wait $PID2
+
