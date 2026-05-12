@@ -17,6 +17,8 @@ set(SM_ENCODING_CCC_SRC
     ../../util/alg_ds/ds/assoc_container/assoc_rb_tree.c
     ../../util/alg_ds/ds/assoc_container/bimap.c
     ie/ccc_data_ie.c
+    dec/ccc_dec_plain.c
+    enc/ccc_enc_plain.c
     ccc_sm_ric.c 
     ccc_sm_agent.c 
     ccc_sm.cc  
