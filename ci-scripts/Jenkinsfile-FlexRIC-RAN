@@ -21,6 +21,9 @@ def ran_commitID = ""
 // Private Local Registry URL
 def ran_flexric_registry = params.ran_flexric_registry
 
+def docker_timeout = (params.docker_timeout ?: 20) as Integer // in seconds
+def cn5g_docker_timeout = (params.cn5g_docker_timeout ?: 10) as Integer // in seconds
+
 //-------------------------------------------------------------------------------
 // Pipeline start
 pipeline {
@@ -122,7 +125,7 @@ pipeline {
     stage ('Deploy OAI 5G Core Network') {
       steps {
         script {
-            sh "docker compose -f ./ci-scripts/oai-cn5g-resources/docker-compose.yaml up -d --wait --wait-timeout 60 -- mysql oai-nrf oai-udr oai-udm oai-ausf oai-amf oai-smf oai-upf oai-ext-dn"
+            sh "docker compose -f ./ci-scripts/oai-cn5g-resources/docker-compose.yaml up -d --wait --wait-timeout ${docker_timeout} -- mysql oai-nrf oai-udr oai-udm oai-ausf oai-amf oai-smf oai-upf oai-ext-dn"
             sh "sleep 5"
             sh 'docker compose -f ./ci-scripts/oai-cn5g-resources/docker-compose.yaml ps --all --format "table {{.Service}}\t{{.Image}}\t{{.Status}}"'
       }
@@ -222,8 +225,8 @@ pipeline {
         // Undeploy, collect logs, capture container exit codes, and stop and remove the containers
         sh "docker compose -f ${composeFile} config --services"
         for (svc in flexricRanServices) {
-          sh "docker compose -f ${composeFile} stop --timeout 60 ${svc}"
-          // Uses SIGTERM with 60s grace period
+          sh "docker compose -f ${composeFile} stop --timeout ${docker_timeout} ${svc}"
+          // Uses SIGTERM with docker_timeout value grace period
           // If the process doesn’t exit within the grace period, Docker sends a SIGKILL to forcefully terminate it.
            sh "sleep 5"
            sh "docker compose -f ${composeFile} logs ${svc} --no-log-prefix > archives/oai5g-flexric/${svc}.log 2>&1 || true"
@@ -232,8 +235,8 @@ pipeline {
           flexricRanServices.findAll { !(it in ["oai-nr-ue","oai-nr-ue2","oai-gnb"]) },
           "archives/oai5g-flexric/container_exit_status.log"
         )
-        sh "docker compose -f ${coreNetworkComposeFile} stop --timeout 60"
-        // Sends SIGTERM with 60s grace; SIGKILL if container doesn’t exit"
+        sh "docker compose -f ${coreNetworkComposeFile} stop --timeout ${cn5g_docker_timeout}"
+        // Sends SIGTERM with docker_timeout value grace; SIGKILL if container doesn’t exit"
         sh "sleep 15"
         for (serviceName in coreServices) {
            sh "docker compose -f ${coreNetworkComposeFile} logs ${serviceName} --no-log-prefix > archives/oai-cn5g/${serviceName}.log 2>&1 || true"
@@ -284,7 +287,7 @@ def deployObjects(String composeFile, String serviceName, String flexricTag, Str
             REGISTRY=${ranFlexRicRegistry}/ \
             FLEXRIC_TAG=${flexricTag} \
             RAN_TAG=${ranTag} \
-            docker compose -f ${composeFile} up -d --wait --wait-timeout 60 -- ${serviceName}
+            docker compose -f ${composeFile} up -d --wait --wait-timeout ${docker_timeout} -- ${serviceName}
             """
             sh "sleep 5"
             sh "docker compose -f ${composeFile} ps --all --format \"table {{.Service}}\\t{{.Image}}\\t{{.Status}}\" -- ${serviceName}"
