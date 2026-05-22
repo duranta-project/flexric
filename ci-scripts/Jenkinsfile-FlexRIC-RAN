@@ -14,8 +14,9 @@ def flexric_branch = params.flexric_branch ?: "dev" // Use upstream value if exi
 
 def ran_repository = params.ran_repository
 def ran_branch = params.ran_branch
-def ran_image_tag = params.ran_image_tag
-
+// Use provided value for gNB and nrUE tag if exists, otherwise default "develop"
+def ran_image_tag = params.ran_image_tag ?: "develop" //gNB image tag
+def nrUE_image_tag = params.nrUE_image_tag ?: "develop" //nrUE image tag
 def ran_commitID = ""
 
 // Private Local Registry URL
@@ -67,7 +68,8 @@ pipeline {
 
           echo "RAN Repository      :   ${ran_repository}"
           echo "RAN Branch          :   ${ran_branch}"
-          echo "RAN Tag            :   ${ran_image_tag}"
+          echo "gNB  Tag            :   ${ran_image_tag}"
+          echo "nrUE Tag            :   ${nrUE_image_tag}"
           echo "RAN Commit ID       :   ${ran_commitID}"
 
           echo "FlexRIC Tag         :   ${flexric_tag}"
@@ -92,13 +94,10 @@ pipeline {
       steps {
         script {
             sh "docker login -u oaicicd -p oaicicd ${ran_flexric_registry}"
-            def images = ['oai-gnb', 'oai-nr-ue', 'oai-flexric']
-            for (int i = 0; i < images.size(); i++) {
-                def img = images[i]
-                def tag = (img == 'oai-flexric') ? flexric_tag : ran_image_tag
-                sh "docker pull --quiet ${ran_flexric_registry}/${img}:${tag}"
+            sh "docker pull --quiet ${ran_flexric_registry}/oai-gnb:${ran_image_tag}"
+            sh "docker pull --quiet ${ran_flexric_registry}/oai-nr-ue:${nrUE_image_tag}"
+            sh "docker pull --quiet ${ran_flexric_registry}/oai-flexric:${flexric_tag}"
             }
-       }
       }
     }
     stage ('Pull Core Network Images') {
@@ -134,28 +133,28 @@ pipeline {
     stage ('Deploy OAI nearRT-RIC') {
       steps {
         script {
-          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "nearRT-RIC", flexric_tag, ran_image_tag, ran_flexric_registry)
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "nearRT-RIC", flexric_tag, ran_image_tag, nrUE_image_tag, ran_flexric_registry)
         }
      }
     }
     stage ('Deploy OAI 5G gNB in RF sim SA') {
       steps {
         script {
-          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "oai-gnb", flexric_tag, ran_image_tag, ran_flexric_registry)
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "oai-gnb", flexric_tag, ran_image_tag, nrUE_image_tag, ran_flexric_registry)
         }
      }
     }
     stage ('Deploy RC Monitoring') {
       steps {
         script {
-          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-rc-moni", flexric_tag, ran_image_tag, ran_flexric_registry)
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-rc-moni", flexric_tag, ran_image_tag, nrUE_image_tag, ran_flexric_registry)
         }
      }
     }
     stage ('Deploy 2 OAI 5G NR-UEs in RF sim SA') {
       steps {
         script {
-          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "oai-nr-ue oai-nr-ue2", flexric_tag, ran_image_tag, ran_flexric_registry)
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "oai-nr-ue oai-nr-ue2", flexric_tag, ran_image_tag, nrUE_image_tag, ran_flexric_registry)
         }
      }
     }
@@ -177,21 +176,21 @@ pipeline {
     stage ('Deploy KPM Monitoring') {
       steps {
         script {
-          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-kpm-moni", flexric_tag, ran_image_tag, ran_flexric_registry)
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-kpm-moni", flexric_tag, ran_image_tag, nrUE_image_tag, ran_flexric_registry)
         }
      }
     }
     stage ('Deploy KPM Monitoring and RC control') {
       steps {
         script {
-          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-kpm-rc", flexric_tag, ran_image_tag, ran_flexric_registry)
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-kpm-rc", flexric_tag, ran_image_tag, nrUE_image_tag, ran_flexric_registry)
         }
      }
     }
     stage ('Deploy Custom SMs Monitoring') {
       steps {
         script {
-          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-gtp-mac-rlc-pdcp-moni", flexric_tag, ran_image_tag, ran_flexric_registry)
+          deployObjects("./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml", "xapp-gtp-mac-rlc-pdcp-moni", flexric_tag, ran_image_tag, nrUE_image_tag, ran_flexric_registry)
         }
      }
     }
@@ -262,7 +261,7 @@ pipeline {
         sh """
         docker rmi \
           ${ran_flexric_registry}/oai-gnb:${ran_image_tag} \
-          ${ran_flexric_registry}/oai-nr-ue:${ran_image_tag} \
+          ${ran_flexric_registry}/oai-nr-ue:${nrUE_image_tag} \
           ${ran_flexric_registry}/oai-flexric:${flexric_tag} || true
         """
         sh "docker compose -f ./ci-scripts/oai-5g-ran-flexric-resources/docker-compose.yml down --volumes --rmi all --remove-orphans || true"
@@ -284,11 +283,12 @@ pipeline {
   }
 }
 
-def deployObjects(String composeFile, String serviceName, String flexricTag, String ranTag, String ranFlexRicRegistry) {
+def deployObjects(String composeFile, String serviceName, String flexricTag, String ranTag, String nrUETag, String ranFlexRicRegistry) {
             sh """
             REGISTRY=${ranFlexRicRegistry}/ \
             FLEXRIC_TAG=${flexricTag} \
             RAN_TAG=${ranTag} \
+            UE_TAG=${nrUETag} \
             docker compose -f ${composeFile} up -d --wait --wait-timeout ${docker_timeout} -- ${serviceName}
             """
             sh "sleep 5"

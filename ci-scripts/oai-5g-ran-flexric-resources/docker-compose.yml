@@ -103,7 +103,7 @@ services:
             retries: 5
 
     oai-nr-ue:
-        image: ${REGISTRY-oaisoftwarealliance/}${NRUE_IMG:-oai-nr-ue}:${RAN_TAG:-develop}
+        image: ${REGISTRY-oaisoftwarealliance/}${NRUE_IMG:-oai-nr-ue}:${UE_TAG:-develop}
         privileged: true
         container_name: rfsim5g-oai-nr-ue
         environment:
@@ -122,7 +122,7 @@ services:
             retries: 5
 
     oai-nr-ue2:
-        image: ${REGISTRY-oaisoftwarealliance/}${NRUE_IMG:-oai-nr-ue}:${RAN_TAG:-develop}
+        image: ${REGISTRY-oaisoftwarealliance/}${NRUE_IMG:-oai-nr-ue}:${UE_TAG:-develop}
         privileged: true
         container_name: rfsim5g-oai-nr-ue2
         environment:
