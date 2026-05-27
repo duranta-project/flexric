@@ -11,13 +11,15 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 
 # --- Constants ---
-PING_LOGS = {
-    1: {"description": "Ping ext-dn from UE rfsim5g_ue2 (10.0.0.3)", "log_file": "ping_rfsim5g_ue2.log"},
-    2: {"description": "Ping ext-dn from UE rfsim5g_ue (10.0.0.2)", "log_file": "ping_rfsim5g_ue.log"},
+IPERF_LOGS = {
+    1: {"description": "Run DL traffic to UE 10.0.0.2", "log_file": "iperf3_dl_rfsim5g_ue.log"},
+    2: {"description": "Run DL traffic to UE 10.0.0.3", "log_file": "iperf3_dl_rfsim5g_ue2.log"},
+    3: {"description": "Run UL traffic to UE 10.0.0.2", "log_file": "iperf3_ul_rfsim5g_ue.log"},
+    4: {"description": "Run UL traffic to UE 10.0.0.3", "log_file": "iperf3_ul_rfsim5g_ue2.log"},
 }
-PING_OPTIONS = "-c 20"
+IPERF_OPTIONS = "-t 20"
 CONTAINER_EXPECTED_TEXTS = {
-    "nearRT-RIC": "[NEAR-RIC]: Removing E2 Node MCC 1 MNC 1 NB_ID 3584",
+    "nearRT-RIC": "The nearRT-RIC run SUCCESSFULLY",
     "default": "Test xApp run SUCCESSFULLY"
 }
 # Ordered list of services to check in container logs
@@ -47,32 +49,40 @@ def read_template(template_file: str) -> tuple[str, int, int, str]:
     return html, row_start, row_end, template_row
 
 
-def process_ping_log(log_path: str) -> tuple[str, str, str]:
-    """Reads ping log and returns status_class, status_text, and info_content HTML."""
+def process_iperf_log(log_path: str) -> tuple[str, str, str]:
+    """Reads iperf3 log and returns status_class, status_text, and info_content HTML."""
+
     status_class = "bg-status-fail"
     status_text = "KO"
     info_content = "<pre class='stats-data'>Service not detected</pre>"
 
     if os.path.exists(log_path):
+
         with open(log_path, "r", encoding="utf-8") as f:
-            log_text = "".join(f.readlines())
+            log_text = f.read()
 
-        packet_loss_match = re.search(r"(\d+)% packet loss", log_text)
-        packet_loss = packet_loss_match.group(1) + "%" if packet_loss_match else "N/A"
+        sender_match = re.search(
+            r"\[\s*\d+\]\s+[\d\.\-]+\s+sec\s+[\d\.]+\s+\w+Bytes\s+([\d\.]+\s+\w+/sec).*sender",
+            log_text
+        )
 
-        rtt_match = re.search(r"rtt min/avg/max/mdev = ([\d\.]+)/([\d\.]+)/([\d\.]+)/([\d\.]+) ms", log_text)
-        rtt_min, rtt_avg, rtt_max = (rtt_match.groups()[:3] if rtt_match else ("N/A", "N/A", "N/A"))
+        receiver_match = re.search(
+            r"\[\s*\d+\]\s+[\d\.\-]+\s+sec\s+[\d\.]+\s+\w+Bytes\s+([\d\.]+\s+\w+/sec).*receiver",
+            log_text
+        )
 
-        if packet_loss == "0%":
+        sender_bw = sender_match.group(1) if sender_match else "N/A"
+        receiver_bw = receiver_match.group(1) if receiver_match else "N/A"
+
+        if sender_match or receiver_match:
             status_class = "bg-status-ok"
             status_text = "OK"
 
         info_content = (
             f"<pre class='stats-data'>"
-            f"Packet Loss: {packet_loss}\n"
-            f"RTT(Min)   : {rtt_min} ms\n"
-            f"RTT(Avg)   : {rtt_avg} ms\n"
-            f"RTT(Max)   : {rtt_max} ms</pre>"
+            f"Sender Throughput   : {sender_bw}\n"
+            f"Receiver Throughput : {receiver_bw}"
+            f"</pre>"
         )
 
     return status_class, status_text, info_content
@@ -108,7 +118,7 @@ def generate_report_with_info(
     build_id: str,
     build_url: str
 ):
-    """Generates the full HTML report for ping and container logs."""
+    """Generates the full HTML report for iperf and container logs."""
     html, row_start, row_end, template_row = read_template(template_file)
 
     logging.info(f"Reading container exit status: {log_file}")
@@ -127,27 +137,27 @@ def generate_report_with_info(
     new_rows = ""
     all_statuses = []
 
-    for i in range(1, 8):
+    for i in range(1, 10):
         row = template_row
         row = row.replace("{{ test_index }}", f"{i:03}")
 
-        # --- Ping Logs ---
-        if i in PING_LOGS:
-            ping_info = PING_LOGS[i]
-            description = ping_info["description"]
-            log_path = os.path.join(container_logs_dir, ping_info["log_file"])
-            status_class, status_text, info_content = process_ping_log(log_path)
+        # --- Iperf Logs ---
+        if i in IPERF_LOGS:
+            iperf_info = IPERF_LOGS[i]
+            description = iperf_info["description"]
+            log_path = os.path.join(container_logs_dir, iperf_info["log_file"])
+            status_class, status_text, info_content = process_iperf_log(log_path)
             all_statuses.append(status_text)
 
             row = row.replace("{{ description }}", description)
-            row = row.replace("{{ options }}", PING_OPTIONS)
+            row = row.replace("{{ options }}", IPERF_OPTIONS)
             row = row.replace("{{ status_class }}", status_class)
             row = row.replace("{{ status }}", status_text)
             row = row.replace("{{ info_content }}", info_content)
 
         # --- Container Logs ---
-        elif i >= 3:
-            idx = i - 3
+        elif i >= 5:
+            idx = i - 5
             if idx < len(SERVICES):
                 service = SERVICES[idx]
                 exit_code, message = container_info.get(service, ("N/A", "Container exit code not detected"))

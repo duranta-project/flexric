@@ -26,9 +26,6 @@ bool eq_fd(const void* key1, const void* key2 )
   int* fd1 = (int*)key1;
   int* fd2 = (int*)key2;
 
-  assert(*fd1 > -1);
-  assert(*fd2 > -1);
-
   return *fd1 == *fd2;
 }
 
@@ -40,9 +37,6 @@ int cmp_fd(void const* fd_v1, void const* fd_v2)
   assert(fd_v2 != NULL);
   int* fd1 = (int*)fd_v1;
   int* fd2 = (int*)fd_v2;
-
-  assert(*fd1 > -1 && "File descriptors must be larger than zero");
-  assert(*fd2 > -1 && "File descriptors must be larger than zero");
 
   if(*fd1 < *fd2) return 1;
   if(*fd1 == *fd2) return 0;

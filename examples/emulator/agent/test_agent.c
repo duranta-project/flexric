@@ -10,6 +10,7 @@
 
 
 #include "../../../src/agent/e2_agent_api.h"
+#include "../../../src/lib/sig_handler.h"
 #include "read_setup_ran.h"
 #include "sm_mac.h"
 #include "sm_rlc.h"
@@ -148,29 +149,9 @@ sm_ag_if_ans_t write_RAN(sm_ag_if_wr_t const* ag_wr)
 */
 
 
-ATTRIBUTE_NO_SANITIZE_THREAD static 
-void stop_and_exit()
-{
-  // Stop the E2 Agent
-  stop_agent_api();
-  exit(EXIT_SUCCESS);
-}
-
-static 
-pthread_once_t once = PTHREAD_ONCE_INIT;
-
-static
-void sig_handler(int sig_num)
-{
-  printf("\n[E2 AGENT]: Abruptly ending with signal number = %d\n[E2 AGENT]: Please, wait.\n", sig_num);
-  // For the impatient, do not break my code
-  pthread_once(&once, stop_and_exit);
-}
-
 int main(int argc, char *argv[])
 {
-  // Signal handler
-  signal(SIGINT, sig_handler);
+  init_sig_handler();
 
   // Init the Agent
   // Values defined in the CMakeLists.txt file
@@ -192,11 +173,11 @@ int main(int argc, char *argv[])
 
   init_agent_api(mcc, mnc, mnc_digit_len, nb_id, cu_du_id, ran_type, io, &args);
 
-  while(1){
-    poll(NULL, 0, 1000);
-  }
+  poll_and_wait_sig();
 
+  stop_agent_api();
   free_io_ag();
+  printf("The E2 agent run SUCCESSFULLY\n");
 
   return EXIT_SUCCESS;
 }
