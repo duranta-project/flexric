@@ -25,7 +25,9 @@ uint32_t old_ports_on_count = 0;
 static e2_node_arr_xapp_t* g_nodes = NULL;  // Global reference to E2 nodes
 
 // Forward declarations
-static char* gen_json_string_O_NESPolicy(const char* antenna_mask, const char* old_antenna_mask);
+char* gen_json_string_O_NESPolicy(const char* antenna_mask, const char* old_antenna_mask,
+  uint16_t mcc, uint16_t mnc, uint8_t mnc_digit_len,
+  uint64_t nr_cell_id);
 static void send_antenna_control_message(const char* antenna_mask);
 static bool eq_sm(sm_ran_function_t const* elem, int const id);
 static size_t find_sm_idx(sm_ran_function_t* rf, size_t sz, bool (*f)(sm_ran_function_t const*, int const), int const id);
@@ -506,7 +508,7 @@ ccc_ctrl_msg_format2_t gen_ccc_ctrl_msg_format2(const char* ran_configuration_st
   //>>New Values of Attributes
   switch (strcmp(ran_configuration_structure_name, "O-NESPolicy")) {
     case 0: {
-        char* json = gen_json_string_O_NESPolicy(antenna_mask, old_antenna_mask);
+        char* json = gen_json_string_O_NESPolicy(antenna_mask, old_antenna_mask, g_nodes->n[0].id.plmn.mcc, g_nodes->n[0].id.plmn.mnc, g_nodes->n[0].id.plmn.mnc_digit_len, g_nodes->n[0].id.nb_id.nb_id);
         dst.list_of_cells_controlled.data = json;
         dst.list_of_cells_controlled.len = strlen(json);
         break;
@@ -517,8 +519,9 @@ ccc_ctrl_msg_format2_t gen_ccc_ctrl_msg_format2(const char* ran_configuration_st
   return dst;
 }
 
-static
-char* gen_json_string_O_NESPolicy(const char* antenna_mask, const char* old_antenna_mask)
+char* gen_json_string_O_NESPolicy(const char* antenna_mask, const char* old_antenna_mask,
+  uint16_t mcc, uint16_t mnc, uint8_t mnc_digit_len,
+  uint64_t nr_cell_id)
 {
 
     //8.8.2.6   O-NESPolicy
@@ -530,6 +533,12 @@ char* gen_json_string_O_NESPolicy(const char* antenna_mask, const char* old_ante
   //>Symbol Mask 
   //>Slot Mask 
   //>Valid Duration 
+      // Build PLMN string: "00101" format
+      char plmn_str[7];
+      snprintf(plmn_str, sizeof(plmn_str), "%03d%0*d", mcc, mnc_digit_len, mnc);
+      // Build nRCellIdentity as 18-digit zero-padded binary string (36 bits)
+      char cell_id_str[37];
+      snprintf(cell_id_str, sizeof(cell_id_str), "%036llu", (unsigned long long)nr_cell_id);
   
     // Allocate buffer for formatted JSON
     char* formatted_json = malloc(2048);  
@@ -540,8 +549,8 @@ char* gen_json_string_O_NESPolicy(const char* antenna_mask, const char* old_ante
       "    {\n"
       "      \"cell_global_id\": {\n"
       "        \"nR-CGI\": {\n"
-      "          \"pLMNIdentity\": \"00101\",\n"
-      "          \"nRCellIdentity\": \"000000000000000001\"\n"
+      "          \"pLMNIdentity\": \"%s\",\n"      
+      "          \"nRCellIdentity\": \"%s\"\n"
       "        }\n"
       "      },\n"
       "      \"list_of_configuration_structures\": [\n"
@@ -571,7 +580,7 @@ char* gen_json_string_O_NESPolicy(const char* antenna_mask, const char* old_ante
       "      ]\n"
       "    }\n"
       "  ]\n"
-      "}", old_antenna_mask,antenna_mask);  // Pass antenna_mask here
+      "}", plmn_str, cell_id_str, old_antenna_mask, antenna_mask);
     
   
     return formatted_json ;

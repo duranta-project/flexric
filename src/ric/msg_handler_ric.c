@@ -314,9 +314,9 @@ void publish_ind_msg(near_ric_t* ric,  uint16_t ran_func_id, sm_ag_if_rd_ind_t* 
 #endif
 
   if (NODE_IS_MONOLITHIC(req->id.type))
-    printf("[E2AP]: E2 SETUP-REQUEST rx from PLMN %3d.%*d Node ID %d RAN type %s\n", plmn->mcc, plmn->mnc_digit_len, plmn->mnc, req->id.nb_id.nb_id, ran_type);
+    printf("[E2AP]: E2 SETUP-REQUEST rx from PLMN %03d%0*d Node ID %d RAN type %s\n", plmn->mcc, plmn->mnc_digit_len, plmn->mnc, req->id.nb_id.nb_id, ran_type);
   else
-    printf("[E2AP]: E2 SETUP-REQUEST rx from PLMN %3d.%*d Node ID %d RAN type %s ID %ld\n", plmn->mcc, plmn->mnc_digit_len, plmn->mnc, req->id.nb_id.nb_id, ran_type, *req->id.cu_du_id);
+    printf("[E2AP]: E2 SETUP-REQUEST rx from PLMN %03d%0*d Node ID %d RAN type %s ID %ld\n", plmn->mcc, plmn->mnc_digit_len, plmn->mnc, req->id.nb_id.nb_id, ran_type, *req->id.cu_du_id);
 
   // Add the E2 Node into the iApp
 #ifdef E2AP_V1
