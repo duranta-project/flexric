@@ -9,10 +9,8 @@
 
 #pragma once
 
-#include <boost/optional.hpp>
+#include <optional>
 #include <nlohmann/json.hpp>
-
-#include <boost/optional.hpp>
 #include <stdexcept>
 #include <regex>
 
@@ -30,13 +28,13 @@ namespace nlohmann {
         }
     };
     template <typename T>
-    struct adl_serializer<boost::optional<T>> {
-        static void to_json(json & j, const boost::optional<T> & opt) {
+    struct adl_serializer<std::optional<T>> {
+        static void to_json(json & j, const std::optional<T> & opt) {
             if (!opt) j = nullptr; else j = *opt;
         }
 
-        static boost::optional<T> from_json(const json & j) {
-            if (j.is_null()) return boost::optional<T>(); else return boost::optional<T>(j.get<T>());
+        static std::optional<T> from_json(const json & j) {
+            if (j.is_null()) return std::nullopt; else return std::optional<T>(j.get<T>());
         }
     };
 }
@@ -75,16 +73,16 @@ namespace quicktype {
         return get_heap_optional<T>(j, property.data());
     }
     template <typename T>
-    inline boost::optional<T> get_stack_optional(const json & j, const char * property) {
+    inline std::optional<T> get_stack_optional(const json & j, const char * property) {
         auto it = j.find(property);
         if (it != j.end() && !it->is_null()) {
-            return j.at(property).get<boost::optional<T>>();
+            return j.at(property).get<std::optional<T>>();
         }
-        return boost::optional<T>();
+        return std::nullopt;
     }
 
     template <typename T>
-    inline boost::optional<T> get_stack_optional(const json & j, std::string property) {
+    inline std::optional<T> get_stack_optional(const json & j, std::string property) {
         return get_stack_optional<T>(j, property.data());
     }
     #endif
@@ -161,7 +159,7 @@ namespace quicktype {
         ItemsElement sleep_modes;
         EutraCellIdentity defined_duration_sleep_supported;
         EutraCellIdentity undefined_duration_sleep_supported;
-        boost::optional<ItemsElement> supported_trx_control_masks;
+        std::optional<ItemsElement> supported_trx_control_masks;
 
         public:
         const ItemsElement & get_sleep_modes() const { return sleep_modes; }
@@ -176,8 +174,8 @@ namespace quicktype {
         EutraCellIdentity & get_mutable_undefined_duration_sleep_supported() { return undefined_duration_sleep_supported; }
         void set_undefined_duration_sleep_supported(const EutraCellIdentity & value) { this->undefined_duration_sleep_supported = value; }
 
-        boost::optional<ItemsElement> get_supported_trx_control_masks() const { return supported_trx_control_masks; }
-        void set_supported_trx_control_masks(boost::optional<ItemsElement> value) { this->supported_trx_control_masks = value; }
+        std::optional<ItemsElement> get_supported_trx_control_masks() const { return supported_trx_control_masks; }
+        void set_supported_trx_control_masks(std::optional<ItemsElement> value) { this->supported_trx_control_masks = value; }
     };
 
     class CapabilityInfo {
@@ -1084,23 +1082,23 @@ namespace quicktype {
 
         private:
         EutraCellIdentityType type;
-        boost::optional<int64_t> minimum;
-        boost::optional<int64_t> maximum;
-        boost::optional<std::vector<std::string>> gnb_cu_up_id_enum;
+        std::optional<int64_t> minimum;
+        std::optional<int64_t> maximum;
+        std::optional<std::vector<std::string>> gnb_cu_up_id_enum;
 
         public:
         const EutraCellIdentityType & get_type() const { return type; }
         EutraCellIdentityType & get_mutable_type() { return type; }
         void set_type(const EutraCellIdentityType & value) { this->type = value; }
 
-        boost::optional<int64_t> get_minimum() const { return minimum; }
-        void set_minimum(boost::optional<int64_t> value) { this->minimum = value; }
+        std::optional<int64_t> get_minimum() const { return minimum; }
+        void set_minimum(std::optional<int64_t> value) { this->minimum = value; }
 
-        boost::optional<int64_t> get_maximum() const { return maximum; }
-        void set_maximum(boost::optional<int64_t> value) { this->maximum = value; }
+        std::optional<int64_t> get_maximum() const { return maximum; }
+        void set_maximum(std::optional<int64_t> value) { this->maximum = value; }
 
-        boost::optional<std::vector<std::string>> get_gnb_cu_up_id_enum() const { return gnb_cu_up_id_enum; }
-        void set_gnb_cu_up_id_enum(boost::optional<std::vector<std::string>> value) { this->gnb_cu_up_id_enum = value; }
+        std::optional<std::vector<std::string>> get_gnb_cu_up_id_enum() const { return gnb_cu_up_id_enum; }
+        void set_gnb_cu_up_id_enum(std::optional<std::vector<std::string>> value) { this->gnb_cu_up_id_enum = value; }
     };
 
     class CycleStartOffsetProperties {
@@ -1856,15 +1854,15 @@ namespace quicktype {
         virtual ~OneOfProperties() = default;
 
         private:
-        boost::optional<EutraCellIdentity> target_ec;
-        boost::optional<GnbCuUpId> es_percentage;
+        std::optional<EutraCellIdentity> target_ec;
+        std::optional<GnbCuUpId> es_percentage;
 
         public:
-        boost::optional<EutraCellIdentity> get_target_ec() const { return target_ec; }
-        void set_target_ec(boost::optional<EutraCellIdentity> value) { this->target_ec = value; }
+        std::optional<EutraCellIdentity> get_target_ec() const { return target_ec; }
+        void set_target_ec(std::optional<EutraCellIdentity> value) { this->target_ec = value; }
 
-        boost::optional<GnbCuUpId> get_es_percentage() const { return es_percentage; }
-        void set_es_percentage(boost::optional<GnbCuUpId> value) { this->es_percentage = value; }
+        std::optional<GnbCuUpId> get_es_percentage() const { return es_percentage; }
+        void set_es_percentage(std::optional<GnbCuUpId> value) { this->es_percentage = value; }
     };
 
     class OneOf {
