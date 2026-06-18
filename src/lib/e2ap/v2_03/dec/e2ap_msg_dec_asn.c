@@ -770,6 +770,11 @@ e2ap_msg_t e2ap_dec_subscription_delete_request(const E2AP_PDU_t* pdu)
 
   const RICsubscriptionDeleteRequest_t* out = &pdu->choice.initiatingMessage->value.choice.RICsubscriptionDeleteRequest;
 
+  if (out->protocolIEs.list.array == NULL || out->protocolIEs.list.count < 2) {
+    e2ap_msg_t error_ret = {.type = NONE_E2_MSG_TYPE};
+    return error_ret;
+  }
+
   // RIC Request ID. Mandatory
   const RICsubscriptionDeleteRequest_IEs_t* sub_req = out->protocolIEs.list.array[0];
   assert(sub_req->id == ProtocolIE_ID_id_RICrequestID);	
@@ -1085,6 +1090,11 @@ e2ap_msg_t e2ap_dec_e42_control_request(const struct E2AP_PDU* pdu)
   assert(pdu->choice.initiatingMessage->value.present == InitiatingMessage__value_PR_E42RICcontrolRequest);
 
   const E42RICcontrolRequest_t *out = &pdu->choice.initiatingMessage->value.choice.E42RICcontrolRequest;
+
+  if (out->protocolIEs.list.array == NULL || out->protocolIEs.list.count < 4) {
+    e2ap_msg_t error_ret = {.type = NONE_E2_MSG_TYPE};
+    return error_ret;
+  }
 
   // XAPP ID. Mandatory
   E42RICcontrolRequest_IEs_t* xapp_id = out->protocolIEs.list.array[0];
@@ -1478,6 +1488,11 @@ e2ap_msg_t e2ap_dec_setup_request(const E2AP_PDU_t* pdu)
   assert(trans_id->value.present == E2setupRequestIEs__value_PR_TransactionID);
   assert(trans_id->value.choice.TransactionID < 256);
   sr->trans_id = trans_id->value.choice.TransactionID; 
+
+  if (out->protocolIEs.list.array == NULL || out->protocolIEs.list.count < 1) {
+    e2ap_msg_t error_ret = {.type = NONE_E2_MSG_TYPE};
+    return error_ret;
+  }
 
   E2setupRequestIEs_t* setup_rid = out->protocolIEs.list.array[1];
 
@@ -2247,6 +2262,11 @@ e2ap_msg_t e2ap_dec_node_configuration_update(const E2AP_PDU_t* pdu)
   assert(pdu->choice.initiatingMessage->value.present == InitiatingMessage__value_PR_E2nodeConfigurationUpdate); 
 
   const E2nodeConfigurationUpdate_t* out = &pdu->choice.initiatingMessage->value.choice.E2nodeConfigurationUpdate; 
+  
+  if (out->protocolIEs.list.array == NULL || out->protocolIEs.list.count < 1) {
+    e2ap_msg_t error_ret = {.type = NONE_E2_MSG_TYPE};
+    return error_ret;
+  }
 
   // E2 Node Component Configuration Update List
   const E2nodeConfigurationUpdate_IEs_t* conf_update_ie = out->protocolIEs.list.array[0]; 
@@ -2564,6 +2584,11 @@ e2ap_msg_t e2ap_dec_e42_subscription_delete_request(const struct E2AP_PDU* pdu)
   assert(pdu->choice.initiatingMessage->value.present == InitiatingMessage__value_PR_E42RICsubscriptionDeleteRequest); 
 
   const E42RICsubscriptionDeleteRequest_t* out = &pdu->choice.initiatingMessage->value.choice.E42RICsubscriptionDeleteRequest;
+
+  if (out->protocolIEs.list.array == NULL || out->protocolIEs.list.count < 2) {
+    e2ap_msg_t error_ret = {.type = NONE_E2_MSG_TYPE};
+    return error_ret;
+  }
 
   // XAPP ID. Mandatory
   E42RICsubscriptionDeleteRequest_IEs_t* xapp_id = out->protocolIEs.list.array[0];

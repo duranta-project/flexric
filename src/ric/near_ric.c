@@ -392,6 +392,10 @@ void sctp_msg_arrived_event(void* arg)
   e2ap_msg_t const msg = e2ap_msg_dec_ric(&ric->ap, sctp_msg->ba); 
   defer({e2ap_msg_free_ric(&ric->ap, (e2ap_msg_t*)&msg); } );
 
+  if (msg.type == NONE_E2_MSG_TYPE) {
+    return;
+  }
+
   if(msg.type == E2_SETUP_REQUEST){
     global_e2_node_id_t const* id = &msg.u_msgs.e2_stp_req.id;
     //printf("Received message with id = %d, port = %d \n", id->nb_id.nb_id, sctp_msg->info.addr.sin_port);
