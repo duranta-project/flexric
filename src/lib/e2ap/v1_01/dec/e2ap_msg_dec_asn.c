@@ -479,6 +479,11 @@ e2ap_msg_t e2ap_dec_subscription_response(const E2AP_PDU_t* pdu)
 
   const RICsubscriptionResponse_t* out = &pdu->choice.successfulOutcome->value.choice.RICsubscriptionResponse;
 
+  if (out->protocolIEs.list.array == NULL || out->protocolIEs.list.count < 3) {
+    e2ap_msg_t error_ret = {.type = NONE_E2_MSG_TYPE};
+    return error_ret;
+  }
+
   // RIC Request ID. Mandatory
   const RICsubscriptionResponse_IEs_t* req_id = out->protocolIEs.list.array[0];
   assert(req_id->id == ProtocolIE_ID_id_RICrequestID);
@@ -705,6 +710,11 @@ e2ap_msg_t e2ap_dec_subscription_delete_response(const E2AP_PDU_t* pdu)
 
   const RICsubscriptionDeleteResponse_t* out = &pdu->choice.successfulOutcome->value.choice.RICsubscriptionDeleteResponse;
 
+  if (out->protocolIEs.list.array == NULL || out->protocolIEs.list.count < 2) {
+    e2ap_msg_t error_ret = {.type = NONE_E2_MSG_TYPE};
+    return error_ret;
+  }
+
   // RIC request ID. Mandatory
   const RICsubscriptionDeleteResponse_IEs_t* req_id = out->protocolIEs.list.array[0];
   assert(req_id->id == ProtocolIE_ID_id_RICrequestID);
@@ -801,6 +811,11 @@ e2ap_msg_t e2ap_dec_indication(const E2AP_PDU_t* pdu)
   ind->ric_id.ric_inst_id = sub_req->value.choice.RICrequestID.ricInstanceID;
   assert(sub_req->value.choice.RICrequestID.ricRequestorID < MAX_RIC_REQUEST_ID);
   ind->ric_id.ric_req_id = sub_req->value.choice.RICrequestID.ricRequestorID; 
+
+  if (out->protocolIEs.list.array == NULL || out->protocolIEs.list.count < 3) {
+    e2ap_msg_t error_ret = {.type = NONE_E2_MSG_TYPE};
+    return error_ret;
+  }
 
   //RAN Function ID. Mandatory
   const RICindication_IEs_t* ran_id = out->protocolIEs.list.array[1];
@@ -1132,6 +1147,11 @@ e2ap_msg_t e2ap_dec_control_ack(const E2AP_PDU_t* pdu)
   assert(pdu->choice.successfulOutcome->value.present ==  SuccessfulOutcome__value_PR_RICcontrolAcknowledge);
 
   const RICcontrolAcknowledge_t* out = &pdu->choice.successfulOutcome->value.choice.RICcontrolAcknowledge;
+
+  if (out->protocolIEs.list.array == NULL || out->protocolIEs.list.count < 2) {
+    e2ap_msg_t error_ret = {.type = NONE_E2_MSG_TYPE};
+    return error_ret;
+  }
 
   //RIC Request ID. Mandatory
   const RICcontrolAcknowledge_IEs_t* ric_req_id = out->protocolIEs.list.array[0];
