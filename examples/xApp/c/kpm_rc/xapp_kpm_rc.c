@@ -239,8 +239,8 @@ void sm_cb_kpm(sm_ag_if_rd_t const* rd)
   static int counter = 1;
   {
     lock_guard(&mtx);
-    printf("\n%7d KPM ind_msg latency = %ld [μs]\n", counter, now - hdr_frm_1->collectStartTime); // xApp <-> E2 Node
 
+    printf("\n%7d KPM ind_msg latency = %ld [μs]\n", counter, now - hdr_frm_1->collectStartTime); // xApp <-> E2 Node
 
     if (ind->msg.type == FORMAT_1_INDICATION_MESSAGE) {
       log_kpm_measurements(&ind->msg.frm_1);
