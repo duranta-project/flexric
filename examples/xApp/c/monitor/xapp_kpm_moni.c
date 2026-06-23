@@ -191,22 +191,17 @@ void log_kpm_measurements(kpm_ind_msg_format_1_t const* msg_frm_1)
   // UE Measurements per granularity period
   for (size_t j = 0; j < msg_frm_1->meas_data_lst_len; j++) {
     meas_data_lst_t const data_item = msg_frm_1->meas_data_lst[j];
-    // Cumulative record index across all measurement types and their labels
-    size_t record_idx = 0;
+
     for (size_t i = 0; i < msg_frm_1->meas_info_lst_len; i++) {
       const meas_info_format_1_lst_t info_item = msg_frm_1->meas_info_lst[i];
       for (size_t z = 0; z < info_item.label_info_lst_len; z++) {
-
-        if (record_idx >= data_item.meas_record_len) break;
-
         const label_info_lst_t label_info = info_item.label_info_lst[z];
-        const meas_record_lst_t record_item = data_item.meas_record_lst[record_idx];
+        const meas_record_lst_t record_item = data_item.meas_record_lst[i + z];
 
         match_meas_type[info_item.meas_type.type](info_item.meas_type, label_info, record_item);
 
         if (data_item.incomplete_flag && *data_item.incomplete_flag == TRUE_ENUM_VALUE)
           printf("Measurement Record not reliable");
-        record_idx++;
       }
     }
   }

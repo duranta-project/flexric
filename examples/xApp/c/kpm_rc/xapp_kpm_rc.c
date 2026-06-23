@@ -131,71 +131,23 @@ log_ue_id log_ue_id_e2sm[END_UE_ID_E2SM] = {
     NULL,
 };
 
-
-// static void log_int_value(byte_array_t name, meas_record_lst_t meas_record) 
-// {
-//   if (cmp_str_ba("RRU.PrbTotDl", name) == 0) {
-//     printf("RRU.PrbTotDl = %d [PRBs]\n", meas_record.int_val);
-//     printf("RRU.PrbTotUl = %d [PRBs]\n", meas_record.int_val);
-//   } else if (cmp_str_ba("DRB.PdcpSduVolumeDL", name) == 0) {
-//     printf("DRB.PdcpSduVolumeDL = %d [kb]\n", meas_record.int_val);
-//   } else if (cmp_str_ba("DRB.PdcpSduVolumeUL", name) == 0) {
-//     printf("DRB.PdcpSduVolumeUL = %d [kb]\n", meas_record.int_val);
-//     // } else if (strncmp(name.buf, "L3neighSINRListOf_UEID_", strlen("L3neighSINRListOf_UEID_")) == 0) {
-//     //   printf("%s, Neighbour=%d \n", name.buf, meas_record.int_val);
-//   } else {
-//      printf("Name= %s, value= %d \n", name.buf, meas_record.int_val);
-
-//   }
-// }
-
-// static void log_real_value(byte_array_t name, meas_record_lst_t meas_record) 
-// {
-//   if (cmp_str_ba("DRB.RlcSduDelayDl", name) == 0) {
-//     printf("DRB.RlcSduDelayDl = %.2f [μs]\n", meas_record.real_val);
-//   } else if (cmp_str_ba("DRB.UEThpDl", name) == 0) {
-//     printf("DRB.UEThpDl = %.2f [kbps]\n", meas_record.real_val);
-//   } else if (cmp_str_ba("DRB.UEThpUl", name) == 0) {
-//     printf("DRB.UEThpUl = %.2f [kbps]\n", meas_record.real_val);
-//   } else if (strncmp(name.buf, "L3servingSINR3gpp_cell_", strlen("L3servingSINR3gpp_cell_")) == 0) {
-//     printf("%s, sinr= %.4f [db]\n", name.buf, meas_record.real_val);
-//   } else if (strncmp(name.buf, "L3neighSINRListOf_UEID_", strlen("L3neighSINRListOf_UEID_")) == 0) {
-//     printf("%s, sinr= %.4f [db]\n", name.buf, meas_record.real_val);
-//   } else {
-//      printf("Name= %s, value= %.6f \n", name.buf, meas_record.real_val);
-//   }
-// }
-
-static void log_int_value(const char *name_str, const label_info_lst_t label_info, const meas_record_lst_t meas_record)
+static
+void log_int_value(const char *name_str, const label_info_lst_t label_info, const meas_record_lst_t meas_record)
 {
-  (void)label_info;
-  if (strcmp(name_str, "RRU.PrbTotDl") == 0) {
-    printf("RRU.PrbTotDl = %d [PRBs]\n", meas_record.int_val);
-    printf("RRU.PrbTotUl = %d [PRBs]\n", meas_record.int_val);
-  } else if (strcmp(name_str, "DRB.PdcpSduVolumeDL") == 0) {
-    printf("DRB.PdcpSduVolumeDL = %d [kb]\n", meas_record.int_val);
-  } else if (strcmp(name_str, "DRB.PdcpSduVolumeUL") == 0) {
-    printf("DRB.PdcpSduVolumeUL = %d [kb]\n", meas_record.int_val);
-  } else {
-    printf("Name= %s, value= %d \n", name_str, meas_record.int_val);
+  char *name_unit = get_meas_unit(name_str);
+  if (label_info.noLabel != NULL) {
+    printf("%s = %d %s\n", name_str, meas_record.int_val, name_unit);
+  } else if (label_info.distBinX != NULL && meas_record.int_val > 0) {
+    printf("%s[BinX=%d][BinY=%d][BinZ=%d] = %d %s\n", name_str, *label_info.distBinX, *label_info.distBinY, *label_info.distBinZ, meas_record.int_val, name_unit);
   }
 }
-static void log_real_value(const char *name_str, const label_info_lst_t label_info, const meas_record_lst_t meas_record)
+
+static
+void log_real_value(const char *name_str, const label_info_lst_t label_info, const meas_record_lst_t meas_record)
 {
   (void)label_info;
-  if (strcmp(name_str, "DRB.RlcSduDelayDl") == 0) {
-    printf("DRB.RlcSduDelayDl = %.2f [μs]\n", meas_record.real_val);
-  } else if (strcmp(name_str, "DRB.UEThpDl") == 0) {
-    printf("DRB.UEThpDl = %.2f [kbps]\n", meas_record.real_val);
-  } else if (strcmp(name_str, "DRB.UEThpUl") == 0) {
-    printf("DRB.UEThpUl = %.2f [kbps]\n", meas_record.real_val);
-  } else if (strncmp(name_str, "L3servingSINR3gpp_cell_", strlen("L3servingSINR3gpp_cell_")) == 0) {
-    printf("%s, sinr= %.4f [db]\n", name_str, meas_record.real_val);
-  } else if (strncmp(name_str, "L3neighSINRListOf_UEID_", strlen("L3neighSINRListOf_UEID_")) == 0) {
-    printf("%s, sinr= %.4f [db]\n", name_str, meas_record.real_val);
-  } else {
-    printf("Name= %s, value= %.6f \n", name_str, meas_record.real_val);
-  }
+  char *name_unit = get_meas_unit(name_str);
+  printf("%s = %.2f %s\n", name_str, meas_record.real_val, name_unit);
 }
 
 typedef void (*log_meas_value)(const char *name_str, const label_info_lst_t label_info, const meas_record_lst_t meas_record);
@@ -242,24 +194,16 @@ void log_kpm_measurements(kpm_ind_msg_format_1_t const* msg_frm_1)
   for (size_t j = 0; j < msg_frm_1->meas_data_lst_len; j++) {
     meas_data_lst_t const data_item = msg_frm_1->meas_data_lst[j];
 
-    // Cumulative record index across all measurement types and their labels
-    size_t record_idx = 0;
-
     for (size_t i = 0; i < msg_frm_1->meas_info_lst_len; i++) {
       const meas_info_format_1_lst_t info_item = msg_frm_1->meas_info_lst[i];
       for (size_t z = 0; z < info_item.label_info_lst_len; z++) {
-
-        if (record_idx >= data_item.meas_record_len) break;
-
         const label_info_lst_t label_info = info_item.label_info_lst[z];
-        const meas_record_lst_t record_item = data_item.meas_record_lst[record_idx];
+        const meas_record_lst_t record_item = data_item.meas_record_lst[i + z];
 
         match_meas_type[info_item.meas_type.type](info_item.meas_type, label_info, record_item);
 
         if (data_item.incomplete_flag && *data_item.incomplete_flag == TRUE_ENUM_VALUE)
           printf("Measurement Record not reliable");
-
-        record_idx++;
       }
     }
   }
