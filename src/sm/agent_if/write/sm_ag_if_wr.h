@@ -15,6 +15,7 @@
 #include "../../gtp_sm/ie/gtp_data_ie.h"
 #include "../../kpm_sm/kpm_data_ie_wrapper.h"
 #include "../../rc_sm/ie/rc_data_ie.h"
+#include "../../ccc_sm/ie/ccc_data_ie.h"
 
 //////////////////////
 //////////////////////
@@ -30,7 +31,8 @@ typedef enum{
   SLICE_CTRL_REQ_V0 = 3,
   TC_CTRL_REQ_V0 = 4,
   GTP_CTRL_REQ_V0 = 5,
-  RAN_CONTROL_CTRL_V1_03 = 6, 
+  RAN_CONTROL_CTRL_V1_03 = 6,
+  CCC_CTRL_REQ_V0 = 7,
   SM_AGENT_IF_WRITE_CTRL_V0_END,
 } sm_ag_if_ctrl_e;
 
@@ -44,6 +46,7 @@ typedef struct{
     tc_ctrl_req_data_t tc_req_ctrl;
     gtp_ctrl_req_data_t gtp_ctrl;
     rc_ctrl_req_data_t rc_ctrl;
+    ccc_ctrl_req_data_t ccc_ctrl;
   };
 }  sm_ag_if_wr_ctrl_t;
 
@@ -60,7 +63,8 @@ typedef enum{
   PDCP_SUBS_V0, 
   SLICE_SUBS_V0, 
   TC_SUBS_V0, 
-  GTP_SUBS_V0, 
+  GTP_SUBS_V0,
+  CCC_SUBS_V0, 
   KPM_SUBS_V3_0, 
   RAN_CTRL_SUBS_V1_03, 
   SM_AGENT_IF_WRITE_SUBS_V0_END,
@@ -81,6 +85,7 @@ typedef struct{
     slice_sub_data_t slice;
     tc_sub_data_t tc;
     gtp_sub_data_t gtp;
+    ccc_sub_data_t ccc;
     kpm_sub_data_t kpm;
     wr_rc_sub_data_t wr_rc;
   };

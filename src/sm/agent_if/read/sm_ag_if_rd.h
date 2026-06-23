@@ -15,6 +15,7 @@
 #include "../../slice_sm/ie/slice_data_ie.h"
 #include "../../tc_sm/ie/tc_data_ie.h"
 #include "../../gtp_sm/ie/gtp_data_ie.h"
+#include "../../ccc_sm/ie/ccc_data_ie.h"
 #include "../../rc_sm/ie/rc_data_ie.h"
 #include "../../kpm_sm/kpm_data_ie_wrapper.h"
 
@@ -32,6 +33,7 @@ typedef enum{
   SLICE_STATS_V0,
   TC_STATS_V0,
   GTP_STATS_V0, 
+  CCC_STATS_V0,
   KPM_STATS_V3_0, 
   RAN_CTRL_STATS_V1_03,
   SM_AGENT_IF_READ_V0_END,
@@ -50,6 +52,12 @@ typedef struct{
   uint32_t ric_id;
 } rc_rd_ind_data_t;
 
+typedef struct{
+  ccc_ind_data_t ind;
+  // Non-owning pointer
+  void const* act_def;
+} ccc_rd_ind_data_t;
+
 // ToDo: Change it for pointers, to break the dependencies
 typedef struct{
   sm_ag_if_rd_ind_e type;
@@ -61,6 +69,7 @@ typedef struct{
     slice_ind_data_t slice;
     tc_ind_data_t tc;
     gtp_ind_data_t gtp;
+    ccc_ind_data_t ccc;
     kpm_rd_ind_data_t kpm;
     rc_rd_ind_data_t rc;
   };
@@ -81,6 +90,7 @@ typedef enum{
   SLICE_AGENT_IF_E2_SETUP_ANS_V0,
   TC_AGENT_IF_E2_SETUP_ANS_V0,
   GTP_AGENT_IF_E2_SETUP_ANS_V0,
+  CCC_AGENT_IF_E2_SETUP_ANS_V0,
   KPM_V3_0_AGENT_IF_E2_SETUP_ANS_V0,
   RAN_CTRL_V1_3_AGENT_IF_E2_SETUP_ANS_V0,
   SM_AGENT_IF_E2_SETUP_ANS_V0_END,
@@ -95,6 +105,7 @@ typedef struct{
     slice_e2_setup_data_t slice;
     tc_e2_setup_data_t tc;
     gtp_e2_setup_data_t gtp;
+    ccc_e2_setup_data_t ccc;
     kpm_e2_setup_t kpm;
     rc_e2_setup_t rc;
   };
@@ -111,6 +122,7 @@ typedef enum{
   SLICE_AGENT_IF_RIC_SERV_UPDATE_CTRL_ANS_V0,
   TC_AGENT_IF_RIC_SERV_UPDATE_CTRL_ANS_V0,
   GTP_AGENT_IF_RIC_SERV_UPDATE_CTRL_ANS_V0,
+  CCC_AGENT_IF_RIC_SERV_UPDATE_CTRL_ANS_V0,
   KPM_V3_0_AGENT_IF_RIC_SERV_UPDATE_CTRL_ANS_V0,
   RAN_CTRL_V1_3_AGENT_IF_RIC_SERV_UPDATE_CTRL_ANS_V0,
 
@@ -126,6 +138,7 @@ typedef struct{
     slice_ric_service_update_t slice;
     tc_ric_service_update_t tc;
     gtp_ric_service_update_t gtp;
+    ccc_ric_service_update_t ccc;
     kpm_ric_service_update_t kpm;
     rc_ric_service_update_t rc;
   };

@@ -1295,15 +1295,18 @@ void process_format_1_message(sqlite3* db, global_e2_node_id_t const* id, kpm_in
     meas_data_lst_t* meas_data_item = &frm_1->meas_data_lst[i];
     char* incomplete_flag_str = (meas_data_item->incomplete_flag != NULL && *meas_data_item->incomplete_flag == TRUE_ENUM_VALUE) ? "TRUE" : "FALSE";
 
+    size_t record_idx = 0;
     for (size_t z = 0; z < frm_1->meas_info_lst_len; z++) {
       const meas_info_format_1_lst_t* meas_info_item = &frm_1->meas_info_lst[z];
       char *name_str = get_meas_name(meas_info_item->meas_type);
       for (size_t j = 0; j < meas_info_item->label_info_lst_len; j++) {
-        meas_record_lst_t* meas_record_item = &meas_data_item->meas_record_lst[z + j];
+        if (record_idx >= meas_data_item->meas_record_len) break;
+        meas_record_lst_t* meas_record_item = &meas_data_item->meas_record_lst[record_idx];
         to_sql_string_kpm_measRecord(id, name_str, meas_record_item, &meas_info_item->label_info_lst[j],
                                      collectStartTime, 1, NULL, NULL, NULL, incomplete_flag_str, 
                                      buffer, MAX_SQL_LENGTH);
         insert_db(db, buffer);
+        record_idx++;
       }
       free(name_str);
     }
@@ -1360,16 +1363,19 @@ void process_format_3_message(sqlite3* db, global_e2_node_id_t const* id, kpm_in
     for(size_t j = 0; j < frm_1->meas_data_lst_len; j++){
       meas_data_lst_t* meas_data_item = &frm_1->meas_data_lst[j];
       char* incomplete_flag_str = (meas_data_item->incomplete_flag != NULL && *meas_data_item->incomplete_flag == TRUE_ENUM_VALUE) ? "TRUE" : "FALSE";
-      
+
+      size_t record_idx = 0;
       for (size_t z = 0; z < frm_1->meas_info_lst_len; z++) {
         const meas_info_format_1_lst_t* meas_info_item = &frm_1->meas_info_lst[z];
         char *name_str = get_meas_name(meas_info_item->meas_type);
         for (size_t i = 0; i < meas_info_item->label_info_lst_len; i++){
-          meas_record_lst_t* meas_record_item = &meas_data_item->meas_record_lst[z + i];
+          if (record_idx >= meas_data_item->meas_record_len) break;
+          meas_record_lst_t* meas_record_item = &meas_data_item->meas_record_lst[record_idx];
           to_sql_string_kpm_measRecord(id, name_str, meas_record_item, &meas_info_item->label_info_lst[i],
                                         collectStartTime, 3, ue_id_info.id, ue_id_info.group, ue_id_info.ran_ue_id, incomplete_flag_str, 
                                         buffer, MAX_SQL_LENGTH);
           insert_db(db, buffer);
+          record_idx++;
         }
         free(name_str);
       }

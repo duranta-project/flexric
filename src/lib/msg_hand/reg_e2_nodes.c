@@ -280,6 +280,9 @@ sm_ran_function_def_t mv_rd_e2_setup(sm_ag_if_rd_e2setup_t const* src)
   } else if(src->type == GTP_AGENT_IF_E2_SETUP_ANS_V0){
     dst.type = GTP_RAN_FUNC_DEF_E; 
     dst.gtp = src->gtp.func_def;
+  } else if(src->type == CCC_AGENT_IF_E2_SETUP_ANS_V0){
+    dst.type = CCC_RAN_FUNC_DEF_E; 
+    dst.ccc = src->ccc.func_def;
   } else if(src->type == KPM_V3_0_AGENT_IF_E2_SETUP_ANS_V0){
     dst.type = KPM_RAN_FUNC_DEF_E ; 
     dst.kpm = src->kpm.ran_func_def;
@@ -480,7 +483,7 @@ void rm_reg_e2_node(reg_e2_nodes_t* n, global_e2_node_id_t const* id)
   assert(n != NULL);
   assert(id != NULL);
 
-  printf("[NEAR-RIC]: Removing E2 Node MCC %d MNC %d NB_ID %u \n", id->plmn.mcc, id->plmn.mnc, id->nb_id.nb_id);
+  printf("[NEAR-RIC]: Removing E2 Node MCC %03d MNC %0*d NB_ID %u \n", id->plmn.mcc, id->plmn.mnc_digit_len, id->plmn.mnc, id->nb_id.nb_id);
 
   {
     lock_guard(&n->mtx);
