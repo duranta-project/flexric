@@ -148,6 +148,20 @@ void test_rc_ran_func_def(void)
 
 
 
+void test_rc_ran_func_def_nested_ctrl(void)
+{
+  e2sm_rc_func_def_t msg = fill_rc_ran_func_def_nested_ctrl();
+  defer({ free_e2sm_rc_func_def(&msg); });
+
+  byte_array_t ba = rc_enc_func_def_asn(&msg);
+  defer({ free_byte_array(ba); });
+
+  e2sm_rc_func_def_t out = rc_dec_func_def_asn(ba.len, ba.buf);
+  defer({ free_e2sm_rc_func_def(&out); });
+
+  assert(eq_e2sm_rc_func_def(&msg, &out) == true);
+}
+
 int main()
 {
   time_t t;
@@ -191,6 +205,10 @@ int main()
   // RAN Function Definition
   test_rc_ran_func_def();
   printf("\nRC RAN Function Definition\n");
+
+  // RAN Function Definition with a nested RAN Parameter Definition
+  test_rc_ran_func_def_nested_ctrl();
+  printf("\nRC RAN Function Definition with nested RAN Parameter Definition\n");
 
   return EXIT_SUCCESS;
 }
