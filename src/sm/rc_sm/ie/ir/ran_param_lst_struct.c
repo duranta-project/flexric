@@ -28,6 +28,7 @@ void free_ran_param_lst_struct(ran_param_lst_struct_t* src)
   // 9.3.51
   if (src->ran_param_def != NULL) {
     free_ran_param_def(src->ran_param_def);
+    free(src->ran_param_def);
   }
 }
 
