@@ -174,6 +174,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/* RAN Parameter Definitions nest: a LIST or STRUCTURE item may itself carry a
+ * RANParameter-Definition (9.3.51). Declared here because the definition sits
+ * below the two encoders that recurse into it. */
+static RANParameter_Definition_t enc_ran_param_def(ran_param_def_t* const src);
+
 static inline
 OCTET_STRING_t copy_ba_to_ostring(byte_array_t ba)
 {
@@ -919,7 +924,11 @@ RANParameter_Definition_Choice_LIST_t enc_ran_param_def_lst(ran_param_type_t* co
     // RAN Parameter Definition
     // Optional
     // 9.3.51
-    assert(src->ran_param[i].ran_param_def == NULL && "Not implemented");
+    if (src->ran_param[i].ran_param_def != NULL) {
+      list_item->ranParameter_Definition = calloc(1, sizeof(RANParameter_Definition_t));
+      assert(list_item->ranParameter_Definition != NULL && "Memory exhausted");
+      *list_item->ranParameter_Definition = enc_ran_param_def(src->ran_param[i].ran_param_def);
+    }
 
     int rc = ASN_SEQUENCE_ADD(&dst.ranParameter_List.list, list_item);
     assert(rc == 0);
@@ -955,7 +964,11 @@ RANParameter_Definition_Choice_STRUCTURE_t enc_ran_param_def_strct(ran_param_typ
     // RAN Parameter Definition
     // Optional
     // 9.3.51
-    assert(src->ran_param[i].ran_param_def == NULL && "Not implemented");
+    if (src->ran_param[i].ran_param_def != NULL) {
+      list_item->ranParameter_Definition = calloc(1, sizeof(RANParameter_Definition_t));
+      assert(list_item->ranParameter_Definition != NULL && "Memory exhausted");
+      *list_item->ranParameter_Definition = enc_ran_param_def(src->ran_param[i].ran_param_def);
+    }
 
     int rc = ASN_SEQUENCE_ADD(&dst.ranParameter_STRUCTURE.list, list_item);
     assert(rc == 0);
@@ -978,14 +991,14 @@ RANParameter_Definition_t enc_ran_param_def(ran_param_def_t* const src)
 
   switch (src->type)
   {
-  case LIST_RAN_PARAMETER_TYPE:
+  case LIST_RAN_PARAMETER_DEF_TYPE:
     def->present = RANParameter_Definition_Choice_PR_choiceLIST;
     def->choice.choiceLIST = calloc(1, sizeof(RANParameter_Definition_Choice_LIST_t));
     assert(def->choice.choiceLIST != NULL && "Memory exhausted");
     *def->choice.choiceLIST = enc_ran_param_def_lst(src->lst);
     break;
 
-  case STRUCTURE_RAN_PARAMETER_TYPE:
+  case STRUCTURE_RAN_PARAMETER_DEF_TYPE:
     def->present = RANParameter_Definition_Choice_PR_choiceSTRUCTURE;
     def->choice.choiceSTRUCTURE = calloc(1, sizeof(RANParameter_Definition_Choice_STRUCTURE_t));
     assert(def->choice.choiceSTRUCTURE != NULL && "Memory exhausted");
