@@ -239,6 +239,11 @@ To override specific default values, you can use the following command-line opti
   XAPP_DURATION=20 ./build/examples/xApp/c/kpm_rc/xapp_kpm_rc # not supported by emu_agent_enb
   ```
 
+  * start the E2SM-RC control xApp - RAN control action "Handover Control"; `ORAN.WG3.E2SM-RC-v01.03` section 7.6.4 - CONTROL Service Style 3 ("Connected Mode Mobility")
+  ```bash
+  XAPP_DURATION=20 ./build/examples/xApp/c/rc_handover/xapp_rc_handover
+  ```
+
   * start the (MAC + RLC + PDCP + GTP) monitor xApp
   ```bash
   XAPP_DURATION=20 ./build/examples/xApp/c/monitor/xapp_gtp_mac_rlc_pdcp_moni
