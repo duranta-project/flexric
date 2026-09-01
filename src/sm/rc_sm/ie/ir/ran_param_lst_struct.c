@@ -54,8 +54,8 @@ bool eq_ran_param_lst_struct(ran_param_lst_struct_t const* m0, ran_param_lst_str
   // RAN Parameter Definition
   // Optional
   // 9.3.51
-  assert(m0->ran_param_def == NULL && "Not implemented");
-  assert(m1->ran_param_def == NULL && "Not implemented");
+  if (eq_ran_param_def(m0->ran_param_def, m1->ran_param_def) == false)
+    return false;
 
   return true;
 }

@@ -62,8 +62,8 @@ bool eq_seq_ran_param_3(seq_ran_param_3_t const* m0, seq_ran_param_3_t const* m1
   // RAN Parameter Definition
   // Optional
   // 9.3.51
-  assert(m0->def == NULL && "Not implemented"); 
-  assert(m1->def == NULL && "Not implemented"); 
+  if (eq_ran_param_def(m0->def, m1->def) == false)
+    return false;
 
   return true;
 }
@@ -91,7 +91,11 @@ seq_ran_param_3_t cp_seq_ran_param_3(seq_ran_param_3_t const* src)
   // RAN Parameter Definition
   // Optional
   // 9.3.51
-  assert(src->def == NULL && "Not implemented");
+  if (src->def != NULL) {
+    dst.def = calloc(1, sizeof(ran_param_def_t));
+    assert(dst.def != NULL && "Memory exhausted");
+    *dst.def = cp_ran_param_def(src->def);
+  }
 
   return dst;
 }
