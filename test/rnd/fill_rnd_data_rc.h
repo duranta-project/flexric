@@ -46,3 +46,8 @@ rc_ctrl_req_data_t fill_rc_ctrl(void);
 
 e2sm_rc_func_def_t fill_rc_ran_func_def(void);
 
+// A CONTROL RAN function definition whose associated RAN parameter carries a
+// two-level nested RAN Parameter Definition (9.3.51), as E2SM-RC Control Style 3
+// does. Deterministic: the random fillers never nest.
+e2sm_rc_func_def_t fill_rc_ran_func_def_nested_ctrl(void);
+

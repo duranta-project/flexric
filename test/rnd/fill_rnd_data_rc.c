@@ -3027,6 +3027,79 @@ e2sm_rc_func_def_t fill_rnd_rc_ran_func_def(void)
   return dst;
 }
 
+static
+ran_param_lst_struct_t fill_lst_struct_item(uint32_t id, const char* name, ran_param_def_t* nested)
+{
+  ran_param_lst_struct_t dst = {0};
+  dst.ran_param_id = id;
+  dst.ran_param_name = cp_str_to_ba(name);
+  dst.ran_param_def = nested;
+  return dst;
+}
+
+// Wrap a single item in a STRUCTURE RAN Parameter Definition.
+static
+ran_param_def_t* fill_strct_def(ran_param_lst_struct_t item)
+{
+  ran_param_def_t* dst = calloc(1, sizeof(ran_param_def_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->type = STRUCTURE_RAN_PARAMETER_DEF_TYPE;
+  dst->strct = calloc(1, sizeof(ran_param_type_t));
+  assert(dst->strct != NULL && "Memory exhausted");
+
+  dst->strct->sz_ran_param = 1;
+  dst->strct->ran_param = calloc(1, sizeof(ran_param_lst_struct_t));
+  assert(dst->strct->ran_param != NULL && "Memory exhausted");
+  dst->strct->ran_param[0] = item;
+
+  return dst;
+}
+
+e2sm_rc_func_def_t fill_rc_ran_func_def_nested_ctrl(void)
+{
+  e2sm_rc_func_def_t dst = {0};
+
+  dst.name = fill_rc_ran_func_name();
+
+  dst.ctrl = calloc(1, sizeof(ran_func_def_ctrl_t));
+  assert(dst.ctrl != NULL && "Memory exhausted");
+
+  dst.ctrl->sz_seq_ctrl_style = 1;
+  dst.ctrl->seq_ctrl_style = calloc(1, sizeof(seq_ctrl_style_t));
+  assert(dst.ctrl->seq_ctrl_style != NULL && "Memory exhausted");
+
+  seq_ctrl_style_t* style = &dst.ctrl->seq_ctrl_style[0];
+  style->style_type = 3; // Connected mode mobility control
+  style->name = cp_str_to_ba("Connected mode mobility control");
+  style->hdr = FORMAT_1_E2SM_RC_CTRL_HDR;
+  style->msg = FORMAT_1_E2SM_RC_CTRL_MSG;
+  style->out_frmt = FORMAT_1_E2SM_RC_CTRL_OUT;
+
+  style->sz_seq_ctrl_act = 1;
+  style->seq_ctrl_act = calloc(1, sizeof(seq_ctrl_act_2_t));
+  assert(style->seq_ctrl_act != NULL && "Memory exhausted");
+
+  seq_ctrl_act_2_t* act = &style->seq_ctrl_act[0];
+  act->id = 1; // Handover Control
+  act->name = cp_str_to_ba("Handover Control");
+
+  act->sz_seq_assoc_ran_param = 1;
+  act->assoc_ran_param = calloc(1, sizeof(seq_ran_param_3_t));
+  assert(act->assoc_ran_param != NULL && "Memory exhausted");
+
+  // Target Primary Cell ID > CHOICE Target Cell > NR Cell ID: the definition
+  // nests twice, which is what used to abort the encoder.
+  ran_param_def_t* inner = fill_strct_def(fill_lst_struct_item(3, "NR Cell ID", NULL));
+  ran_param_def_t* outer = fill_strct_def(fill_lst_struct_item(2, "CHOICE Target Cell", inner));
+
+  act->assoc_ran_param[0].id = 1;
+  act->assoc_ran_param[0].name = cp_str_to_ba("Target Primary Cell ID");
+  act->assoc_ran_param[0].def = outer;
+
+  return dst;
+}
+
 /////////////////////////////
 /////////////////////////////
 ////////// End of RAN Function Definition 
