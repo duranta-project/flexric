@@ -16,6 +16,7 @@
 #include "../sm/slice_sm/ie/slice_data_ie.h"
 #include "../sm/tc_sm/ie/tc_data_ie.h"
 #include "../sm/ccc_sm/ie/ccc_data_ie.h"
+#include "../sm/dapp_sm/ie/dapp_data_ie.h"
 
 typedef enum {
   KPM_RAN_FUNC_DEF_E,
@@ -27,6 +28,7 @@ typedef enum {
   SLICE_RAN_FUNC_DEF_E,
   TC_RAN_FUNC_DEF_E,
   CCC_RAN_FUNC_DEF_E,
+  DAPP_RAN_FUNC_DEF_E,
 } ran_func_def_e;
 
 typedef struct{ 
@@ -41,6 +43,7 @@ typedef struct{
    slice_func_def_t slice;
    tc_func_def_t tc;
    ccc_func_def_t ccc;
+   e2sm_dapp_func_def_t dapp;
  };
 } sm_ran_function_def_t;
 
