@@ -289,6 +289,9 @@ sm_ran_function_def_t mv_rd_e2_setup(sm_ag_if_rd_e2setup_t const* src)
   } else if(src->type == RAN_CTRL_V1_3_AGENT_IF_E2_SETUP_ANS_V0){
     dst.type = RC_RAN_FUNC_DEF_E; 
     dst.rc = src->rc.ran_func_def;
+  } else if(src->type == DAPP_AGENT_IF_E2_SETUP_ANS_V0){
+    dst.type = DAPP_RAN_FUNC_DEF_E;
+    dst.dapp = src->dapp.ran_func_def;
   } else {
     /* Tolerate service-model definition types this build does not model instead
        of aborting the E2 node: subscriptions target a service model by
