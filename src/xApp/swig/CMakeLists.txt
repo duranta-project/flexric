@@ -1,5 +1,3 @@
-# SPDX-License-Identifier: LicenseRef-CSSL-1.0
-
 # This is a CMake example for Python
 CMAKE_MINIMUM_REQUIRED(VERSION 3.8)
 CMAKE_POLICY(VERSION 3.8)
@@ -72,6 +70,9 @@ SWIG_ADD_LIBRARY(xapp_sdk LANGUAGE ${XAPP_LANG} SOURCES
                                                  ../../sm/gtp_sm/ie/gtp_data_ie.c
                                                  ../../util/byte_array.c
                                                  ../../util/alg_ds/alg/eq_float.c
+                                                 # control_dapp_spectrum_sm stamps the E2SM-DAPP header and the
+                                                 # spectrum payload, both of which the codecs require.
+                                                 ../../util/time_now_us.c
                                                  )
 
 
@@ -92,6 +93,9 @@ if(XAPP_TARGET_LANGUAGE STREQUAL "PYTHON_LANG")
 
    add_custom_command(TARGET xapp_sdk POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
      "${CMAKE_SOURCE_DIR}/examples/xApp/python3/xapp_slice_moni_ctrl.py" "${CMAKE_BINARY_DIR}/examples/xApp/python3/xapp_slice_moni_ctrl.py" )
+
+   add_custom_command(TARGET xapp_sdk POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
+     "${CMAKE_SOURCE_DIR}/examples/xApp/python3/xapp_spectrum.py" "${CMAKE_BINARY_DIR}/examples/xApp/python3/xapp_spectrum.py" )
 
    add_custom_command(TARGET xapp_sdk POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "${CMAKE_SOURCE_DIR}/examples/xApp/python3/watch_slice_stats" "${CMAKE_BINARY_DIR}/examples/xApp/python3/watch_slice_stats" )

@@ -109,6 +109,17 @@ if(E2AP_ENCODING STREQUAL "ASN")
             $<TARGET_OBJECTS:e2_conv_obj>
             )
 
+          # The shared xApp library pulls in the RC service model's decoders, which
+          # reference the NR RRC ASN.1 definitions. Without these, e42_xapp_shared
+          # links but cannot be loaded: dlopen fails on an undefined
+          # asn_DEF_NR_UL_DCCH_Message, which is what the SWIG binding hits.
+          target_link_libraries(e42_xapp_shared
+                     PUBLIC
+                     asn1_nr_rrc
+                     sm_common_dec_asn_obj_rc
+                     3gpp_derived_ie_dec_asn_obj_rc
+                    )
+
 	 target_compile_options(e42_xapp_shared PRIVATE "-DASN_DISABLE_OER_SUPPORT" -fPIC)
 
 if(E2AP_VERSION STREQUAL "E2AP_V1")

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: LicenseRef-CSSL-1.0
- */
-
 #ifndef SWIG_WRAPPER_H
 #define SWIG_WRAPPER_H 
 
@@ -167,5 +163,61 @@ int report_gtp_sm(global_e2_node_id_t* id, Interval inter, gtp_cb* handler);
 
 void rm_report_gtp_sm(int);
 
-#endif
+//////////////////////////////////////
+// DAPP SM
+/////////////////////////////////////
 
+struct swig_dapp_e3_data_ind_t {
+  uint32_t ran_function_id;
+  uint32_t dapp_id;
+  uint8_t node_type;
+  uint8_t plmn_0, plmn_1, plmn_2;
+  uint32_t node_nb_id;
+  bool node_cu_du_id_present;
+  uint64_t node_cu_du_id;
+  int64_t timestamp_ns;
+  int64_t sequence_id;
+  std::vector<int> prbs;
+};
+
+struct swig_dapp_sub_item_t {
+  uint32_t dapp_id;
+  std::vector<int> e3_ran_functions;
+};
+
+struct swig_dapp_sub_map_ind_t {
+  uint8_t node_type;
+  uint8_t plmn_0, plmn_1, plmn_2;
+  uint32_t node_nb_id;
+  bool node_cu_du_id_present;
+  uint64_t node_cu_du_id;
+  int64_t timestamp_ns;
+  int64_t sequence_id;
+  std::vector<swig_dapp_sub_item_t> dapp_subs;
+};
+
+struct dapp_e3_data_cb {
+  virtual void handle(swig_dapp_e3_data_ind_t* a) = 0;
+  virtual ~dapp_e3_data_cb()
+  {
+  }
+};
+
+struct dapp_sub_map_cb {
+  virtual void handle(swig_dapp_sub_map_ind_t* a) = 0;
+  virtual ~dapp_sub_map_cb()
+  {
+  }
+};
+
+void print_dapp_ran_func_info(global_e2_node_id_t* id);
+
+int report_dapp_e3_data_sm(global_e2_node_id_t* id, dapp_e3_data_cb* handler);
+void rm_report_dapp_e3_data_sm(int handle);
+
+int report_dapp_sub_map_sm(global_e2_node_id_t* id, dapp_sub_map_cb* handler);
+void rm_report_dapp_sub_map_sm(int handle);
+
+void control_dapp_spectrum_sm(global_e2_node_id_t* id, uint32_t ran_func_id, uint32_t dapp_id, const std::vector<uint16_t>& blocked_prbs);
+
+#endif

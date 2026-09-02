@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: LicenseRef-CSSL-1.0
- */
-
 //#include "FlexRIC.h"
 #include "swig_wrapper.h"
 
@@ -522,5 +518,317 @@ void rm_report_gtp_sm(int handler)
 #ifdef XAPP_LANG_PYTHON
     PyGILState_Release(gstate);
 #endif
+}
 
+//////////////////////////////////////
+// DAPP SM (Spectrum)
+/////////////////////////////////////
+
+#include "../../sm/dapp_sm/dapp_sm_id.h"
+#include "../../sm/dapp_sm/ie/dapp_data_ie.h"
+#include "../../sm/dapp_sm/e3/service_models/spectrum_sm/ir/spectrum_report.h"
+#include "../../sm/dapp_sm/e3/service_models/spectrum_sm/ir/spectrum_control.h"
+#include "../../util/time_now_us.h"
+#include "../e2_node_connected_xapp.h"
+#include "../sm_ran_function_def.h"
+
+// ---- print_dapp_ran_func_info: mirrors print_dapp_sm_info from xapp_spectrum.c ----
+
+static void _print_dapp_e3_subs(const dapp_e3_subscription_list_t* subs, const char* indent)
+{
+  if (subs == NULL || subs->sz_dapp_e3_subscriptions == 0 || subs->dapp_e3_subscriptions == NULL) {
+    printf("%sdApp E3 subscriptions: none\n", indent);
+    return;
+  }
+  printf("%sdApp E3 subscriptions (%zu):\n", indent, subs->sz_dapp_e3_subscriptions);
+  for (size_t i = 0; i < subs->sz_dapp_e3_subscriptions; ++i) {
+    const dapp_e3_subscription_item_t* sub = &subs->dapp_e3_subscriptions[i];
+    printf("%s  - dApp %u: subscribed to %zu E3 RAN function(s):", indent, sub->dapp_id, sub->sz_subscribed_e3_ran_functions);
+    for (size_t j = 0; j < sub->sz_subscribed_e3_ran_functions; ++j)
+      printf(" %u", sub->subscribed_e3_ran_functions[j]);
+    printf("\n");
+  }
+}
+
+void print_dapp_ran_func_info(global_e2_node_id_t* id)
+{
+  (void)id; // currently prints all nodes; future: filter by id
+  e2_node_arr_xapp_t arr = e2_nodes_xapp_api();
+
+  for (int i = 0; i < arr.len; ++i) {
+    e2_node_connected_xapp_t* n = &arr.n[i];
+
+    for (size_t j = 0; j < n->len_rf; ++j) {
+      sm_ran_function_t* rf = &n->rf[j];
+      if (rf->id != SM_DAPP_ID)
+        continue;
+      if (rf->defn.type != DAPP_RAN_FUNC_DEF_E)
+        continue;
+
+      const e2sm_dapp_func_def_t* d = &rf->defn.dapp;
+
+      printf("[DAPP xApp] RAN function @node=%d idx=%zu\n", i, j);
+      printf("  SM ID: %d\n", rf->id);
+
+      if (d->name.name.buf && d->name.name.len > 0)
+        printf("  Name: %.*s\n", (int)d->name.name.len, (const char*)d->name.name.buf);
+
+      if (d->name.description.buf && d->name.description.len > 0)
+        printf("  Description: %.*s\n", (int)d->name.description.len, (const char*)d->name.description.buf);
+
+      if (d->name.oid.buf && d->name.oid.len > 0)
+        printf("  OID: %.*s\n", (int)d->name.oid.len, (const char*)d->name.oid.buf);
+
+      printf("  Event trigger: %s\n", d->ev_trig ? "present" : "none");
+
+      if (d->report && d->report->sz_seq_report_sty > 0 && d->report->seq_report_sty) {
+        printf("  Report styles (%zu):\n", d->report->sz_seq_report_sty);
+        for (size_t k = 0; k < d->report->sz_seq_report_sty; ++k) {
+          const seq_report_sty_dapp_sm_t* s = &d->report->seq_report_sty[k];
+          printf("    - report_type=%u, name=%.*s, ind_hdr_type=%u, ind_msg_type=%u\n",
+                 s->report_type,
+                 (int)s->name.len,
+                 (const char*)s->name.buf,
+                 s->ind_hdr_type,
+                 s->ind_msg_type);
+          _print_dapp_e3_subs(s->dapp_e3_subs, "      ");
+        }
+      } else {
+        printf("  Report styles: none\n");
+      }
+
+      if (d->ctrl && d->ctrl->sz_seq_ctrl_style > 0 && d->ctrl->seq_ctrl_style) {
+        printf("  Control styles (%zu):\n", d->ctrl->sz_seq_ctrl_style);
+        for (size_t k = 0; k < d->ctrl->sz_seq_ctrl_style; ++k) {
+          const seq_ctrl_style_dapp_sm_t* s = &d->ctrl->seq_ctrl_style[k];
+          printf("    - style_type=%u, name=%.*s, hdr_type=%u, msg_type=%u, out_frmt_type=%u\n",
+                 s->style_type,
+                 (int)s->name.len,
+                 (const char*)s->name.buf,
+                 s->hdr,
+                 s->msg,
+                 s->out_frmt);
+          _print_dapp_e3_subs(s->dapp_e3_subs, "      ");
+        }
+      } else {
+        printf("  Control styles: none\n");
+      }
+    }
+  }
+
+  free_e2_node_arr_xapp(&arr);
+}
+
+// ---- Style 1: E3 data report (Format 1 indication) ----
+
+static dapp_e3_data_cb* hndlr_dapp_e3_data_cb;
+
+static void sm_cb_dapp_frmt1(sm_ag_if_rd_t const* rd)
+{
+  assert(rd != NULL);
+  assert(rd->type == INDICATION_MSG_AGENT_IF_ANS_V0);
+  assert(rd->ind.type == DAPP_STATS_V0);
+  assert(hndlr_dapp_e3_data_cb != NULL);
+
+  const e2sm_dapp_ind_hdr_t* hdr = &rd->ind.dapp.ind.hdr;
+  const dapp_e3_ind_payload_t* e3 = &rd->ind.dapp.ind.e3;
+
+  if (hdr->format != FORMAT_1_E2SM_DAPP_IND_HDR)
+    return;
+
+  swig_dapp_e3_data_ind_t ind;
+
+  const e2sm_dapp_ind_hdr_frmt_1_t* h1 = &hdr->frmt_1;
+  ind.ran_function_id = h1->ran_function_id;
+  ind.dapp_id = h1->dapp_id;
+  ind.node_type = h1->node_type;
+  ind.plmn_0 = h1->node_plmn_id[0];
+  ind.plmn_1 = h1->node_plmn_id[1];
+  ind.plmn_2 = h1->node_plmn_id[2];
+  ind.node_nb_id = h1->node_nb_id;
+  ind.node_cu_du_id_present = h1->node_cu_du_id_present;
+  ind.node_cu_du_id = h1->node_cu_du_id;
+  ind.timestamp_ns = h1->timestamp_ns;
+  ind.sequence_id = h1->sequence_id;
+
+  if (e3->type == DAPP_E3_SM_SPECTRUM) {
+    const spectrum_sm_report_t* rep = &e3->u.spectrum;
+    for (long i = 0; i < rep->prb_count; ++i)
+      ind.prbs.push_back((int)rep->prbs[i]);
+  }
+
+#ifdef XAPP_LANG_PYTHON
+  PyGILState_STATE gstate = PyGILState_Ensure();
+#endif
+
+  hndlr_dapp_e3_data_cb->handle(&ind);
+
+#ifdef XAPP_LANG_PYTHON
+  PyGILState_Release(gstate);
+#endif
+}
+
+int report_dapp_e3_data_sm(global_e2_node_id_t* id, dapp_e3_data_cb* handler)
+{
+  assert(id != NULL);
+  assert(handler != NULL);
+
+  hndlr_dapp_e3_data_cb = handler;
+
+  dapp_sub_data_t sub = {};
+  sub.et.format = FORMAT_1_E2SM_DAPP_EV_TRIGGER_FORMAT;
+  sub.action_def = (e2sm_dapp_action_def_t*)calloc(1, sizeof(e2sm_dapp_action_def_t));
+  assert(sub.action_def != NULL);
+  sub.action_def->format = FORMAT_1_E2SM_DAPP_ACTION_DEF;
+  sub.action_def->ric_style_type = 1; // DAPP_STYLE_E3_DATA
+
+  sm_ans_xapp_t ans = report_sm_xapp_api(id, SM_DAPP_ID, &sub, sm_cb_dapp_frmt1);
+  assert(ans.success == true);
+
+  free_dapp_sub_data(&sub);
+
+  return ans.u.handle;
+}
+
+void rm_report_dapp_e3_data_sm(int handle)
+{
+#ifdef XAPP_LANG_PYTHON
+  PyGILState_STATE gstate = PyGILState_Ensure();
+#endif
+
+  rm_report_sm_xapp_api(handle);
+
+#ifdef XAPP_LANG_PYTHON
+  PyGILState_Release(gstate);
+#endif
+}
+
+// ---- Style 2: subscription map (Format 2 indication) ----
+
+static dapp_sub_map_cb* hndlr_dapp_sub_map_cb;
+
+static void sm_cb_dapp_frmt2(sm_ag_if_rd_t const* rd)
+{
+  assert(rd != NULL);
+  assert(rd->type == INDICATION_MSG_AGENT_IF_ANS_V0);
+  assert(rd->ind.type == DAPP_STATS_V0);
+  assert(hndlr_dapp_sub_map_cb != NULL);
+
+  const e2sm_dapp_ind_hdr_t* hdr = &rd->ind.dapp.ind.hdr;
+  const e2sm_dapp_ind_msg_t* msg = &rd->ind.dapp.ind.msg;
+
+  if (hdr->format != FORMAT_2_E2SM_DAPP_IND_HDR)
+    return;
+
+  swig_dapp_sub_map_ind_t ind;
+
+  const e2sm_dapp_ind_hdr_frmt_2_t* h2 = &hdr->frmt_2;
+  ind.node_type = h2->node_type;
+  ind.plmn_0 = h2->node_plmn_id[0];
+  ind.plmn_1 = h2->node_plmn_id[1];
+  ind.plmn_2 = h2->node_plmn_id[2];
+  ind.node_nb_id = h2->node_nb_id;
+  ind.timestamp_ns = h2->timestamp_ns;
+  ind.sequence_id = h2->sequence_id;
+  ind.node_cu_du_id_present = h2->node_cu_du_id_present;
+  ind.node_cu_du_id = h2->node_cu_du_id;
+
+  const e2sm_dapp_ind_msg_frmt_2_t* m2 = &msg->frmt_2;
+  const dapp_e3_subscription_list_t* subs = &m2->dapp_e3_subs;
+
+  for (size_t i = 0; i < subs->sz_dapp_e3_subscriptions; ++i) {
+    const dapp_e3_subscription_item_t* item = &subs->dapp_e3_subscriptions[i];
+    swig_dapp_sub_item_t si;
+    si.dapp_id = item->dapp_id;
+    for (size_t j = 0; j < item->sz_subscribed_e3_ran_functions; ++j)
+      si.e3_ran_functions.push_back((int)item->subscribed_e3_ran_functions[j]);
+    ind.dapp_subs.push_back(si);
+  }
+
+#ifdef XAPP_LANG_PYTHON
+  PyGILState_STATE gstate = PyGILState_Ensure();
+#endif
+
+  hndlr_dapp_sub_map_cb->handle(&ind);
+
+#ifdef XAPP_LANG_PYTHON
+  PyGILState_Release(gstate);
+#endif
+}
+
+int report_dapp_sub_map_sm(global_e2_node_id_t* id, dapp_sub_map_cb* handler)
+{
+  assert(id != NULL);
+  assert(handler != NULL);
+
+  hndlr_dapp_sub_map_cb = handler;
+
+  dapp_sub_data_t sub = {};
+  sub.et.format = FORMAT_1_E2SM_DAPP_EV_TRIGGER_FORMAT;
+  sub.action_def = (e2sm_dapp_action_def_t*)calloc(1, sizeof(e2sm_dapp_action_def_t));
+  assert(sub.action_def != NULL);
+  sub.action_def->format = FORMAT_1_E2SM_DAPP_ACTION_DEF;
+  sub.action_def->ric_style_type = 2; // DAPP_STYLE_SUBSCRIPTION_MAP
+
+  sm_ans_xapp_t ans = report_sm_xapp_api(id, SM_DAPP_ID, &sub, sm_cb_dapp_frmt2);
+  assert(ans.success == true);
+
+  free_dapp_sub_data(&sub);
+
+  return ans.u.handle;
+}
+
+void rm_report_dapp_sub_map_sm(int handle)
+{
+#ifdef XAPP_LANG_PYTHON
+  PyGILState_STATE gstate = PyGILState_Ensure();
+#endif
+
+  rm_report_sm_xapp_api(handle);
+
+#ifdef XAPP_LANG_PYTHON
+  PyGILState_Release(gstate);
+#endif
+}
+
+// ---- Control ----
+
+/* sequence_id is a wire-visible correlation id. Starts at 1 -- 0 is the
+ * E2SM-DAPP "no id assigned" sentinel. Mirrors
+ * examples/xApp/c/spectrum/xapp_spectrum.c's next_sequence_id(); this is the
+ * Python-binding path's own counter, not shared with that example. */
+static uint32_t next_sequence_id() {
+  static uint32_t counter;
+  return ++counter;
+}
+
+void control_dapp_spectrum_sm(global_e2_node_id_t* id, uint32_t ran_func_id, uint32_t dapp_id, const std::vector<uint16_t>& blocked_prbs)
+{
+  assert(id != NULL);
+
+  dapp_ctrl_req_data_t ctrl = {};
+  ctrl.hdr.format = FORMAT_1_E2SM_DAPP_CTRL_HDR;
+  ctrl.hdr.frmt_1.ran_function_id = ran_func_id;
+  ctrl.hdr.frmt_1.dapp_id = dapp_id;
+  ctrl.hdr.frmt_1.timestamp_ns = time_now_ns();
+  ctrl.hdr.frmt_1.sequence_id = next_sequence_id();
+
+  ctrl.msg.format = FORMAT_1_E2SM_DAPP_CTRL_MSG;
+  ctrl.msg.frmt_1.data = NULL;
+  ctrl.msg.frmt_1.data_size = 0;
+
+  ctrl.e3.type = DAPP_E3_SM_SPECTRUM;
+  ctrl.e3.u.spectrum.timestamp_ns = time_now_ns();
+  ctrl.e3.u.spectrum.prb_count = (long)blocked_prbs.size();
+  if (!blocked_prbs.empty()) {
+    ctrl.e3.u.spectrum.blockedPRBs = (uint16_t*)calloc(blocked_prbs.size(), sizeof(uint16_t));
+    assert(ctrl.e3.u.spectrum.blockedPRBs != NULL);
+    for (size_t i = 0; i < blocked_prbs.size(); ++i)
+      ctrl.e3.u.spectrum.blockedPRBs[i] = blocked_prbs[i];
+  }
+
+  sm_ans_xapp_t ans = control_sm_xapp_api(id, SM_DAPP_ID, &ctrl);
+  assert(ans.success == true);
+
+  free_dapp_ctrl_req_data(&ctrl);
 }
