@@ -366,14 +366,96 @@ void publish_ind_msg(near_ric_t* ric,  uint16_t ran_func_id, sm_ag_if_rd_ind_t* 
 }
   
 // E2 -> RIC
- e2ap_msg_t e2ap_handle_service_update_ric(near_ric_t* ric, const e2ap_msg_t* msg)
+e2ap_msg_t e2ap_handle_service_update_ric(near_ric_t* ric, const e2ap_msg_t* msg)
 {
   assert(ric != NULL);
   assert(msg != NULL);
   assert(msg->type == RIC_SERVICE_UPDATE);
-  assert(0 != 0 && "Not Implemented");
 
-  e2ap_msg_t ans = {.type = NONE_E2_MSG_TYPE};
+  const ric_service_update_t* su = &msg->u_msgs.ric_serv_updt;
+
+  printf("[NEAR-RIC]: RIC SERVICE UPDATE rx (added=%zu, modified=%zu, deleted=%zu)\n",
+         su->len_added, su->len_modified, su->len_deleted);
+  {
+    lock_guard(&ric->conn_e2_nodes_mtx);
+
+    e2_node_t* node = NULL;
+    void* it = seq_front(&ric->conn_e2_nodes);
+    void* end_it = seq_end(&ric->conn_e2_nodes);
+    while (it != end_it) {
+      e2_node_t* n = (e2_node_t*)it;
+      if (eq_global_e2_node_id(&n->id, &su->e2_node_id)) {
+        node = n;
+        break;
+      }
+      it = seq_next(&ric->conn_e2_nodes, it);
+    }
+    if (node == NULL) {
+      /* The update names a node the RIC has no E2 SETUP for. Dropping it is
+         better than asserting: this path is driven by whatever arrives on the
+         SCTP socket, so an assertion here lets a malformed or stale update from
+         any peer take the RIC down. */
+      printf("[NEAR-RIC]: RIC SERVICE UPDATE for an unknown E2 node, dropped\n");
+      e2ap_msg_t none = {.type = NONE_E2_MSG_TYPE};
+      return none;
+    }
+
+    for (size_t i = 0; i < su->len_deleted; ++i) {
+      for (size_t j = 0; j < node->len_acc; ++j) {
+        if (node->accepted[j] == su->deleted[i].id) {
+          memmove(&node->accepted[j], &node->accepted[j + 1],
+                  (node->len_acc - j - 1) * sizeof(accepted_ran_function_t));
+          node->len_acc--;
+          break;
+        }
+      }
+    }
+
+    if (su->len_added > 0) {
+      size_t new_len = node->len_acc + su->len_added;
+      node->accepted = realloc(node->accepted, new_len * sizeof(accepted_ran_function_t));
+      assert(node->accepted != NULL && "Memory exhausted");
+      for (size_t i = 0; i < su->len_added; ++i) {
+        node->accepted[node->len_acc + i] = su->added[i].id;
+      }
+      node->len_acc = new_len;
+    }
+
+  }
+
+#ifndef TEST_AGENT_RIC
+  notify_msg_iapp_api(msg);
+#endif
+
+  e2ap_msg_t ans = {.type = RIC_SERVICE_UPDATE_ACKNOWLEDGE};
+  ric_service_update_ack_t* ack = &ans.u_msgs.ric_serv_updt_ack;
+  ack->trans_id = su->trans_id;
+  ack->len_accepted = 0;
+  ack->accepted = NULL;
+  ack->len_rejected = 0;
+  ack->rejected = NULL;
+
+  if (su->len_modified > 0) {
+    ack->len_accepted = su->len_modified;
+    ack->accepted = calloc(su->len_modified, sizeof(ran_function_id_t));
+    assert(ack->accepted != NULL && "Memory exhausted");
+    for (size_t i = 0; i < su->len_modified; ++i) {
+      ack->accepted[i].id = su->modified[i].id;
+      ack->accepted[i].rev = su->modified[i].rev;
+    }
+  }
+
+  if (su->len_added > 0) {
+    size_t prev = ack->len_accepted;
+    ack->len_accepted += su->len_added;
+    ack->accepted = realloc(ack->accepted, ack->len_accepted * sizeof(ran_function_id_t));
+    assert(ack->accepted != NULL && "Memory exhausted");
+    for (size_t i = 0; i < su->len_added; ++i) {
+      ack->accepted[prev + i].id = su->added[i].id;
+      ack->accepted[prev + i].rev = su->added[i].rev;
+    }
+  }
+
   return ans;
 }
 
