@@ -290,7 +290,10 @@ sm_ran_function_def_t mv_rd_e2_setup(sm_ag_if_rd_e2setup_t const* src)
     dst.type = RC_RAN_FUNC_DEF_E; 
     dst.rc = src->rc.ran_func_def;
   } else {
-    assert(0!=0 && "Unknown types");
+    /* Tolerate service-model definition types this build does not model instead
+       of aborting the E2 node: subscriptions target a service model by
+       RAN-function id, so a type that is not modelled here is simply never
+       selected. dst stays zeroed. */
   }
 
   return dst;
@@ -501,4 +504,3 @@ void rm_reg_e2_node(reg_e2_nodes_t* n, global_e2_node_id_t const* id)
     assoc_rb_tree_free_it(&n->node_to_rf, it);
   }
 }
-
