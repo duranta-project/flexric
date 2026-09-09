@@ -17,13 +17,6 @@
 
 // E2SM-RC 7.6.4: Connected mode mobility control, Handover Control.
 static const uint32_t RC_CTRL_STYLE_CONN_MODE_MOBILITY = 3;
-static const uint32_t RC_CTRL_ACT_HANDOVER = 1;
-
-// RAN Parameter IDs of Handover Control, 8.4.4.1.
-static const uint32_t RC_RP_TARGET_PRIMARY_CELL_ID = 1;
-static const uint32_t RC_RP_CHOICE_TARGET_CELL = 2;
-static const uint32_t RC_RP_NR_CELL_ID = 3;
-static const uint32_t RC_RP_NR_CGI = 4;
 
 // NR CGI, TS 38.413 9.3.1.7: 3 octets of PLMN identity followed by a 36-bit
 // NR Cell Identity left-aligned in 5 octets.
@@ -67,20 +60,20 @@ ran_param_val_type_t wrap_in_struct(seq_ran_param_t inner)
 static
 seq_ran_param_t fill_target_primary_cell_id(const uint8_t plmn[3], uint64_t nr_cell_id)
 {
-  seq_ran_param_t nr_cgi = {.ran_param_id = RC_RP_NR_CGI};
+  seq_ran_param_t nr_cgi = {.ran_param_id = NR_CGI_8_4_4_1};
   nr_cgi.ran_param_val.type = ELEMENT_KEY_FLAG_FALSE_RAN_PARAMETER_VAL_TYPE;
   nr_cgi.ran_param_val.flag_false = calloc(1, sizeof(ran_parameter_value_t));
   assert(nr_cgi.ran_param_val.flag_false != NULL && "Memory exhausted");
   nr_cgi.ran_param_val.flag_false->type = OCTET_STRING_RAN_PARAMETER_VALUE;
   nr_cgi.ran_param_val.flag_false->octet_str_ran = enc_nr_cgi(plmn, nr_cell_id);
 
-  seq_ran_param_t nr_cell_id_p = {.ran_param_id = RC_RP_NR_CELL_ID};
+  seq_ran_param_t nr_cell_id_p = {.ran_param_id = NR_CELL_8_4_4_1};
   nr_cell_id_p.ran_param_val = wrap_in_struct(nr_cgi);
 
-  seq_ran_param_t choice_target_cell = {.ran_param_id = RC_RP_CHOICE_TARGET_CELL};
+  seq_ran_param_t choice_target_cell = {.ran_param_id = CHOICE_TARGET_CELL_8_4_4_1};
   choice_target_cell.ran_param_val = wrap_in_struct(nr_cell_id_p);
 
-  seq_ran_param_t dst = {.ran_param_id = RC_RP_TARGET_PRIMARY_CELL_ID};
+  seq_ran_param_t dst = {.ran_param_id = TARGET_PRIMARY_CELL_ID_8_4_4_1};
   dst.ran_param_val = wrap_in_struct(choice_target_cell);
 
   return dst;
@@ -94,7 +87,7 @@ rc_ctrl_req_data_t gen_handover_ctrl(uint32_t ue_id, const uint8_t plmn[3], uint
   // CONTROL HEADER, 9.2.2.11
   dst.hdr.format = FORMAT_1_E2SM_RC_CTRL_HDR;
   dst.hdr.frmt_1.ric_style_type = RC_CTRL_STYLE_CONN_MODE_MOBILITY;
-  dst.hdr.frmt_1.ctrl_act_id = RC_CTRL_ACT_HANDOVER;
+  dst.hdr.frmt_1.ctrl_act_id = HANDOVER_CONTROL_7_6_4_1;
   dst.hdr.frmt_1.ue_id.type = GNB_DU_UE_ID_E2SM;
   dst.hdr.frmt_1.ue_id.gnb_du.gnb_cu_ue_f1ap = ue_id;
 
@@ -134,7 +127,7 @@ bool supports_handover_ctrl(const ran_func_def_ctrl_t* ctrl)
       continue;
 
     for (size_t j = 0; j < style->sz_seq_ctrl_act; j++)
-      if (style->seq_ctrl_act[j].id == RC_CTRL_ACT_HANDOVER)
+      if (style->seq_ctrl_act[j].id == HANDOVER_CONTROL_7_6_4_1)
         return true;
   }
 
@@ -243,7 +236,7 @@ int main(int argc, char* argv[])
   if (sent == 0) {
     fprintf(stderr, "No connected gNB-CU advertises Handover Control (style %" PRIu32 ", action %" PRIu32 ")\n",
             RC_CTRL_STYLE_CONN_MODE_MOBILITY,
-            RC_CTRL_ACT_HANDOVER);
+            (uint32_t)HANDOVER_CONTROL_7_6_4_1);
     return EXIT_FAILURE;
   }
 
