@@ -8,6 +8,7 @@ add_executable(xapp_rc_handover
 target_link_libraries(xapp_rc_handover
                       PUBLIC
                       e42_xapp
+                      asn1_f1ap
                       -pthread
                       -lsctp
                       -ldl
