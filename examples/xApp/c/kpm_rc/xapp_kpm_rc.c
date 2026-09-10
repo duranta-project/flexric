@@ -516,7 +516,7 @@ kpm_act_def_t fill_report_style_4(ric_report_style_item_t const* report_item)
 }
 
 static
-label_info_lst_t fill_distribution_bin_label(const uint32_t x, const uint32_t y, const uint32_t z)
+label_info_lst_t fill_distribution_bin_label(const uint32_t x, const uint32_t* y, const uint32_t* z)
 {
   label_info_lst_t label_item = {0};
 
@@ -524,13 +524,17 @@ label_info_lst_t fill_distribution_bin_label(const uint32_t x, const uint32_t y,
   assert(label_item.distBinX != NULL);
   *label_item.distBinX = x;
 
-  label_item.distBinY = calloc(1, sizeof(uint32_t));
-  assert(label_item.distBinY != NULL);
-  *label_item.distBinY = y;
+  if (y != NULL) {
+    label_item.distBinY = calloc(1, sizeof(uint32_t));
+    assert(label_item.distBinY != NULL);
+    *label_item.distBinY = *y;
+  }
 
-  label_item.distBinZ = calloc(1, sizeof(uint32_t));
-  assert(label_item.distBinZ != NULL);
-  *label_item.distBinZ = z;
+  if (z != NULL) {
+    label_item.distBinZ = calloc(1, sizeof(uint32_t));
+    assert(label_item.distBinZ != NULL);
+    *label_item.distBinZ = *z;
+  }
 
   return label_item;
 }
@@ -563,7 +567,7 @@ kpm_act_def_t fill_report_style_1(ric_report_style_item_t const* report_item)
       for (uint32_t x = 1; x <= 8; x++) {
         for (uint32_t y = 1; y <= 3; y++) {
           for(uint32_t z = 0; z <= 31; z++) {
-            meas_item->label_info_lst[idx++] = fill_distribution_bin_label(x, y, z);
+            meas_item->label_info_lst[idx++] = fill_distribution_bin_label(x, &y, &z);
           }
         }
       }
