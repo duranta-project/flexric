@@ -19,12 +19,14 @@ int cmp_ind_event(void const* m0_v, void const* m1_v)
   if(cmp != 0)
     return cmp;
 
-  // It is foreseen that not all the struct is
-  // scanned. This is basically a bad trick, 
-  // but works as expected and "simplifies?"
-  // the code
+  // A RIC ID alone is not a key: assoc_rb_tree_insert does not reject equality,
+  // so two subscriptions can share one. Break the tie on the fd, unique per
+  // subscription, to make this a total order and every extraction by key exact.
+  // Same inverted convention as cmp_ric_gen_id above: 1 means "less than".
+  if(m0->fd < m1->fd) return 1;
+  if(m0->fd > m1->fd) return -1;
 
-  return cmp;
+  return 0;
 }
 
 bool eq_ind_event(const void* value, const void* key)

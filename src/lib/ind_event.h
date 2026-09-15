@@ -13,6 +13,12 @@
 
 typedef struct{
   ric_gen_id_t ric_id;
+
+  // The asio fd this subscription is keyed by in e2_agent_t::ind_event: a timerfd
+  // when periodic, a negative synthetic one when aperiodic. Unique per
+  // subscription, it is the tie-breaker in cmp_ind_event.
+  int fd;
+
   // Non-owning ptr
   sm_agent_t* sm;
   uint8_t action_id;

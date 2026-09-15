@@ -64,11 +64,18 @@ bool stop_ind_event(e2_agent_t* ag, ric_gen_id_t id)
     assert(0!=0 && "Unknown subscritpion type");
   }
 
-  void (*free_ind_event)(void*) = NULL;
-  int* fd = bi_map_extract_right(&ag->ind_event, &tmp, sizeof(tmp), free_ind_event);
-  if (*fd > -1)
-    rm_fd_asio_agent(&ag->io, *fd);
-  free(fd);
+  // Extract by the fd, i.e. the left key: it is unique, whereas several entries
+  // can share one RIC ID. Extracting by the right key let assoc_extract's binary
+  // search unlink a different entry than the linear scan above had found, which
+  // freed one entry's act_def and left the other live with a freed pointer and an
+  // armed timer.
+  int const fd = ind_ev->fd;
+  ind_event_t* val = bi_map_extract_left(&ag->ind_event, (int*)&fd, sizeof(fd), NULL);
+  assert(val != NULL);
+  free(val);
+
+  if (fd > -1)
+    rm_fd_asio_agent(&ag->io, fd);
 
   return true;;
 }
@@ -178,6 +185,9 @@ e2ap_msg_t e2ap_handle_subscription_request_agent(e2_agent_t* ag, const e2ap_msg
     // Periodic indication message generated i.e., every 5 ms
     assert(t.ms < 10001 && "Subscription for granularity larger than 10 seconds requested? ");
     int fd_timer = create_timer_ms_asio_agent(&ag->io, t.ms, t.ms);
+    // Must precede the insert: cmp_ind_event tie-breaks on it, so the right
+    // tree's ordering is wrong for any entry inserted with fd unset.
+    ev.fd = fd_timer;
     lock_guard(&ag->mtx_ind_event);
     bi_map_insert(&ag->ind_event, &fd_timer, sizeof(fd_timer), &ev, sizeof(ev));
   } else if(ev.type == APERIODIC_SUBSCRIPTION_FLRC){
@@ -193,6 +203,7 @@ e2ap_msg_t e2ap_handle_subscription_request_agent(e2_agent_t* ag, const e2ap_msg
     // for Requestor ID 0, which reads back as a real fd. Count down instead.
     int fd = atomic_fetch_sub(&next_aperiodic_fd, 1);
     assert(fd < 0 && "Too many aperiodic subscriptions");
+    ev.fd = fd;
     {
       lock_guard(&ag->mtx_ind_event);
       bi_map_insert(&ag->ind_event, &fd, sizeof(int), &ev, sizeof(ev));
