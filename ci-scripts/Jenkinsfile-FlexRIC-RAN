@@ -36,7 +36,6 @@ pipeline {
     timestamps()
     lock(resource: ubuntuResource)
     ansiColor('xterm')
-    gitLabConnection('OAI GitLab')
   }
 
   stages {
