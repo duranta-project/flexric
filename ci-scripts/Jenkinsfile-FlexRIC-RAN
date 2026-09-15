@@ -82,7 +82,6 @@ pipeline {
         checkout scm // Checks out the repository
         script {
           sh "git checkout -f ${flexric_branch}"
-          sh "git submodule update --init --recursive"
           def flexric_commit = sh(script: "git log -1 --pretty=format:'%H'", returnStdout: true).trim()
           echo "Current FlexRIC commit: ${flexric_commit}"
           sh "mkdir -p archives/ archives/oai5g-flexric archives/oai-cn5g"
