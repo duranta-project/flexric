@@ -382,6 +382,10 @@ We showcased the successful integration between OAI E2 agent and O-RAN SC nearRT
 > **Note** that the OSC nearRT-RIC can also be tested with FlexRIC E2 agent emulators (`build/examples/emulator/agent/`).
 Before proceeding with integration, please set the `e2ap_server_port` to 36422 (the default is 36421), as the E2AP port for OSC nearRT-RIC is 36422.
 
+### 6.2 OSC-RIC
+
+xApp used to demonstrate Duranta OpenAirInterface5G (with embedded FlexRIC E2 Agent) compatibility with OSC nearRT-RIC: [kpm_rc-xapp](https://github.com/mirazabal/kpm_rc-xapp).
+
 ## 7. Support/further resources
 * Mailing list: if you need help or have some questions, you can subscribe to the mailing list `techs@mosaic-5g.io` that you can find at [Gitlab](https://gitlab.eurecom.fr/mosaic5g/mosaic5g/-/wikis/mailing-lists). The emails are archived and available publicly.
 * [The Wiki space](https://gitlab.eurecom.fr/mosaic5g/flexric/-/wikis/home) contains tutorials and presentations
