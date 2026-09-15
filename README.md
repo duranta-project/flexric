@@ -2,13 +2,18 @@
 
 # FlexRIC Documentation
 
+[![License](https://img.shields.io/badge/License-CSSL%20v1.0-blue)](https://github.com/duranta-project/flexric/blob/dev/LICENSE)
+[![Ubuntu 22.04](https://img.shields.io/badge/Ubuntu-22.04-E95420?logo=ubuntu&logoColor=white)](https://releases.ubuntu.com/22.04/)
+[![CentOS Stream 10](https://img.shields.io/badge/CentOS%20Stream-10-262577?logo=centos&logoColor=white)](https://www.centos.org/stream/)
+[![Docker Hub](https://img.shields.io/badge/Docker%20Hub-oai--flexric-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/oaisoftwarealliance/oai-flexric/tags)
+
 This repository contains [O-RAN Alliance](https://www.o-ran.org/) compliant E2 Node Agent emulators, a nearRT-RIC, and xApps written in C/C++ and Python.
 
-It implements various service models (O-RAN standard E2SM-KPM v2.01/v2.03/v3.00, E2SM-RC v1.03 and E2SM-CCC v6 as well as customized NG/GTP, PDCP, RLC, MAC, SC and TC). 
+It implements various service models (O-RAN standard E2SM-KPM v2.01/v2.03/v3.00, E2SM-RC v1.03 and E2SM-CCC v6 as well as customized NG/GTP, PDCP, RLC, MAC, SC and TC).
 
-Depending on the service model, different encoding schemes have been developed (ASN.1, flatbuffer, plain). 
+Depending on the service model, different encoding schemes have been developed (ASN.1, flatbuffer, plain).
 
-The indication data received in the xApp uses as persistence mechanism an sqlite3 database for enabling offline processing applications (e.g., ML/AI). 
+The indication data received in the xApp uses as persistence mechanism an sqlite3 database for enabling offline processing applications (e.g., ML/AI).
 Moreover it supports E2AP v1.01/v2.03/v3.01 for all the SMs.
 
 If you want to know more about FlexRIC and its original architecture, you can find more details at:
@@ -20,7 +25,7 @@ If you want to know more about FlexRIC and its original architecture, you can fi
 
 Below is the list of features available in this version divided per component and per service model:
 
-|           | OAI-5g | SRS-5g | E2 agent emulators | nearRT-RIC | xApp C/C++ SDK | xApp Python SDK | O-RAN standardized |
+|           | Duranta OpenAirInterface5G | OCUDU | E2 agent emulators | nearRT-RIC | xApp C/C++ SDK | xApp Python SDK | O-RAN standardized |
 |:----------|:-------|:-------|:-------------------|:-----------|:---------------|:----------------|:-------------------|
 | E2SM-KPM  | Y      | Y      | Y                  | Y          | Y              | N               | Y                  |
 | E2SM-RC   | Y      | Y      | Y                  | Y          | Y              | N               | Y                  |
@@ -32,10 +37,7 @@ Below is the list of features available in this version divided per component an
 | SLICE     | N      | N      | Y                  | Y          | Y              | Y               | N                  |
 | TC        | N      | N      | Y                  | Y          | Y              | N               | N                  |
 
-# License 
-
- *  [OAI License Model](http://www.openairinterface.org/?page_id=101)
- *  [CSSL v1.0](http://www.openairinterface.org/?page_id=698)
+## License
 
 The source code is distributed under [**CSSL v1.0**](LICENSE).
 Files under src/util/alg_ds, docker-compose yaml files and some ci-scripts
@@ -43,7 +45,7 @@ are distributed under [MIT license](preferred)(MIT.txt).
 Documentation is distributed under
 [Creative Commons Attribution 4.0 International license](LICENSES/preferred/CC-BY-4.0.txt).
 
-Please see [NOTICE](NOTICE) for third party softwares that are used by flexric. 
+Please see [NOTICE](NOTICE) for third party softwares that are used by flexric.
 
 [[_TOC_]]
 
@@ -85,7 +87,7 @@ We use SWIG as an interface generator to enable the multi-language feature (i.e.
 ```bash
 git clone https://github.com/swig/swig.git
 cd swig
-git checkout release-4.1 
+git checkout release-4.1
 ./autogen.sh
 ./configure --prefix=/usr/
 make -j8
@@ -109,7 +111,7 @@ bash install_asn1c.sh
 
 ### 2.1 Clone the FlexRIC repository
 ```bash
-git clone https://gitlab.eurecom.fr/mosaic5g/flexric
+git clone https://github.com/duranta-project/flexric.git
 cd flexric/
 ```
 
@@ -179,7 +181,7 @@ As mentioned in section [2.2 Build FlexRIC](#22-build-flexric), we support E2SM-
 #### 3.1.2 E2SM-RC
 We support E2SM-RC v1.03 which uses ASN.1 encoding.
 
-#### 3.1.3 E2SM-CCC 
+#### 3.1.3 E2SM-CCC
 We support E2SM-CCC v6.00 which uses JSON encoding (nlohmann/json)
 
 **Purpose:** E2SM-CCC lets a nearRT-RIC / xApp **read and change RAN configuration**
@@ -207,7 +209,7 @@ exposed by the E2 node.
 
 ### 3.2 Custom Service Models
 In addition, we support custom service models, such are MAC, RLC, PDCP, GTP, SLICE and TC (traffic control). All use plain encoding, i.e., no ASN.1, but write the binary data into network messages.
-However, please be aware that not all of them are supported with OAI RAN, and written in C/Python languages. For more information, please refer to the table in [FlexRIC Documentation](#flexric-documentation).
+However, please be aware that not all of them are supported with Duranta OpenAirInterface5G, and written in C/Python languages. For more information, please refer to the table in [FlexRIC Documentation](#flexric-documentation).
 
 ## 4. Deployment
 
@@ -241,7 +243,7 @@ Same applies to E2 agent emulators.
   ./build/examples/emulator/agent/emu_agent_enb
   ```
 
-Check that you see the E2 Setup Request and Response messages in Wireshark. 
+Check that you see the E2 Setup Request and Response messages in Wireshark.
 Within E2 Setup Request message, E2 node sends the list of supported service models (its "capabilities"), such are E2SM-KPM, E2SM-RC and E2SM-CCC supported RAN Functions.
 
 As this section is dedicated for testing with E2 agent emulators, **all RIC INDICATION messages contain random data, as there is no UE connected**.
@@ -325,7 +327,7 @@ To override specific default values, you can use the following command-line opti
 
 Multiple xApps can be run in parallel.
 
-At this point, FlexRIC is working correctly in your computer and you have already tested the multi-agent, multi-xApp and multi-language capabilities. 
+At this point, FlexRIC is working correctly in your computer and you have already tested the multi-agent, multi-xApp and multi-language capabilities.
 
 The latency that you observe in your monitor xApp is the latency from the E2 Agent to the nearRT-RIC and xApp. In modern computers the latency should be less than 200 microseconds or 50x faster than the O-RAN specified minimum nearRT-RIC latency i.e., (10 ms - 1 sec) range.
 Therefore, FlexRIC is well suited for use cases with ultra low-latency requirements.
@@ -335,7 +337,7 @@ Additionally, all the data received in the xApp is also written to `DB_DIR/DB_NA
 #### 4.1.1 Grafana
 [The official Grafana installation instructions](https://grafana.com/docs/grafana/latest/setup-grafana/installation/).
 
-At the moment, we support real time monitoring for E2SM-KPM and E2SM-CCC Service Model in Grafana(CCC indications are stored in the `CCC_IND` SQLite table). After the Grafana installation, please follow the additional steps: 
+At the moment, we support real time monitoring for E2SM-KPM and E2SM-CCC Service Model in Grafana(CCC indications are stored in the `CCC_IND` SQLite table). After the Grafana installation, please follow the additional steps:
 ```bash
 sudo grafana-cli plugins install frser-sqlite-datasource
 sudo vi /etc/grafana/grafana.ini # set the min_refresh_interval to 1s
@@ -368,11 +370,11 @@ The Grafana application is implemented in the docker container. In order to visu
 
 ## 5. Integration with RAN and example of deployment
 
-### 5.1 Integration with OpenAirInterface 5G RAN
-Follow the instructions [here](https://gitlab.eurecom.fr/oai/openairinterface5g/-/blob/develop/openair2/E2AP/README.md).
+### 5.1 Integration with Duranta OpenAirInterface5G
+Follow the instructions [here](https://github.com/duranta-project/openairinterface5g/tree/develop/openair2/E2AP#readme).
 
-### 5.2 Integration with srsRAN 5G RAN
-Follow the instructions [here](https://docs.srsran.com/projects/project/en/latest/tutorials/source/near-rt-ric/source/index.html).
+### 5.2 Integration with OCUDU
+Follow the instructions [here](https://docs.ocudu.org/tutorials/near-rt-ric/).
 
 ### 5.3 Integration with Keysight RICtest
 
@@ -385,7 +387,7 @@ Please find more information at the following links (available only to the O-RAN
 ### 5.4  Integration with ns-O-RAN simulator
 Developed by WIoT at Northeastern University, [ns-O-RAN](https://openrangym.com/ran-frameworks/ns-o-ran) is the first open source simulation platform that combines [a functional 4G/5G protocol stack in ns-3](https://github.com/nyuwireless-unipd/ns3-mmwave) with an [O-RAN-compliant E2 interface](https://gerrit.o-ran-sc.org/r/admin/repos/sim/ns3-o-ran-e2,general).
 
-Recognizing the critical role of the ns-O-RAN simulator, the Orange Innovation Egypt team successfully integrated the OAI nearRT-RIC with this simulator, resulting in the creation of a new xApp testing framework named [ns-O-RAN-flexric](https://github.com/Orange-OpenSource/ns-O-RAN-flexric/). The simulator has been updated and enhanced to support E2AP v1.01, KPM v3.00, RC v1.03 and CCC v6.00. 
+Recognizing the critical role of the ns-O-RAN simulator, the Orange Innovation Egypt team successfully integrated the OAI nearRT-RIC with this simulator, resulting in the creation of a new xApp testing framework named [ns-O-RAN-flexric](https://github.com/Orange-OpenSource/ns-O-RAN-flexric/). The simulator has been updated and enhanced to support E2AP v1.01, KPM v3.00, RC v1.03 and CCC v6.00.
 
 A summary of the enhancements made to each repository is illustrated in the diagram below:
 
@@ -429,7 +431,7 @@ sudo ptp4l -m -i InterfaceName -s #for slaves
 
 ![alt text](fig/2.png)
 
-Following make sure that no ntpd, chrondy or timesyncd is running in the system (e.g., `sudo systemctl stop systemd-timesyncd`). 
+Following make sure that no ntpd, chrondy or timesyncd is running in the system (e.g., `sudo systemctl stop systemd-timesyncd`).
 
 ```bash
 sudo phc2sys -m -s InterfaceName -w
@@ -440,13 +442,13 @@ sudo phc2sys -m -s InterfaceName -w
 ## 6. Integration with other nearRT-RICs
 
 ### 6.1 O-RAN SC nearRT-RIC
-We showcased the successful integration between OAI E2 agent and O-RAN SC nearRT-RIC in [the OAI E2AP tutorial](https://gitlab.eurecom.fr/oai/openairinterface5g/-/blob/develop/openair2/E2AP/README.md?ref_type=heads#5-o-ran-sc-nearrt-ric-interoperability).
+We showcased the successful integration between OAI E2 agent and O-RAN SC nearRT-RIC in [the OAI E2AP tutorial](https://github.com/duranta-project/openairinterface5g/blob/develop/openair2/E2AP/README.md#5-o-ran-sc-nearrt-ric-interoperability).
 
 > **Note** that the OSC nearRT-RIC can also be tested with FlexRIC E2 agent emulators (`build/examples/emulator/agent/`).
 Before proceeding with integration, please set the `e2ap_server_port` to 36422 (the default is 36421), as the E2AP port for OSC nearRT-RIC is 36422.
 
 ## 7. Support/further resources
-* Mailing list: if you need help or have some questions, you can subscribe to the mailing list `techs@mosaic-5g.io` that you can find at [Gitlab](https://gitlab.eurecom.fr/mosaic5g/mosaic5g/-/wikis/mailing-lists). The emails are archived and available publicly.
+* Mailing list: if you need help or have some questions, you can subscribe to the mailing list `techs@mosaic-5g.io` that you can find at [GitHub](https://github.com/duranta-project/flexric/wiki/MailingList). The emails are archived and available publicly.
 * [The Wiki space](https://gitlab.eurecom.fr/mosaic5g/flexric/-/wikis/home) contains tutorials and presentations
 * [Original FlexRIC paper ACM CoNEXT 2021](https://bit.ly/3uOXuCV)
 
@@ -459,8 +461,5 @@ If you want to see the full power of FlexRIC using its multi-RAT, multi-vendor, 
 ![FlexRIC](fig/1.png)
 
 
-## 8. OAM Project Group & Roadmap
-Check on [OpenAirInterface Website](https://openairinterface.org/projects/oam-project-group/).
-
-## 9. FlexRIC Milestone
-Check on [FlexRIC Milestones](https://gitlab.eurecom.fr/mosaic5g/flexric/-/milestones) and [OpenAirInterface Website](https://openairinterface.org/mosaic5g/).
+## 8. FlexRIC Roadmap
+Check [here](./ROADMAP.md).
