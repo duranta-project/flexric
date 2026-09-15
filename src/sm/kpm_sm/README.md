@@ -11,7 +11,7 @@ Note: Command `sudo make install` installs shared libraries that represent Servi
 
 The document 28_552_kpm_meas.txt contains the list of all measurements defined in 3GPP TS 28.552.
 
-At the moment, the following measurements are supported in OAI RAN:
+At the moment, the following measurements are supported in Duranta OpenAirInterface5G:
 "DRB.PdcpSduVolumeDL"
 "DRB.PdcpSduVolumeUL"
 "DRB.RlcSduDelayDl"
