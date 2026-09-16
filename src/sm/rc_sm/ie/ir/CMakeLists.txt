@@ -30,6 +30,7 @@ set (IR_RC_SRC
   e2sm_rc_ind_msg_frmt_6.c
   lst_ran_param.c
   msg_ev_trg.c
+  neighbour_relation_tbl.c
   network_interface_e2rc.c
   param_report_def.c
   policy_action.c

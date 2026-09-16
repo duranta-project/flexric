@@ -171,9 +171,27 @@
 
 #include "../ie/asn/RANFunctionDefinition-Control-Action-Item.h"
 
-#include "../../../lib/sm/dec/dec_ue_id.h" 
+#include "../../../lib/sm/dec/dec_ue_id.h"
 #include "../../../lib/sm/dec/dec_cell_global_id.h"
 
+#include "../ie/asn/NeighborRelation-Info.h"
+#include "../ie/asn/NeighborCell-List.h"
+#include "../ie/asn/NeighborCell-Item.h"
+#include "../ie/asn/NeighborCell-Item-Choice-NR.h"
+#include "../ie/asn/NeighborCell-Item-Choice-E-UTRA.h"
+#include "../ie/asn/ServingCell-PCI.h"
+#include "../ie/asn/ServingCell-ARFCN.h"
+#include "../ie/asn/NR-ARFCN.h"
+#include "../ie/asn/NRFrequencyInfo.h"
+#include "../ie/asn/NRFrequencyBand-List.h"
+#include "../ie/asn/NRFrequencyBandItem.h"
+#include "../ie/asn/SupportedSULBandList.h"
+#include "../ie/asn/SupportedSULFreqBandItem.h"
+#include "../ie/asn/NRFrequencyShift7p5khz.h"
+
+#include "../ie/ir/neighbour_relation_tbl.h"
+
+#include "../../../util/conversions.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -1942,6 +1960,172 @@ e2sm_rc_ind_msg_frmt_2_t dec_ind_msg_frmt_2(E2SM_RC_IndicationMessage_Format2_t 
 }
 
 static
+nr_cgi_t dec_neighbour_nr_cgi_asn(NR_CGI_t const* src)
+{
+  assert(src != NULL);
+  nr_cgi_t dst = {0};
+
+  PLMNID_TO_MCC_MNC(&src->pLMNIdentity, dst.plmn_id.mcc, dst.plmn_id.mnc, dst.plmn_id.mnc_digit_len);
+  dst.nr_cell_id = cp_nr_cell_id_to_u64(src->nRCellIdentity);
+
+  return dst;
+}
+
+static
+eutra_cgi_t dec_neighbour_eutra_cgi_asn(EUTRA_CGI_t const* src)
+{
+  assert(src != NULL);
+  eutra_cgi_t dst = {0};
+
+  PLMNID_TO_MCC_MNC(&src->pLMNIdentity, dst.plmn_id.mcc, dst.plmn_id.mnc, dst.plmn_id.mnc_digit_len);
+  dst.eutra_cell_id = cp_eutra_cell_id_to_u32(src->eUTRACellIdentity);
+
+  return dst;
+}
+
+static
+nr_freq_info_t dec_nr_freq_info_asn(NRFrequencyInfo_t const* src)
+{
+  assert(src != NULL);
+  nr_freq_info_t dst = {0};
+
+  dst.nr_arfcn = src->nrARFCN.nRARFCN;
+
+  assert(src->frequencyBand_List.list.count > 0 && src->frequencyBand_List.list.count < 65536);
+  dst.sz_freq_band_list = src->frequencyBand_List.list.count;
+  dst.freq_band_list = calloc(dst.sz_freq_band_list, sizeof(nr_freq_band_item_t));
+  assert(dst.freq_band_list != NULL && "Memory exhausted");
+
+  for(size_t i = 0; i < dst.sz_freq_band_list; ++i){
+    NRFrequencyBandItem_t const* item = src->frequencyBand_List.list.array[i];
+
+    dst.freq_band_list[i].freq_band_indicator_nr = item->freqBandIndicatorNr;
+
+    dst.freq_band_list[i].sz_sul_band_list = item->supportedSULBandList.list.count;
+    if(dst.freq_band_list[i].sz_sul_band_list > 0){
+      dst.freq_band_list[i].sul_band_list = calloc(dst.freq_band_list[i].sz_sul_band_list, sizeof(uint16_t));
+      assert(dst.freq_band_list[i].sul_band_list != NULL && "Memory exhausted");
+
+      for(size_t j = 0; j < dst.freq_band_list[i].sz_sul_band_list; ++j){
+        SupportedSULFreqBandItem_t const* sul = item->supportedSULBandList.list.array[j];
+        dst.freq_band_list[i].sul_band_list[j] = sul->freqBandIndicatorNr;
+      }
+    }
+  }
+
+  if(src->frequencyShift7p5khz != NULL){
+    dst.freq_shift_7p5khz = malloc(sizeof(bool));
+    assert(dst.freq_shift_7p5khz != NULL && "Memory exhausted");
+    *dst.freq_shift_7p5khz = (*src->frequencyShift7p5khz == NRFrequencyShift7p5khz_true) ? true : false;
+  }
+
+  return dst;
+}
+
+static
+neighbour_cell_choice_nr_t dec_neighbour_cell_choice_nr_asn(NeighborCell_Item_Choice_NR_t const* src)
+{
+  assert(src != NULL);
+  neighbour_cell_choice_nr_t dst = {0};
+
+  dst.nr_cgi = dec_neighbour_nr_cgi_asn(&src->nR_CGI);
+  dst.nr_pci = src->nR_PCI;
+  OCTET_STRING_TO_INT24(&src->fiveGS_TAC, dst.five_gs_tac);
+  dst.nr_mode_info = src->nR_mode_info == NeighborCell_Item_Choice_NR__nR_mode_info_fdd ?
+    FDD_NR_MODE_INFO_E2SM_RC : TDD_NR_MODE_INFO_E2SM_RC;
+  dst.nr_freq_info = dec_nr_freq_info_asn(&src->nR_FreqInfo);
+  dst.xn_x2_established = src->x2_Xn_established == NeighborCell_Item_Choice_NR__x2_Xn_established_true ?
+    TRUE_XN_X2_ESTABLISHED_E2SM_RC : FALSE_XN_X2_ESTABLISHED_E2SM_RC;
+  dst.ho_validated = src->hO_validated == NeighborCell_Item_Choice_NR__hO_validated_true ?
+    TRUE_HO_VALIDATED_E2SM_RC : FALSE_HO_VALIDATED_E2SM_RC;
+  dst.version = src->version;
+
+  return dst;
+}
+
+static
+neighbour_cell_choice_eutra_t dec_neighbour_cell_choice_eutra_asn(NeighborCell_Item_Choice_E_UTRA_t const* src)
+{
+  assert(src != NULL);
+  neighbour_cell_choice_eutra_t dst = {0};
+
+  dst.eutra_cgi = dec_neighbour_eutra_cgi_asn(&src->eUTRA_CGI);
+  dst.eutra_pci = src->eUTRA_PCI;
+  dst.eutra_arfcn = src->eUTRA_ARFCN;
+  OCTET_STRING_TO_TAC(&src->eUTRA_TAC, dst.eutra_tac);
+  dst.xn_x2_established = src->x2_Xn_established == NeighborCell_Item_Choice_E_UTRA__x2_Xn_established_true ?
+    TRUE_XN_X2_ESTABLISHED_E2SM_RC : FALSE_XN_X2_ESTABLISHED_E2SM_RC;
+  dst.ho_validated = src->hO_validated == NeighborCell_Item_Choice_E_UTRA__hO_validated_true ?
+    TRUE_HO_VALIDATED_E2SM_RC : FALSE_HO_VALIDATED_E2SM_RC;
+  dst.version = src->version;
+
+  return dst;
+}
+
+static
+neighbour_cell_item_t dec_neighbour_cell_item_asn(NeighborCell_Item_t const* src)
+{
+  assert(src != NULL);
+  neighbour_cell_item_t dst = {0};
+
+  if(src->present == NeighborCell_Item_PR_ranType_Choice_NR){
+    dst.type = NR_NEIGHBOUR_CELL_E2SM_RC;
+    dst.choice_nr = dec_neighbour_cell_choice_nr_asn(src->choice.ranType_Choice_NR);
+  } else if(src->present == NeighborCell_Item_PR_ranType_Choice_EUTRA){
+    dst.type = EUTRA_NEIGHBOUR_CELL_E2SM_RC;
+    dst.choice_eutra = dec_neighbour_cell_choice_eutra_asn(src->choice.ranType_Choice_EUTRA);
+  } else {
+    assert(0 != 0 && "Unknown type");
+  }
+
+  return dst;
+}
+
+static
+neighbour_rela_tbl_t dec_neighbour_rela_tbl_asn(NeighborRelation_Info_t const* src)
+{
+  assert(src != NULL);
+  neighbour_rela_tbl_t dst = {0};
+
+  // Serving Cell PCI
+  // Mandatory
+  // 9.3.39
+  assert(src->servingCellPCI.present == ServingCell_PCI_PR_nR || src->servingCellPCI.present == ServingCell_PCI_PR_eUTRA);
+  if(src->servingCellPCI.present == ServingCell_PCI_PR_nR){
+    dst.serving_cell_pci.type = NR_SERVING_CELL_E2SM_RC;
+    dst.serving_cell_pci.nr_pci = src->servingCellPCI.choice.nR;
+  } else {
+    dst.serving_cell_pci.type = EUTRA_SERVING_CELL_E2SM_RC;
+    dst.serving_cell_pci.eutra_pci = src->servingCellPCI.choice.eUTRA;
+  }
+
+  // Serving Cell ARFCN
+  // Mandatory
+  // 9.3.40
+  assert(src->servingCellARFCN.present == ServingCell_ARFCN_PR_nR || src->servingCellARFCN.present == ServingCell_ARFCN_PR_eUTRA);
+  if(src->servingCellARFCN.present == ServingCell_ARFCN_PR_nR){
+    dst.serving_cell_arfcn.type = NR_SERVING_CELL_E2SM_RC;
+    dst.serving_cell_arfcn.nr_arfcn = src->servingCellARFCN.choice.nR->nRARFCN;
+  } else {
+    dst.serving_cell_arfcn.type = EUTRA_SERVING_CELL_E2SM_RC;
+    dst.serving_cell_arfcn.eutra_arfcn = src->servingCellARFCN.choice.eUTRA;
+  }
+
+  // Neighbour Cell List
+  // Mandatory [1..maxnoofNeighbourCell]
+  assert(src->neighborCell_List.list.count > 0 && src->neighborCell_List.list.count < 65536);
+  dst.sz_neighbour_cell_list = src->neighborCell_List.list.count;
+  dst.neighbour_cell_list = calloc(dst.sz_neighbour_cell_list, sizeof(neighbour_cell_item_t));
+  assert(dst.neighbour_cell_list != NULL && "Memory exhausted");
+
+  for(size_t i = 0; i < dst.sz_neighbour_cell_list; ++i){
+    dst.neighbour_cell_list[i] = dec_neighbour_cell_item_asn(src->neighborCell_List.list.array[i]);
+  }
+
+  return dst;
+}
+
+static
 seq_cell_info_t dec_ind_msg_frmt_3_it(E2SM_RC_IndicationMessage_Format3_Item_t const* src)
 {
   assert(src != NULL);
@@ -1967,7 +2151,11 @@ seq_cell_info_t dec_ind_msg_frmt_3_it(E2SM_RC_IndicationMessage_Format3_Item_t c
   // Neighbour Relation Table
   // Optional
   // 9.3.38
-  assert(src->neighborRelation_Table == NULL && "Not implemented");
+  if(src->neighborRelation_Table != NULL){
+    dst.neighbour_rela_tbl = malloc(sizeof(neighbour_rela_tbl_t));
+    assert(dst.neighbour_rela_tbl != NULL && "Memory exhausted");
+    *dst.neighbour_rela_tbl = dec_neighbour_rela_tbl_asn(src->neighborRelation_Table);
+  }
 
   return dst;
 }
@@ -2041,7 +2229,11 @@ seq_cell_info_2_t dec_ind_msg_frmt_4_it_dell_info(E2SM_RC_IndicationMessage_Form
   // Neighbour Relation Table
   // Optional
   // 9.3.38
-  assert(src->neighborRelation_Table == NULL && "Not implemented");
+  if(src->neighborRelation_Table != NULL){
+    dst.neighbour_rela_tbl = malloc(sizeof(neighbour_rela_tbl_t));
+    assert(dst.neighbour_rela_tbl != NULL && "Memory exhausted");
+    *dst.neighbour_rela_tbl = dec_neighbour_rela_tbl_asn(src->neighborRelation_Table);
+  }
 
   return dst;
 }

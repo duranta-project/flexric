@@ -165,10 +165,27 @@
 #include "../../../lib/sm/enc/enc_cell_global_id.h"
 #include "../../../lib/sm/enc/enc_ue_id.h"
 
+#include "../ie/asn/NeighborRelation-Info.h"
+#include "../ie/asn/NeighborCell-List.h"
+#include "../ie/asn/NeighborCell-Item.h"
+#include "../ie/asn/NeighborCell-Item-Choice-NR.h"
+#include "../ie/asn/NeighborCell-Item-Choice-E-UTRA.h"
+#include "../ie/asn/ServingCell-PCI.h"
+#include "../ie/asn/ServingCell-ARFCN.h"
+#include "../ie/asn/NR-ARFCN.h"
+#include "../ie/asn/NRFrequencyInfo.h"
+#include "../ie/asn/NRFrequencyBand-List.h"
+#include "../ie/asn/NRFrequencyBandItem.h"
+#include "../ie/asn/SupportedSULBandList.h"
+#include "../ie/asn/SupportedSULFreqBandItem.h"
+#include "../ie/asn/NRFrequencyShift7p5khz.h"
+
+#include "../ie/ir/neighbour_relation_tbl.h"
 
 #include "rc_enc_asn.h"
 
 #include "../../../util/alg_ds/alg/defer.h"
+#include "../../../util/conversions.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -1766,6 +1783,176 @@ E2SM_RC_IndicationMessage_Format2_t* enc_ind_msg_frmt_2(e2sm_rc_ind_msg_frmt_2_t
 }
 
 static
+NR_CGI_t enc_neighbour_nr_cgi_asn(nr_cgi_t const* src)
+{
+  assert(src != NULL);
+  NR_CGI_t dst = {0};
+
+  MCC_MNC_TO_PLMNID(src->plmn_id.mcc, src->plmn_id.mnc, src->plmn_id.mnc_digit_len, &dst.pLMNIdentity);
+  dst.nRCellIdentity = cp_nr_cell_id_to_bit_string(src->nr_cell_id);
+
+  return dst;
+}
+
+static
+EUTRA_CGI_t enc_neighbour_eutra_cgi_asn(eutra_cgi_t const* src)
+{
+  assert(src != NULL);
+  EUTRA_CGI_t dst = {0};
+
+  MCC_MNC_TO_PLMNID(src->plmn_id.mcc, src->plmn_id.mnc, src->plmn_id.mnc_digit_len, &dst.pLMNIdentity);
+  dst.eUTRACellIdentity = cp_eutra_cell_id_to_bit_string(src->eutra_cell_id);
+
+  return dst;
+}
+
+static
+NRFrequencyInfo_t enc_nr_freq_info_asn(nr_freq_info_t const* src)
+{
+  assert(src != NULL);
+  NRFrequencyInfo_t dst = {0};
+
+  dst.nrARFCN.nRARFCN = src->nr_arfcn;
+
+  assert(src->sz_freq_band_list > 0 && src->sz_freq_band_list < 65536);
+  for(size_t i = 0; i < src->sz_freq_band_list; ++i){
+    NRFrequencyBandItem_t* item = calloc(1, sizeof(NRFrequencyBandItem_t));
+    assert(item != NULL && "Memory exhausted");
+
+    item->freqBandIndicatorNr = src->freq_band_list[i].freq_band_indicator_nr;
+
+    for(size_t j = 0; j < src->freq_band_list[i].sz_sul_band_list; ++j){
+      SupportedSULFreqBandItem_t* sul = calloc(1, sizeof(SupportedSULFreqBandItem_t));
+      assert(sul != NULL && "Memory exhausted");
+      sul->freqBandIndicatorNr = src->freq_band_list[i].sul_band_list[j];
+
+      int rc = ASN_SEQUENCE_ADD(&item->supportedSULBandList.list, sul);
+      assert(rc == 0);
+    }
+
+    int rc = ASN_SEQUENCE_ADD(&dst.frequencyBand_List.list, item);
+    assert(rc == 0);
+  }
+
+  if(src->freq_shift_7p5khz != NULL){
+    dst.frequencyShift7p5khz = calloc(1, sizeof(NRFrequencyShift7p5khz_t));
+    assert(dst.frequencyShift7p5khz != NULL && "Memory exhausted");
+    *dst.frequencyShift7p5khz = *src->freq_shift_7p5khz == true ? NRFrequencyShift7p5khz_true : NRFrequencyShift7p5khz_false;
+  }
+
+  return dst;
+}
+
+static
+NeighborCell_Item_Choice_NR_t* enc_neighbour_cell_choice_nr_asn(neighbour_cell_choice_nr_t const* src)
+{
+  assert(src != NULL);
+
+  NeighborCell_Item_Choice_NR_t* dst = calloc(1, sizeof(NeighborCell_Item_Choice_NR_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->nR_CGI = enc_neighbour_nr_cgi_asn(&src->nr_cgi);
+  dst->nR_PCI = src->nr_pci;
+  INT24_TO_OCTET_STRING(src->five_gs_tac, &dst->fiveGS_TAC);
+  dst->nR_mode_info = src->nr_mode_info == FDD_NR_MODE_INFO_E2SM_RC ?
+    NeighborCell_Item_Choice_NR__nR_mode_info_fdd : NeighborCell_Item_Choice_NR__nR_mode_info_tdd;
+  dst->nR_FreqInfo = enc_nr_freq_info_asn(&src->nr_freq_info);
+  dst->x2_Xn_established = src->xn_x2_established == TRUE_XN_X2_ESTABLISHED_E2SM_RC ?
+    NeighborCell_Item_Choice_NR__x2_Xn_established_true : NeighborCell_Item_Choice_NR__x2_Xn_established_false;
+  dst->hO_validated = src->ho_validated == TRUE_HO_VALIDATED_E2SM_RC ?
+    NeighborCell_Item_Choice_NR__hO_validated_true : NeighborCell_Item_Choice_NR__hO_validated_false;
+  dst->version = src->version;
+
+  return dst;
+}
+
+static
+NeighborCell_Item_Choice_E_UTRA_t* enc_neighbour_cell_choice_eutra_asn(neighbour_cell_choice_eutra_t const* src)
+{
+  assert(src != NULL);
+
+  NeighborCell_Item_Choice_E_UTRA_t* dst = calloc(1, sizeof(NeighborCell_Item_Choice_E_UTRA_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->eUTRA_CGI = enc_neighbour_eutra_cgi_asn(&src->eutra_cgi);
+  dst->eUTRA_PCI = src->eutra_pci;
+  dst->eUTRA_ARFCN = src->eutra_arfcn;
+  TAC_TO_ASN1(src->eutra_tac, &dst->eUTRA_TAC);
+  dst->x2_Xn_established = src->xn_x2_established == TRUE_XN_X2_ESTABLISHED_E2SM_RC ?
+    NeighborCell_Item_Choice_E_UTRA__x2_Xn_established_true : NeighborCell_Item_Choice_E_UTRA__x2_Xn_established_false;
+  dst->hO_validated = src->ho_validated == TRUE_HO_VALIDATED_E2SM_RC ?
+    NeighborCell_Item_Choice_E_UTRA__hO_validated_true : NeighborCell_Item_Choice_E_UTRA__hO_validated_false;
+  dst->version = src->version;
+
+  return dst;
+}
+
+static
+NeighborCell_Item_t* enc_neighbour_cell_item_asn(neighbour_cell_item_t const* src)
+{
+  assert(src != NULL);
+
+  NeighborCell_Item_t* dst = calloc(1, sizeof(NeighborCell_Item_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  if(src->type == NR_NEIGHBOUR_CELL_E2SM_RC){
+    dst->present = NeighborCell_Item_PR_ranType_Choice_NR;
+    dst->choice.ranType_Choice_NR = enc_neighbour_cell_choice_nr_asn(&src->choice_nr);
+  } else if(src->type == EUTRA_NEIGHBOUR_CELL_E2SM_RC){
+    dst->present = NeighborCell_Item_PR_ranType_Choice_EUTRA;
+    dst->choice.ranType_Choice_EUTRA = enc_neighbour_cell_choice_eutra_asn(&src->choice_eutra);
+  } else {
+    assert(0 != 0 && "Unknown type");
+  }
+
+  return dst;
+}
+
+static
+NeighborRelation_Info_t* enc_neighbour_rela_tbl_asn(neighbour_rela_tbl_t const* src)
+{
+  assert(src != NULL);
+
+  NeighborRelation_Info_t* dst = calloc(1, sizeof(NeighborRelation_Info_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  // Serving Cell PCI
+  // Mandatory
+  // 9.3.39
+  if(src->serving_cell_pci.type == NR_SERVING_CELL_E2SM_RC){
+    dst->servingCellPCI.present = ServingCell_PCI_PR_nR;
+    dst->servingCellPCI.choice.nR = src->serving_cell_pci.nr_pci;
+  } else {
+    dst->servingCellPCI.present = ServingCell_PCI_PR_eUTRA;
+    dst->servingCellPCI.choice.eUTRA = src->serving_cell_pci.eutra_pci;
+  }
+
+  // Serving Cell ARFCN
+  // Mandatory
+  // 9.3.40
+  if(src->serving_cell_arfcn.type == NR_SERVING_CELL_E2SM_RC){
+    dst->servingCellARFCN.present = ServingCell_ARFCN_PR_nR;
+    dst->servingCellARFCN.choice.nR = calloc(1, sizeof(NR_ARFCN_t));
+    assert(dst->servingCellARFCN.choice.nR != NULL && "Memory exhausted");
+    dst->servingCellARFCN.choice.nR->nRARFCN = src->serving_cell_arfcn.nr_arfcn;
+  } else {
+    dst->servingCellARFCN.present = ServingCell_ARFCN_PR_eUTRA;
+    dst->servingCellARFCN.choice.eUTRA = src->serving_cell_arfcn.eutra_arfcn;
+  }
+
+  // Neighbour Cell List
+  // Mandatory [1..maxnoofNeighbourCell]
+  assert(src->sz_neighbour_cell_list > 0 && src->sz_neighbour_cell_list < 65536);
+  for(size_t i = 0; i < src->sz_neighbour_cell_list; ++i){
+    NeighborCell_Item_t* ie = enc_neighbour_cell_item_asn(&src->neighbour_cell_list[i]);
+    int rc = ASN_SEQUENCE_ADD(&dst->neighborCell_List.list, ie);
+    assert(rc == 0);
+  }
+
+  return dst;
+}
+
+static
 E2SM_RC_IndicationMessage_Format3_Item_t* enc_ind_msg_frmt_3_it(seq_cell_info_t const* src)
 {
   assert(src != NULL);
@@ -1791,7 +1978,8 @@ E2SM_RC_IndicationMessage_Format3_Item_t* enc_ind_msg_frmt_3_it(seq_cell_info_t 
   // Neighbour Relation Table
   // Optional
   // 9.3.38
-  assert(src->neighbour_rela_tbl == NULL && "not implemented");
+  if(src->neighbour_rela_tbl != NULL)
+    dst->neighborRelation_Table = enc_neighbour_rela_tbl_asn(src->neighbour_rela_tbl);
 
   return dst;
 }
@@ -1865,7 +2053,8 @@ E2SM_RC_IndicationMessage_Format4_ItemCell_t* enc_ind_msg_frmt_4_it_cell(seq_cel
   // Neighbour Relation Table
   // Optional
   // 9.3.38
-  assert(src->neighbour_rela_tbl == NULL && "Not implemented");
+  if(src->neighbour_rela_tbl != NULL)
+    dst->neighborRelation_Table = enc_neighbour_rela_tbl_asn(src->neighbour_rela_tbl);
 
   return dst;
 }
