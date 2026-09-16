@@ -17,22 +17,14 @@ void free_e2sm_rc_ind_msg_frmt_4(e2sm_rc_ind_msg_frmt_4_t* src)
   for(size_t i = 0; i < src->sz_seq_ue_info; ++i){
     free_seq_ue_info(&src->seq_ue_info[i]);
   }
-
-  if(src->seq_ue_info != NULL){
-    assert(src->sz_seq_ue_info >0);
-    free(src->seq_ue_info);
-  }
+  free(src->seq_ue_info);
 
   // Sequence of Cell Information
   // [0-65535]
   for(size_t i = 0; i <  src->sz_seq_cell_info_2; ++i){
     free_seq_cell_info_2(&src->seq_cell_info_2[i]);
   }
-
-  if(src->seq_cell_info_2 != NULL){
-    assert(src->sz_seq_cell_info_2 > 0);
-    free(src->seq_cell_info_2);
-  }
+  free(src->seq_cell_info_2);
 
 }
 
