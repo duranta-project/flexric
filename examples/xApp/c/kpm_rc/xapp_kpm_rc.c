@@ -138,7 +138,12 @@ void log_int_value(const char *name_str, const label_info_lst_t label_info, cons
   if (label_info.noLabel != NULL) {
     printf("%s = %d %s\n", name_str, meas_record.int_val, name_unit);
   } else if (label_info.distBinX != NULL && meas_record.int_val > 0) {
-    printf("%s[BinX=%d][BinY=%d][BinZ=%d] = %d %s\n", name_str, *label_info.distBinX, *label_info.distBinY, *label_info.distBinZ, meas_record.int_val, name_unit);
+    printf("%s[BinX=%d", name_str, *label_info.distBinX);
+    if (label_info.distBinY != NULL)
+      printf("][BinY=%d", *label_info.distBinY);
+    if (label_info.distBinZ != NULL)
+      printf("][BinZ=%d", *label_info.distBinZ);
+    printf("] = %d %s\n", meas_record.int_val, name_unit);
   }
 }
 
@@ -374,36 +379,38 @@ void fill_rc_ctrl_act(seq_ctrl_act_2_t const* ctrl_act,
 }
 
 static
-rc_ctrl_req_data_t gen_rc_ctrl_msg(ran_func_def_ctrl_t const* ran_func)
+rc_ctrl_req_data_t *gen_rc_ctrl_msg(seq_ctrl_style_t const* ctrl_style)
 {
-  assert(ran_func != NULL);
+  assert(ctrl_style != NULL);
 
-  rc_ctrl_req_data_t rc_ctrl = {0};
+  rc_ctrl_req_data_t *ctrl_req = calloc(1, sizeof(*ctrl_req));
+  assert(ctrl_req != NULL && "Memory exhausted");
 
-  for (size_t i = 0; i < ran_func->sz_seq_ctrl_style; i++) {
-    assert(cmp_str_ba("Radio Bearer Control", ran_func->seq_ctrl_style[i].name) == 0 && "Add requested CONTROL Style. At the moment, only Radio Bearer Control supported");
-
+  if (cmp_str_ba("Radio Bearer Control", ctrl_style->name) == 0) {
     // CONTROL HEADER
-    rc_ctrl.hdr.format = ran_func->seq_ctrl_style[i].hdr;
-    assert(rc_ctrl.hdr.format == FORMAT_1_E2SM_RC_CTRL_HDR && "Indication Header Format received not valid");
-    rc_ctrl.hdr.frmt_1.ric_style_type = 1;
+    ctrl_req->hdr.format = ctrl_style->hdr;
+    assert(ctrl_req->hdr.format == FORMAT_1_E2SM_RC_CTRL_HDR && "Indication Header Format received not valid");
+    ctrl_req->hdr.frmt_1.ric_style_type = 1;
     // 6.2.2.6
     {
       lock_guard(&mtx);
-      rc_ctrl.hdr.frmt_1.ue_id = cp_ue_id_e2sm(&ue_id);
+      ctrl_req->hdr.frmt_1.ue_id = cp_ue_id_e2sm(&ue_id);
     }
 
     // CONTROL MESSAGE
-    rc_ctrl.msg.format = ran_func->seq_ctrl_style[i].msg;
-    assert(rc_ctrl.msg.format == FORMAT_1_E2SM_RC_CTRL_MSG && "Indication Message Format received not valid");
+    ctrl_req->msg.format = ctrl_style->msg;
+    assert(ctrl_req->msg.format == FORMAT_1_E2SM_RC_CTRL_MSG && "Indication Message Format received not valid");
 
-    fill_rc_ctrl_act(ran_func->seq_ctrl_style[i].seq_ctrl_act,
-                     ran_func->seq_ctrl_style[i].sz_seq_ctrl_act,
-                     &rc_ctrl.hdr.frmt_1,
-                     &rc_ctrl.msg.frmt_1);
+    fill_rc_ctrl_act(ctrl_style->seq_ctrl_act,
+                     ctrl_style->sz_seq_ctrl_act,
+                     &ctrl_req->hdr.frmt_1,
+                     &ctrl_req->msg.frmt_1);
+  } else {
+    free(ctrl_req);
+    return NULL;
   }
 
-  return rc_ctrl;
+  return ctrl_req;
 }
 
 static
@@ -516,7 +523,7 @@ kpm_act_def_t fill_report_style_4(ric_report_style_item_t const* report_item)
 }
 
 static
-label_info_lst_t fill_distribution_bin_label(const uint32_t x, const uint32_t y, const uint32_t z)
+label_info_lst_t fill_distribution_bin_label(const uint32_t x, const uint32_t* y, const uint32_t* z)
 {
   label_info_lst_t label_item = {0};
 
@@ -524,13 +531,17 @@ label_info_lst_t fill_distribution_bin_label(const uint32_t x, const uint32_t y,
   assert(label_item.distBinX != NULL);
   *label_item.distBinX = x;
 
-  label_item.distBinY = calloc(1, sizeof(uint32_t));
-  assert(label_item.distBinY != NULL);
-  *label_item.distBinY = y;
+  if (y != NULL) {
+    label_item.distBinY = calloc(1, sizeof(uint32_t));
+    assert(label_item.distBinY != NULL);
+    *label_item.distBinY = *y;
+  }
 
-  label_item.distBinZ = calloc(1, sizeof(uint32_t));
-  assert(label_item.distBinZ != NULL);
-  *label_item.distBinZ = z;
+  if (z != NULL) {
+    label_item.distBinZ = calloc(1, sizeof(uint32_t));
+    assert(label_item.distBinZ != NULL);
+    *label_item.distBinZ = *z;
+  }
 
   return label_item;
 }
@@ -563,10 +574,34 @@ kpm_act_def_t fill_report_style_1(ric_report_style_item_t const* report_item)
       for (uint32_t x = 1; x <= 8; x++) {
         for (uint32_t y = 1; y <= 3; y++) {
           for(uint32_t z = 0; z <= 31; z++) {
-            meas_item->label_info_lst[idx++] = fill_distribution_bin_label(x, y, z);
+            meas_item->label_info_lst[idx++] = fill_distribution_bin_label(x, &y, &z);
           }
         }
       }
+    } else if (cmp_str_ba("CARR.PUSCHMCSDist", meas_item->meas_type.name) == 0) {
+      /// 1-8 RI, 0-3 MCS table (0, 1, 3 valid), 0-31 MCS value
+      meas_item->label_info_lst_len = 8 * 4 * 32;
+      meas_item->label_info_lst = ecalloc(meas_item->label_info_lst_len, sizeof(label_info_lst_t));
+      size_t idx = 0;
+      for (uint32_t x = 1; x <= 8; x++) {
+        for (uint32_t y = 0; y <= 3; y++) {
+          for(uint32_t z = 0; z <= 31; z++) {
+            meas_item->label_info_lst[idx++] = fill_distribution_bin_label(x, &y, &z);
+          }
+        }
+      }
+    } else if (cmp_str_ba("L1M.SS-RSRP", meas_item->meas_type.name) == 0) {
+      /// 0-127 SS-RSRP report level, TS 38.133; summed across all SSBs (ssbIndex omitted)
+      meas_item->label_info_lst_len = 128;
+      meas_item->label_info_lst = ecalloc(meas_item->label_info_lst_len, sizeof(label_info_lst_t));
+      for (uint32_t x = 0; x <= 127; x++)
+        meas_item->label_info_lst[x] = fill_distribution_bin_label(x, NULL, NULL);
+    } else if (cmp_str_ba("MR.NRScSSSINR", meas_item->meas_type.name) == 0) {
+      /// 0-127 SS-SINR report level, TS 38.133 Table 10.1.16.1-1
+      meas_item->label_info_lst_len = 128;
+      meas_item->label_info_lst = ecalloc(meas_item->label_info_lst_len, sizeof(label_info_lst_t));
+      for (uint32_t x = 0; x <= 127; x++)
+        meas_item->label_info_lst[x] = fill_distribution_bin_label(x, NULL, NULL);
     } else {
       meas_item->label_info_lst_len = 1;
       meas_item->label_info_lst = ecalloc(meas_item->label_info_lst_len, sizeof(label_info_lst_t));
@@ -712,13 +747,18 @@ int main(int argc, char* argv[])
     size_t const idx = find_sm_idx(n->rf, n->len_rf, eq_sm, RC_ran_function);
     assert(n->rf[idx].defn.type == RC_RAN_FUNC_DEF_E && "RC is not the received RAN Function");
     // if CONTROL Service is supported by E2 node, send CONTROL message
-    if (n->rf[idx].defn.rc.ctrl != NULL) {
-      // Generate RC CONTROL message
-      rc_ctrl_req_data_t rc_ctrl = gen_rc_ctrl_msg(n->rf[idx].defn.rc.ctrl);
+    ran_func_def_ctrl_t const *rc_ctrl = n->rf[idx].defn.rc.ctrl;
+    if (rc_ctrl != NULL) {
+      for (size_t j = 0; j < rc_ctrl->sz_seq_ctrl_style; j++) {
+        // Generate RC CONTROL message
+        rc_ctrl_req_data_t *ctrl_req = gen_rc_ctrl_msg(&rc_ctrl->seq_ctrl_style[j]);
 
-      control_sm_xapp_api(&n->id, RC_ran_function, &rc_ctrl);
-
-      free_rc_ctrl_req_data(&rc_ctrl);
+        if (ctrl_req) {
+          control_sm_xapp_api(&n->id, RC_ran_function, ctrl_req);
+          free_rc_ctrl_req_data(ctrl_req);
+          free(ctrl_req);
+        }
+      }
     }
   }
   ////////////

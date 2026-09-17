@@ -136,7 +136,12 @@ void log_int_value(const char *name_str, const label_info_lst_t label_info, cons
   if (label_info.noLabel != NULL) {
     printf("%s = %d %s\n", name_str, meas_record.int_val, name_unit);
   } else if (label_info.distBinX != NULL && meas_record.int_val > 0) {
-    printf("%s[BinX=%d][BinY=%d][BinZ=%d] = %d %s\n", name_str, *label_info.distBinX, *label_info.distBinY, *label_info.distBinZ, meas_record.int_val, name_unit);
+    printf("%s[BinX=%d", name_str, *label_info.distBinX);
+    if (label_info.distBinY != NULL)
+      printf("][BinY=%d", *label_info.distBinY);
+    if (label_info.distBinZ != NULL)
+      printf("][BinZ=%d", *label_info.distBinZ);
+    printf("] = %d %s\n", meas_record.int_val, name_unit);
   }
 }
 
@@ -360,8 +365,10 @@ kpm_act_def_t fill_report_style_4(ric_report_style_item_t const* report_item)
   return act_def;
 }
 
+/* Builds a label with distBinX set, and distBinY/distBinZ set only if the
+ * corresponding pointer is non-NULL - i.e. only X, X and Y, or all three. */
 static
-label_info_lst_t fill_distribution_bin_label(const uint32_t x, const uint32_t y, const uint32_t z)
+label_info_lst_t fill_distribution_bin_label(const uint32_t x, const uint32_t* y, const uint32_t* z)
 {
   label_info_lst_t label_item = {0};
 
@@ -369,13 +376,17 @@ label_info_lst_t fill_distribution_bin_label(const uint32_t x, const uint32_t y,
   assert(label_item.distBinX != NULL);
   *label_item.distBinX = x;
 
-  label_item.distBinY = calloc(1, sizeof(uint32_t));
-  assert(label_item.distBinY != NULL);
-  *label_item.distBinY = y;
+  if (y != NULL) {
+    label_item.distBinY = calloc(1, sizeof(uint32_t));
+    assert(label_item.distBinY != NULL);
+    *label_item.distBinY = *y;
+  }
 
-  label_item.distBinZ = calloc(1, sizeof(uint32_t));
-  assert(label_item.distBinZ != NULL);
-  *label_item.distBinZ = z;
+  if (z != NULL) {
+    label_item.distBinZ = calloc(1, sizeof(uint32_t));
+    assert(label_item.distBinZ != NULL);
+    *label_item.distBinZ = *z;
+  }
 
   return label_item;
 }
@@ -408,10 +419,34 @@ kpm_act_def_t fill_report_style_1(ric_report_style_item_t const* report_item)
       for (uint32_t x = 1; x <= 8; x++) {
         for (uint32_t y = 1; y <= 3; y++) {
           for(uint32_t z = 0; z <= 31; z++) {
-            meas_item->label_info_lst[idx++] = fill_distribution_bin_label(x, y, z);
+            meas_item->label_info_lst[idx++] = fill_distribution_bin_label(x, &y, &z);
           }
         }
       }
+    } else if (cmp_str_ba("CARR.PUSCHMCSDist", meas_item->meas_type.name) == 0) {
+      /// 1-8 RI, 0-3 MCS table (0, 1, 3 valid), 0-31 MCS value
+      meas_item->label_info_lst_len = 8 * 4 * 32;
+      meas_item->label_info_lst = ecalloc(meas_item->label_info_lst_len, sizeof(label_info_lst_t));
+      size_t idx = 0;
+      for (uint32_t x = 1; x <= 8; x++) {
+        for (uint32_t y = 0; y <= 3; y++) {
+          for(uint32_t z = 0; z <= 31; z++) {
+            meas_item->label_info_lst[idx++] = fill_distribution_bin_label(x, &y, &z);
+          }
+        }
+      }
+    } else if (cmp_str_ba("L1M.SS-RSRP", meas_item->meas_type.name) == 0) {
+      /// 0-127 SS-RSRP report level, TS 38.133; summed across all SSBs (ssbIndex omitted)
+      meas_item->label_info_lst_len = 128;
+      meas_item->label_info_lst = ecalloc(meas_item->label_info_lst_len, sizeof(label_info_lst_t));
+      for (uint32_t x = 0; x <= 127; x++)
+        meas_item->label_info_lst[x] = fill_distribution_bin_label(x, NULL, NULL);
+    } else if (cmp_str_ba("MR.NRScSSSINR", meas_item->meas_type.name) == 0) {
+      /// 0-127 SS-SINR report level, TS 38.133 Table 10.1.16.1-1
+      meas_item->label_info_lst_len = 128;
+      meas_item->label_info_lst = ecalloc(meas_item->label_info_lst_len, sizeof(label_info_lst_t));
+      for (uint32_t x = 0; x <= 127; x++)
+        meas_item->label_info_lst[x] = fill_distribution_bin_label(x, NULL, NULL);
     } else {
       meas_item->label_info_lst_len = 1;
       meas_item->label_info_lst = ecalloc(meas_item->label_info_lst_len, sizeof(label_info_lst_t));

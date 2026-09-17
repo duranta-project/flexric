@@ -1672,6 +1672,208 @@ cell_global_id_t fill_rnd_cell_global_id()
 }
 
 static
+nr_freq_band_item_t fill_rnd_nr_freq_band_item(void)
+{
+  nr_freq_band_item_t dst = {0};
+
+  // Frequency Band Indicator Nr
+  // Mandatory
+  dst.freq_band_indicator_nr = (rand() % 1024) + 1;
+
+  // Supported SUL Band List
+  // Mandatory (list can be empty)
+  dst.sz_sul_band_list = rand() % 4;
+  if(dst.sz_sul_band_list > 0){
+    dst.sul_band_list = calloc(dst.sz_sul_band_list, sizeof(uint16_t));
+    assert(dst.sul_band_list != NULL && "Memory exhausted");
+
+    for(size_t i = 0; i < dst.sz_sul_band_list; ++i){
+      dst.sul_band_list[i] = (rand() % 1024) + 1;
+    }
+  }
+
+  return dst;
+}
+
+static
+nr_freq_info_t fill_rnd_nr_freq_info(void)
+{
+  nr_freq_info_t dst = {0};
+
+  // NR-ARFCN
+  // Mandatory
+  dst.nr_arfcn = rand() % 3279165;
+
+  // Frequency Band List
+  // Mandatory [1..maxnoofNrCellBands]
+  dst.sz_freq_band_list = (rand() % 4) + 1;
+  dst.freq_band_list = calloc(dst.sz_freq_band_list, sizeof(nr_freq_band_item_t));
+  assert(dst.freq_band_list != NULL && "Memory exhausted");
+
+  for(size_t i = 0; i < dst.sz_freq_band_list; ++i){
+    dst.freq_band_list[i] = fill_rnd_nr_freq_band_item();
+  }
+
+  // Frequency Shift 7.5kHz
+  // Optional
+  if(rand() % 2){
+    dst.freq_shift_7p5khz = malloc(sizeof(bool));
+    assert(dst.freq_shift_7p5khz != NULL && "Memory exhausted");
+    *dst.freq_shift_7p5khz = rand() % 2;
+  }
+
+  return dst;
+}
+
+static
+neighbour_cell_choice_nr_t fill_rnd_neighbour_cell_choice_nr(void)
+{
+  neighbour_cell_choice_nr_t dst = {0};
+
+  // NR CGI
+  // Mandatory
+  // 9.3.41
+  dst.nr_cgi.plmn_id = (e2sm_plmn_t) {.mcc = 505, .mnc = 1, .mnc_digit_len = 2};
+  dst.nr_cgi.nr_cell_id = rand() % (1UL << 36);
+
+  // NR PCI
+  // Mandatory
+  // 9.3.42
+  // [0..1007]
+  dst.nr_pci = rand() % 1008;
+
+  // 5GS TAC
+  // Mandatory
+  // 9.3.43
+  dst.five_gs_tac = rand() % 16777216;
+
+  // NR Mode Info
+  // Mandatory
+  dst.nr_mode_info = rand() % END_NR_MODE_INFO_E2SM_RC;
+
+  // NR Frequency Info
+  // Mandatory
+  // 9.3.44
+  dst.nr_freq_info = fill_rnd_nr_freq_info();
+
+  // Xn X2 Established
+  // Mandatory
+  dst.xn_x2_established = rand() % END_XN_X2_ESTABLISHED_E2SM_RC;
+
+  // HO Validated
+  // Mandatory
+  dst.ho_validated = rand() % END_HO_VALIDATED_E2SM_RC;
+
+  // Version
+  // Mandatory
+  // [1..65535]
+  dst.version = (rand() % 65535) + 1;
+
+  return dst;
+}
+
+static
+neighbour_cell_choice_eutra_t fill_rnd_neighbour_cell_choice_eutra(void)
+{
+  neighbour_cell_choice_eutra_t dst = {0};
+
+  // E-UTRA CGI
+  // Mandatory
+  // 9.3.45
+  dst.eutra_cgi.plmn_id = (e2sm_plmn_t) {.mcc = 222, .mnc = 99, .mnc_digit_len = 2};
+  dst.eutra_cgi.eutra_cell_id = rand() % (1 << 28);
+
+  // E-UTRA PCI
+  // Mandatory
+  // 9.3.46
+  // [0..503]
+  dst.eutra_pci = rand() % 504;
+
+  // E-UTRA ARFCN
+  // Mandatory
+  // 9.3.47
+  dst.eutra_arfcn = rand() % 65536;
+
+  // E-UTRA TAC
+  // Mandatory
+  // 9.3.48
+  dst.eutra_tac = rand() % 65536;
+
+  // Xn X2 Established
+  // Mandatory
+  dst.xn_x2_established = rand() % END_XN_X2_ESTABLISHED_E2SM_RC;
+
+  // HO Validated
+  // Mandatory
+  dst.ho_validated = rand() % END_HO_VALIDATED_E2SM_RC;
+
+  // Version
+  // Mandatory
+  // [1..65535]
+  dst.version = (rand() % 65535) + 1;
+
+  return dst;
+}
+
+static
+neighbour_cell_item_t fill_rnd_neighbour_cell_item(void)
+{
+  neighbour_cell_item_t dst = {0};
+
+  // CHOICE RAN Type
+  // Mandatory
+  dst.type = rand() % END_NEIGHBOUR_CELL_E2SM_RC;
+
+  if(dst.type == NR_NEIGHBOUR_CELL_E2SM_RC){
+    dst.choice_nr = fill_rnd_neighbour_cell_choice_nr();
+  } else if(dst.type == EUTRA_NEIGHBOUR_CELL_E2SM_RC){
+    dst.choice_eutra = fill_rnd_neighbour_cell_choice_eutra();
+  } else {
+    assert(0 != 0 && "Unknown type");
+  }
+
+  return dst;
+}
+
+static
+neighbour_rela_tbl_t fill_rnd_neighbour_rela_tbl(void)
+{
+  neighbour_rela_tbl_t dst = {0};
+
+  // Serving Cell PCI
+  // Mandatory
+  // 9.3.39
+  dst.serving_cell_pci.type = rand() % END_SERVING_CELL_E2SM_RC;
+  if(dst.serving_cell_pci.type == NR_SERVING_CELL_E2SM_RC){
+    dst.serving_cell_pci.nr_pci = rand() % 1008;
+  } else {
+    dst.serving_cell_pci.eutra_pci = rand() % 504;
+  }
+
+  // Serving Cell ARFCN
+  // Mandatory
+  // 9.3.40
+  dst.serving_cell_arfcn.type = dst.serving_cell_pci.type;
+  if(dst.serving_cell_arfcn.type == NR_SERVING_CELL_E2SM_RC){
+    dst.serving_cell_arfcn.nr_arfcn = rand() % 3279165;
+  } else {
+    dst.serving_cell_arfcn.eutra_arfcn = rand() % 65536;
+  }
+
+  // Neighbour Cell List
+  // Mandatory [1..maxnoofNeighbourCell]
+  dst.sz_neighbour_cell_list = (rand() % 4) + 1;
+  dst.neighbour_cell_list = calloc(dst.sz_neighbour_cell_list, sizeof(neighbour_cell_item_t));
+  assert(dst.neighbour_cell_list != NULL && "Memory exhausted");
+
+  for(size_t i = 0; i < dst.sz_neighbour_cell_list; ++i){
+    dst.neighbour_cell_list[i] = fill_rnd_neighbour_cell_item();
+  }
+
+  return dst;
+}
+
+static
 seq_cell_info_t fill_rnd_seq_cell_info(void)
 {
   seq_cell_info_t dst = {0}; 
@@ -1695,7 +1897,9 @@ seq_cell_info_t fill_rnd_seq_cell_info(void)
   // Neighbour Relation Table
   // Optional
   // 9.3.38
-  dst.neighbour_rela_tbl = NULL;
+  dst.neighbour_rela_tbl = malloc(sizeof(neighbour_rela_tbl_t));
+  assert(dst.neighbour_rela_tbl != NULL && "Memory exhausted");
+  *dst.neighbour_rela_tbl = fill_rnd_neighbour_rela_tbl();
 
   return dst;
 }
@@ -1761,7 +1965,9 @@ seq_cell_info_2_t fill_rnd_seq_cell_info_2(void)
   // Neighbour Relation Table
   // Optional
   // 9.3.38
-  dst.neighbour_rela_tbl = NULL;
+  dst.neighbour_rela_tbl = malloc(sizeof(neighbour_rela_tbl_t));
+  assert(dst.neighbour_rela_tbl != NULL && "Memory exhausted");
+  *dst.neighbour_rela_tbl = fill_rnd_neighbour_rela_tbl();
 
   return dst;
 }
@@ -3023,6 +3229,79 @@ e2sm_rc_func_def_t fill_rnd_rc_ran_func_def(void)
   dst.policy = calloc(1, sizeof(ran_func_def_policy_t)); 
   assert(dst.policy != NULL && "Memory exhausted");
   *dst.policy = fill_ran_func_def_policy();
+
+  return dst;
+}
+
+static
+ran_param_lst_struct_t fill_lst_struct_item(uint32_t id, const char* name, ran_param_def_t* nested)
+{
+  ran_param_lst_struct_t dst = {0};
+  dst.ran_param_id = id;
+  dst.ran_param_name = cp_str_to_ba(name);
+  dst.ran_param_def = nested;
+  return dst;
+}
+
+// Wrap a single item in a STRUCTURE RAN Parameter Definition.
+static
+ran_param_def_t* fill_strct_def(ran_param_lst_struct_t item)
+{
+  ran_param_def_t* dst = calloc(1, sizeof(ran_param_def_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->type = STRUCTURE_RAN_PARAMETER_DEF_TYPE;
+  dst->strct = calloc(1, sizeof(ran_param_type_t));
+  assert(dst->strct != NULL && "Memory exhausted");
+
+  dst->strct->sz_ran_param = 1;
+  dst->strct->ran_param = calloc(1, sizeof(ran_param_lst_struct_t));
+  assert(dst->strct->ran_param != NULL && "Memory exhausted");
+  dst->strct->ran_param[0] = item;
+
+  return dst;
+}
+
+e2sm_rc_func_def_t fill_rc_ran_func_def_nested_ctrl(void)
+{
+  e2sm_rc_func_def_t dst = {0};
+
+  dst.name = fill_rc_ran_func_name();
+
+  dst.ctrl = calloc(1, sizeof(ran_func_def_ctrl_t));
+  assert(dst.ctrl != NULL && "Memory exhausted");
+
+  dst.ctrl->sz_seq_ctrl_style = 1;
+  dst.ctrl->seq_ctrl_style = calloc(1, sizeof(seq_ctrl_style_t));
+  assert(dst.ctrl->seq_ctrl_style != NULL && "Memory exhausted");
+
+  seq_ctrl_style_t* style = &dst.ctrl->seq_ctrl_style[0];
+  style->style_type = 3; // Connected mode mobility control
+  style->name = cp_str_to_ba("Connected mode mobility control");
+  style->hdr = FORMAT_1_E2SM_RC_CTRL_HDR;
+  style->msg = FORMAT_1_E2SM_RC_CTRL_MSG;
+  style->out_frmt = FORMAT_1_E2SM_RC_CTRL_OUT;
+
+  style->sz_seq_ctrl_act = 1;
+  style->seq_ctrl_act = calloc(1, sizeof(seq_ctrl_act_2_t));
+  assert(style->seq_ctrl_act != NULL && "Memory exhausted");
+
+  seq_ctrl_act_2_t* act = &style->seq_ctrl_act[0];
+  act->id = 1; // Handover Control
+  act->name = cp_str_to_ba("Handover Control");
+
+  act->sz_seq_assoc_ran_param = 1;
+  act->assoc_ran_param = calloc(1, sizeof(seq_ran_param_3_t));
+  assert(act->assoc_ran_param != NULL && "Memory exhausted");
+
+  // Target Primary Cell ID > CHOICE Target Cell > NR Cell ID: the definition
+  // nests twice, which is what used to abort the encoder.
+  ran_param_def_t* inner = fill_strct_def(fill_lst_struct_item(3, "NR Cell ID", NULL));
+  ran_param_def_t* outer = fill_strct_def(fill_lst_struct_item(2, "CHOICE Target Cell", inner));
+
+  act->assoc_ran_param[0].id = 1;
+  act->assoc_ran_param[0].name = cp_str_to_ba("Target Primary Cell ID");
+  act->assoc_ran_param[0].def = outer;
 
   return dst;
 }

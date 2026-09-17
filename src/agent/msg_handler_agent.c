@@ -152,12 +152,12 @@ e2ap_msg_t e2ap_handle_subscription_request_agent(e2_agent_t* ag, const e2ap_msg
   printf("[E2 AGENT]: RIC_SUBSCRIPTION_REQUEST rx RAN_FUNC_ID %d RIC_REQ_ID %d\n", sr->ric_id.ran_func_id, sr->ric_id.ric_req_id);
 
   sm_subs_data_t data = generate_sm_subs_data(sr);
-  uint16_t const ran_func_id = sr->ric_id.ran_func_id; 
+  uint16_t const ran_func_id = sr->ric_id.ran_func_id;
   sm_agent_t* sm = sm_plugin_ag(&ag->plugin, ran_func_id);
-  
+
   //subscribe_timer_t t = sm->proc.on_subscription(sm, &data);
-  //assert(t.ms > -2 && "Bug? 0 = create pipe value"); 
-  
+  //assert(t.ms > -2 && "Bug? 0 = create pipe value");
+
   sm_ag_if_ans_subs_t const subs = sm->proc.on_subscription(sm, &data);
 
   // Register the indication event
@@ -165,26 +165,33 @@ e2ap_msg_t e2ap_handle_subscription_request_agent(e2_agent_t* ag, const e2ap_msg
   ev.action_id = sr->action[0].id;
   ev.ric_id = sr->ric_id;
   ev.sm = sm;
-  ev.type = subs.type; 
+  ev.type = subs.type;
 
   if(ev.type == PERIODIC_SUBSCRIPTION_FLRC){
-    subscribe_timer_t const t = subs.per.t; 
+    subscribe_timer_t const t = subs.per.t;
     ev.act_def = t.act_def;
     // Periodic indication message generated i.e., every 5 ms
     assert(t.ms < 10001 && "Subscription for granularity larger than 10 seconds requested? ");
-    int fd_timer = create_timer_ms_asio_agent(&ag->io, t.ms, t.ms); 
+    int fd_timer = create_timer_ms_asio_agent(&ag->io, t.ms, t.ms);
     lock_guard(&ag->mtx_ind_event);
     bi_map_insert(&ag->ind_event, &fd_timer, sizeof(fd_timer), &ev, sizeof(ev));
   } else if(ev.type == APERIODIC_SUBSCRIPTION_FLRC){
     ev.free_subs_aperiodic = subs.aper.free_aper_subs;
-    // Aperiodic indication generated i.e., the RAN will generate it via 
+    // Aperiodic indication generated i.e., the RAN will generate it via
     // void async_event_agent_api(uint32_t ric_req_id, void* ind_data);
     // however, the fd has to be unique per subscription (e.g. two xApp running in parallel
     // can subscribe to the same parameters, but when deleting one via bi_map_extract_right()
     // it would not find the correct one due to cmp_fd() if not different)
     int fd = -ev.ric_id.ric_req_id;
-    lock_guard(&ag->mtx_ind_event);
-    bi_map_insert(&ag->ind_event, &fd, sizeof(int), &ev, sizeof(ev));
+    {
+      lock_guard(&ag->mtx_ind_event);
+      bi_map_insert(&ag->ind_event, &fd, sizeof(int), &ev, sizeof(ev));
+    }
+
+    // Some report styles require sending RIC Indication out of on_subscription,
+    // but can only be sent when ric_req_id is registered.
+    if(subs.aper.imm_ind_data != NULL)
+      e2_async_event_agent(ag, ev.ric_id.ric_req_id, subs.aper.imm_ind_data);
   } else {
     assert(0!=0 && "Unknown subscritpion type");
   }
