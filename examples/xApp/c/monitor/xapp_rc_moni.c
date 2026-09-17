@@ -590,6 +590,9 @@ rc_sub_data_t *gen_rc_sub_msg(const seq_report_sty_t *report_sty)
       // Fill Action Definition
       rc_sub->ad[0].frmt_1.param_report_def[j] = fill_param_report(ran_param_id, ran_param_def);
     }
+  } else {
+    free(rc_sub);
+    return NULL;
   }
 
   return rc_sub;
