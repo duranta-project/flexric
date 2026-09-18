@@ -347,7 +347,6 @@ pipeline {
                 }
                 sh "oc project ${openshiftNamespace}"
                 sh "oc delete istag oai-flexric:${flexric_tag} || true"
-                sh "./ci-scripts/recreate_entitlement.py -n ${openshiftNamespace}"
                 sh "oc delete -f openshift/build-config.yaml || true"
                 sh "sed -i -e 's@oai-flexric:latest@oai-flexric:${flexric_tag}@g' openshift/build-config.yaml"
                 sh "oc create -f openshift/build-config.yaml"

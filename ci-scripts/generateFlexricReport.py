@@ -588,7 +588,7 @@ def parse_args():
     # BuildKit logs only a basename, and the OpenShift log names no Dockerfile at all.
     parser.add_argument('--ubuntu-dockerfile', default='docker/Dockerfile.flexric.ubuntu',
                         help='Dockerfile used for the Ubuntu image')
-    parser.add_argument('--el-dockerfile', default='docker/Dockerfile.flexric.rhel',
+    parser.add_argument('--el-dockerfile', default='docker/Dockerfile.flexric.centos',
                         help='Dockerfile used for the Enterprise Linux image')
     parser.add_argument('--template', default=TEMPLATE_PATH,
                         help='Page skeleton to fill (default: report-template.html '
