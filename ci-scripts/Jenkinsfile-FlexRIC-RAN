@@ -22,6 +22,15 @@ def ran_commitID = ""
 // Private Local Registry URL
 def ran_flexric_registry = params.ran_flexric_registry
 
+// Source information forwarded by the upstream job, shown in the HTML report
+def git_url        = params.git_url ?: ""
+def is_pull_request= (params.is_pull_request ?: "false").toString().toBoolean()
+def pr_url         = params.pr_url ?: ""
+def pr_title       = params.pr_title ?: ""
+def git_src_commit = params.git_src_commit ?: ""
+def git_dst_branch = params.git_dst_branch ?: ""
+def git_dst_commit = params.git_dst_commit ?: ""
+
 def docker_timeout = (params.docker_timeout ?: 20) as Integer // in seconds
 def cn5g_docker_timeout = (params.cn5g_docker_timeout ?: 10) as Integer // in seconds
 
@@ -247,11 +256,18 @@ pipeline {
     cleanup {
       script {
         // Zipping all archived log files
-        sh "zip -r -qq docker_logs.zip archives"
-        if (fileExists('docker_logs.zip')) {
-          archiveArtifacts artifacts: 'docker_logs.zip'
+        sh "zip -r -qq flexric_ran_logs.zip archives"
+        if (fileExists('flexric_ran_logs.zip')) {
+          archiveArtifacts artifacts: 'flexric_ran_logs.zip'
         }
-        sh "./ci-scripts/generateFlexricRanReport.py --job-name ${JOB_NAME} --build-id ${BUILD_ID} --build-url ${BUILD_URL}"
+        sh """./ci-scripts/generateFlexricRanReport.py --job-name ${JOB_NAME} --build-id ${BUILD_ID} --build-url ${BUILD_URL} \
+              --git-url '${git_url}' ${is_pull_request ? '--pull-request' : ''} \
+              --pr-url '${pr_url}' --pr-title '${pr_title}' \
+              --git-src-branch '${flexric_branch}' --git-src-commit '${git_src_commit}' \
+              --git-dst-branch '${git_dst_branch}' --git-dst-commit '${git_dst_commit}' \
+              --flexric-tag '${flexric_tag}' \
+              --ran-repository '${ran_repository}' --ran-branch '${ran_branch}' --ran-commit '${ran_commitID}' \
+              --ran-image-tag '${ran_image_tag}' --nrue-image-tag '${nrUE_image_tag}'"""
         if (fileExists('test_results_oai_flexric_ran.html')) {
           archiveArtifacts artifacts: 'test_results_oai_flexric_ran.html'
         }
