@@ -298,18 +298,41 @@ e2ap_msg_t e2ap_handle_error_indication_agent(e2_agent_t* ag, const e2ap_msg_t* 
   return ans; 
 }
 
+static inline
+bool eq_pending_event(const void* m0_v, const void* m1_v)
+{
+  assert(m0_v != NULL);
+  assert(m1_v != NULL);
+
+  pending_event_t const* m0 = (pending_event_t const*)m0_v;
+  pending_event_t const* m1 = (pending_event_t const*)m1_v;
+
+  return *m0 == *m1;
+}
+
 static
-void stop_pending_event(e2_agent_t* ag, pending_event_t event)
+bool stop_pending_event(e2_agent_t* ag, pending_event_t event)
 {
   assert(ag != NULL);
 
+  /* bi_map_extract_right() asserts that the key is in the tree, so probe first.
+   * A timer that is already stopped is a recoverable condition, not a bug. Same
+   * shape as stop_ind_event() above. */
+  void* start_r = assoc_rb_tree_front(&ag->pending.right);
+  void* end_r = assoc_rb_tree_end(&ag->pending.right);
+  void* it_r = find_if_rb_tree(&ag->pending.right, start_r, end_r, &event, eq_pending_event);
+  if(it_r == end_r)
+    return false;
+
   void (*free_pending_event)(void*)=NULL;
   int* fd = bi_map_extract_right(&ag->pending, &event, sizeof(event), free_pending_event);
+  assert(fd != NULL);
   assert(*fd > 0);
   //printf("[E2-AGENT]: stopping pending\n");
   //event = %d \n", *fd);
   rm_fd_asio_agent(&ag->io, *fd);
   free(fd);
+  return true;
 }
 
 
@@ -320,16 +343,26 @@ e2ap_msg_t e2ap_handle_setup_response_agent(e2_agent_t* ag, const e2ap_msg_t* ms
   assert(msg->type == E2_SETUP_RESPONSE);
   printf("[E2-AGENT]: E2 SETUP RESPONSE rx\n");
 
+  e2ap_msg_t ans = {.type = NONE_E2_MSG_TYPE};
+
   // Stop the timer
   pending_event_t ev = SETUP_REQUEST_PENDING_EVENT;
-  stop_pending_event(ag,ev);
+  if(stop_pending_event(ag, ev) == false){
+    printf("[E2-AGENT]: E2 SETUP RESPONSE rx with no E2 SETUP REQUEST outstanding. Ignoring it\n");
+    return ans;
+  }
 
 #if defined(E2AP_V2) || defined(E2AP_V3)
-  assert(ag->trans_id_setup_req > 0 && "Receiving an E2 SETUP-RESPONSE, eventhough not E2 SETUP-REQUEST not sent from this E2 Node" );
+  if(ag->trans_id_setup_req == 0){
+    printf("[E2-AGENT]: E2 SETUP RESPONSE rx, eventhough no E2 SETUP-REQUEST was sent from this E2 Node. Ignoring it\n");
+    return ans;
+  }
+  /* The two transaction ids are reported but not compared: a RIC is not
+   * guaranteed to echo the one it was sent, and rejecting the mismatch would
+   * drop the only response such a RIC ever sends. */
   printf("[E2-AGENT]: Transaction ID E2 SETUP-REQUEST %u E2 SETUP-RESPONSE %u \n", --ag->trans_id_setup_req, msg->u_msgs.e2_stp_resp.trans_id);
   ag->trans_id_setup_req = 0;
 #endif
-  e2ap_msg_t ans = {.type = NONE_E2_MSG_TYPE};
   return ans; 
 }
 
