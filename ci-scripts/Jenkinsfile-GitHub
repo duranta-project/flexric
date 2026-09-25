@@ -1,0 +1,756 @@
+#!/bin/groovy
+/*
+ * SPDX-License-Identifier: MIT
+ */
+
+import groovy.transform.Field
+
+//-------------------------------------------------------------------------------
+
+// Location of the executor node; main purpose is Ubuntu build
+@Field def UbuntuBuildNode
+// Lockable resource for the Ubuntu build
+@Field def UbuntuBuildResource
+// Lockable resource for the ARM build
+@Field def armBuildResource
+
+// Location of the EL build executor
+@Field def ElBuildNode
+@Field def ElBuildResource
+@Field def OcCredentials
+// OpenShift server URL
+@Field def openshiftServer
+// OpenShift project name
+@Field def openshiftNamespace
+
+// GitHub organisation/user owning the base repository
+@Field def gitAccount
+@Field def gitRepo
+// Token to clone, fetch PR refs and post commit statuses
+@Field def githubCredentialsId
+
+// Tags/Branches to use
+@Field def flexric_tag
+@Field def flexric_branch
+
+// PR target branch, and the commit of it the PR was merged into
+@Field def targetBranch
+@Field def targetCommit
+@Field def shortenShaOne
+
+// Docker Hub account to push to
+@Field def dockerHubAccount
+@Field def DockerHubCredentials
+
+// Private local docker registry URL
+@Field def privateDockerRegistry
+@Field def privateRegistryCredentials
+
+// Docker build options
+@Field def dockerBuildOptions      = '--no-cache '
+
+@Field def isPullRequest           = false
+
+@Field def preBuildFailureMessage  = ''
+
+// Markdown bullet list, reported back on the PR
+@Field def failingStages           = ''
+
+// PR validation remark, appended to the PR comment; empty until a stage sets it
+@Field def mrValidationWarning     = ''
+
+// Stage name -> downstream build URL, for per-stage checks
+@Field def downstreamUrls          = [:]
+
+// Build and test stages run unless the PR carries the documentation label
+@Field def doBuildTest             = true
+
+// Report copied back from the downstream FlexRIC-RAN-Tests job
+@Field def flexricRanReport               = 'test_results_oai_flexric_ran.html'
+
+//-------------------------------------------------------------------------------
+// Pipeline start
+pipeline {
+  agent {
+    label "${params.UbuntuBuildNode}"
+  }
+  options {
+    disableConcurrentBuilds()
+    timestamps()
+    ansiColor('xterm')
+  }
+
+  stages {
+    // Load + validate job params; fail on missing node or EL build without OpenShift creds.
+    stage('Initialize Pipeline Configuration') {
+      steps {
+        script {
+          // The workspace is only wiped in prepareWorkspace(), so a build failing before then
+          // would otherwise report the previous build's logs as its own.
+          sh 'rm -rf archives flexric_logs.zip test_results*.html'
+
+          // Detect PR early so pre-build stage failures still post a PR comment.
+          isPullRequest = !!env.GITHUB_PR_NUMBER?.trim()
+
+          // Loaded first: the failure path below needs them to report back to GitHub.
+          gitAccount            = params.gitAccount
+          gitRepo               = params.gitRepo
+          githubCredentialsId   = params.githubCredentialsId
+
+          UbuntuBuildNode       = params.UbuntuBuildNode
+          UbuntuBuildResource   = params.UbuntuBuildResource
+          armBuildResource      = params.armBuildResource
+          ElBuildNode           = params.ElBuildNode
+          ElBuildResource       = params.ElBuildResource
+          OcCredentials         = params.OcCredentials
+          openshiftServer       = params.openshiftServer
+          openshiftNamespace    = params.openshiftNamespace
+
+          dockerHubAccount      = params.dockerHubAccount
+          DockerHubCredentials  = params.DockerHubCredentials
+          privateDockerRegistry = params.privateDockerRegistry
+          privateRegistryCredentials = params.privateRegistryCredentials
+
+          if (!UbuntuBuildNode || !UbuntuBuildResource) {
+            error "No Ubuntu build node/resource specified (UbuntuBuildNode, UbuntuBuildResource)."
+          }
+          if (!armBuildResource) {
+            error "No ARM build resource specified (armBuildResource)."
+          }
+          if (!gitAccount || !gitRepo || !githubCredentialsId) {
+            error "No GitHub repository or credentials specified (gitAccount, gitRepo, githubCredentialsId)."
+          }
+          if (!privateDockerRegistry) {
+            error "No private Docker registry specified (privateDockerRegistry)."
+          }
+          if (privateRegistryCredentials == null) {
+            error "No credentials for the private Docker registry (privateRegistryCredentials)."
+          }
+          if (!isPullRequest && (DockerHubCredentials == null || !dockerHubAccount)) {
+            error "No account/credentials to push to DockerHub (dockerHubAccount, DockerHubCredentials)."
+          }
+          if (OcCredentials == null) {
+            echo 'No Credentials to connect to Openshift!'
+            error "Stopping pipeline!"
+          }
+          if (!openshiftServer || !openshiftNamespace) {
+            error "No OpenShift server/namespace specified (openshiftServer, openshiftNamespace)."
+          }
+          if (!ElBuildNode || !ElBuildResource) {
+            error "No EL build node/resource specified (ElBuildNode, ElBuildResource)."
+          }
+          echo "Pipeline configuration loaded for FlexRIC"
+          env.JOB_TIMESTAMP = sh(returnStdout: true, script: 'date --utc --rfc-3339=seconds | sed -e "s#+00:00##"').trim()
+          echo "Job timestamp: ${env.JOB_TIMESTAMP}"
+        }
+      }
+      post {
+        failure {
+          script {
+            preBuildFailureMessage = "Invalid or missing parameters, or internal CI error"
+            echo preBuildFailureMessage
+            recordFailure(null, false)
+          }
+        }
+      }
+    }
+
+    // A PR must carry at least one label.
+    // The documentation label skips the build
+    // and test stages, whatever else is set alongside it.
+    stage('Verify Labels') {
+      when { expression { isPullRequest } }
+      steps {
+        script {
+          echo '\u2705 \u001B[32mVerify Labels\u001B[0m'
+          def labels = (env.GITHUB_PR_LABELS ?: '').split(',')
+                         .collect { it.trim().toLowerCase() }
+                         .findAll { it }
+          if (!labels) {
+            preBuildFailureMessage = "Not performing CI due to the absence of a mandatory label."
+            error('Not performing CI due to lack of mandatory labels')
+          }
+          if (labels.contains('documentation')) {
+            doBuildTest = false
+          }
+          echo "Labels              :   ${labels.join(', ')}"
+          echo "Build/test stages   :   ${doBuildTest ? 'enabled' : 'skipped (documentation label)'}"
+        }
+      }
+    }
+
+    // Derive PR-vs-push, branch, SHA, and image tag for later stages, then check out source.
+    stage('Prepare Source Metadata') {
+      steps {
+        lock(UbuntuBuildResource) {
+          script {
+            def gitLocalBranch = env.GIT_BRANCH ? env.GIT_BRANCH.replace('origin/', '') : ''
+            echo "Preparing build metadata for FlexRIC"
+
+            if (isPullRequest) {
+              def prHeadSha = env.GITHUB_PR_HEAD_SHA
+              if (!prHeadSha) {
+                error "GITHUB_PR_HEAD_SHA is missing -- cannot identify the commit to build for PR #${env.GITHUB_PR_NUMBER}"
+              }
+              if (!env.GITHUB_PR_TARGET_BRANCH) {
+                error "GITHUB_PR_TARGET_BRANCH is missing -- cannot identify the branch to merge PR #${env.GITHUB_PR_NUMBER} into"
+              }
+              flexric_branch = env.GITHUB_PR_SOURCE_BRANCH
+              targetBranch   = env.GITHUB_PR_TARGET_BRANCH
+              shortenShaOne  = prHeadSha.take(8)
+
+              echo "PR number           :   ${env.GITHUB_PR_NUMBER}"
+              echo "Source Repository   :   ${env.GITHUB_PR_URL}"
+              echo "Source Branch       :   ${flexric_branch}"
+              echo "Commit ID           :   ${prHeadSha}"
+              echo "Target Repo         :   ${gitAccount}/${gitRepo}"
+              echo "Target Branch       :   ${targetBranch}"
+              echo "Label               :   ${env.GITHUB_PR_LABELS}"
+
+            } else {
+              if (!env.GIT_COMMIT) {
+                error "GIT_COMMIT is missing -- cannot identify the commit to build for branch '${gitLocalBranch}'"
+              }
+              flexric_branch = gitLocalBranch
+              shortenShaOne  = env.GIT_COMMIT.take(8)
+
+              echo "Branch              :   ${gitLocalBranch}"
+              echo "Commit ID           :   ${env.GIT_COMMIT}"
+            }
+
+            // Docker tags allow only [A-Za-z0-9._-];
+            flexric_tag = "${flexric_branch.replaceAll('[^A-Za-z0-9._-]', '-')}-${shortenShaOne}"
+            echo "Tag                 :   ${flexric_tag}"
+
+            prepareWorkspace()
+          }
+        }
+      }
+      post {
+        failure {
+          script {
+            if (!preBuildFailureMessage) {
+              preBuildFailureMessage = "Git operation failure or internal CI error"
+            }
+            echo preBuildFailureMessage
+            recordFailure(null, false)
+          }
+        }
+      }
+    }
+    // Signed-off-by/merged commit checks, PR-only
+    stage('Verify Guidelines') {
+      when {
+        expression { return isPullRequest }
+      }
+      steps {
+        lock(UbuntuBuildResource) {
+          script {
+            sh "git fetch --no-tags ${env.GIT_URL} +refs/heads/${targetBranch}:refs/remotes/origin/${targetBranch}"
+
+            def mrValidationLog = "signedCommit_${env.BUILD_NUMBER}.log"
+            def mrValidationExitCode = sh(
+              script: "bash ./ci-scripts/pre-ci-check.sh -s ${env.GITHUB_PR_HEAD_SHA} -t origin/${targetBranch} > ${mrValidationLog} 2>&1",
+              returnStatus: true
+            )
+            def mrValidationMessage = readFile(mrValidationLog).trim()
+
+            if (mrValidationExitCode >= 1) {
+              mrValidationWarning = mrValidationMessage
+            }
+            if (mrValidationExitCode >= 2) {
+              error("${mrValidationMessage}")
+            }
+          }
+        }
+      }
+      post {
+        failure {
+          script {
+            if (mrValidationWarning) {
+              echo "Guideline verification failed for FlexRIC: ${mrValidationWarning}"
+            } else {
+              preBuildFailureMessage = "Git operation failure or internal CI error"
+              echo preBuildFailureMessage
+            }
+            recordFailure()
+          }
+        }
+      }
+    }
+    stage('Build Images') {
+      when { expression {doBuildTest} }
+      parallel {
+        stage('Ubuntu Image Builder') {
+          steps {
+            lock(resource: UbuntuBuildResource, extra: [[resource: armBuildResource]]) {
+              script {
+                sh "docker image prune --force"
+                dockerBuildOptions = isPullRequest ? '' : '--no-cache '
+                withCredentials([
+                  [$class: 'UsernamePasswordMultiBinding', credentialsId: "${privateRegistryCredentials}", usernameVariable: 'PR_Username', passwordVariable: 'PR_Password']
+                ]) {
+                  sh "echo \$PR_Password | docker login --username \$PR_Username --password-stdin ${privateDockerRegistry}"
+                }
+                sh """docker buildx build ${dockerBuildOptions} \
+                      --target oai-flexric \
+                      --tag ${privateDockerRegistry}/oai-flexric:${flexric_tag} \
+                      --platform linux/amd64,linux/arm64 \
+                      --file docker/Dockerfile.flexric.ubuntu \
+                      --builder multiarch-localremote-builder \
+                      --progress=plain --push . \
+                      > archives/flexric_ubuntu_image_build.log 2>&1"""
+                def ref = "${privateDockerRegistry}/oai-flexric:${flexric_tag}"
+                for (arch in ['amd64', 'arm64']) {
+                  try {
+                    if (sh(script: "docker pull --quiet --platform linux/${arch} ${ref}", returnStatus: true) != 0) {
+                      echo "Could not pull linux/${arch} to measure its size"
+                    } else {
+                      def bytes = sh(script: "docker image inspect ${ref} --format '{{.Size}}'", returnStdout: true).trim() as Long
+                      sh "echo 'IMAGE SIZE linux/${arch}: ${bytes.intdiv(1024 * 1024)}MB' >> archives/flexric_ubuntu_image_build.log"
+                    }
+                  } catch (e) {
+                    echo "Could not measure the linux/${arch} image size: ${e.message}"
+                  }
+                }
+              }
+            }
+          }
+          post {
+            cleanup {
+              sh "docker rmi oai-flexric:${flexric_tag} ${privateDockerRegistry}/oai-flexric:${flexric_tag} ${privateDockerRegistry}/oai-flexric:develop > /dev/null 2>&1 || true"
+              sh "docker logout ${privateDockerRegistry}"
+            }
+            success {
+              sh "echo 'OAI-FLEXRIC UBUNTU IMAGE BUILD: OK' >> archives/flexric_ubuntu_image_build.log"
+              script {
+                notifyStageStatus('SUCCESS', 'Passed')
+              }
+            }
+            failure {
+              script {
+                sh "echo 'OAI-FLEXRIC UBUNTU IMAGE BUILD: KO' >> archives/flexric_ubuntu_image_build.log"
+                recordFailure("${env.BUILD_URL}artifact/test_results_oai_flexric.html")
+              }
+            }
+          }
+        }
+        stage('EL-Cluster-Image-Builder') {
+          agent { label "${params.ElBuildNode}" }
+          steps {
+            lock(ElBuildResource) {
+              script {
+                prepareWorkspace()
+                withCredentials([
+                  [$class: 'UsernamePasswordMultiBinding', credentialsId: "${OcCredentials}", usernameVariable: 'OC_Username', passwordVariable: 'OC_Password']
+                ]) {
+                  sh "oc login -u ${OC_Username} -p ${OC_Password} --server=${openshiftServer} --insecure-skip-tls-verify"
+                }
+                sh "oc project ${openshiftNamespace}"
+                sh "oc delete istag oai-flexric:${flexric_tag} || true"
+                sh "oc delete -f openshift/build-config.yaml || true"
+                sh "sed -i -e 's@oai-flexric:latest@oai-flexric:${flexric_tag}@g' openshift/build-config.yaml"
+                sh "oc create -f openshift/build-config.yaml"
+                sh 'oc start-build flexric-build-cfg  --from-dir=./ --exclude=""'
+                sh "./ci-scripts/check_build_pod_status.py --pod-name flexric-build-cfg-1-build --log-file archives/flexric_el_image_build.log"
+                sh "oc describe istag oai-flexric:${flexric_tag} -n ${openshiftNamespace} | grep 'Image Size:' >> archives/flexric_el_image_build.log"
+              }
+            }
+          }
+          post {
+            success {
+              sh "echo 'OAI-FLEXRIC EL IMAGE BUILD: OK' >> archives/flexric_el_image_build.log"
+              script {
+                notifyStageStatus('SUCCESS', 'Passed')
+              }
+            }
+            failure {
+              script {
+                sh "echo 'OAI-FLEXRIC EL IMAGE BUILD: KO' >> archives/flexric_el_image_build.log"
+                recordFailure("${env.BUILD_URL}artifact/test_results_oai_flexric.html")
+              }
+            }
+            cleanup {
+              script {
+                sh "oc delete build flexric-build-cfg-1 -n ${openshiftNamespace} || true"
+                sh "oc logout || true"
+                stash allowEmpty: true, includes: 'archives/flexric_el_image_build.log', name: 'elBuildLog'
+              }
+            }
+          }
+        }
+      }
+      post {
+        always {
+          script {
+            // The EL log lives on the EL agent; bring it back for archiving/reporting.
+            // Missing if that agent never reached its cleanup -- must not mask the real failure.
+            try {
+              unstash 'elBuildLog'
+            } catch (e) {
+              echo "No EL build log to unstash: ${e.message}"
+            }
+          }
+        }
+      }
+    }
+    stage ('FlexRIC-Unit-Tests') {
+      when { expression {doBuildTest} }
+      steps {
+        lock(UbuntuBuildResource) {
+          script {
+              // Each configuration must run even when an earlier one fails: the report
+              // has a chapter per configuration, and a log that was never written renders
+              // as "not run", which a reader cannot tell apart from "skipped".
+              def failedCTests = []
+              if (sh(returnStatus: true, script: "docker buildx build --target oai-flexric-builder --tag oai-flexric-ctest:${flexric_tag} --file ci-scripts/Dockerfile.ctest --build-arg 'SANITIZER=NONE' --build-arg 'E2AP_VERSION=E2AP_V1' --build-arg 'KPM_VERSION=KPM_V2_01' . > archives/flexric_ctests_none_e2ap_v1_kpm_v2_01.log 2>&1") != 0) {
+                failedCTests.add('NONE/E2AP_V1/KPM_V2_01')
+              }
+              if (sh(returnStatus: true, script: "docker buildx build --target oai-flexric-builder --tag oai-flexric-ctest:${flexric_tag} --file ci-scripts/Dockerfile.ctest --build-arg 'SANITIZER=ADDRESS' --build-arg 'E2AP_VERSION=E2AP_V2' --build-arg 'KPM_VERSION=KPM_V2_03' . > archives/flexric_ctests_address_e2ap_v2_kpm_v2_03.log 2>&1") != 0) {
+                failedCTests.add('ADDRESS/E2AP_V2/KPM_V2_03')
+              }
+              if (sh(returnStatus: true, script: "docker buildx build --target oai-flexric-builder --tag oai-flexric-ctest:${flexric_tag} --file ci-scripts/Dockerfile.ctest --build-arg 'SANITIZER=THREAD' --build-arg 'E2AP_VERSION=E2AP_V3' --build-arg 'KPM_VERSION=KPM_V3_00' . > archives/flexric_ctests_thread_e2ap_v3_kpm_v3_00.log 2>&1") != 0) {
+                failedCTests.add('THREAD/E2AP_V3/KPM_V3_00')
+              }
+              if (failedCTests) {
+                error "CTests failed for: ${failedCTests.join(', ')}"
+              }
+          }
+        }
+      }
+      post {
+        success {
+          script {
+            notifyStageStatus('SUCCESS', 'Passed')
+          }
+        }
+        failure {
+          script {
+            recordFailure("${env.BUILD_URL}artifact/test_results_oai_flexric.html")
+          }
+        }
+        cleanup {
+          script {
+            sh "docker rmi oai-flexric-ctest:${flexric_tag} > /dev/null 2>&1 || true"
+          }
+        }
+      }
+    }
+    stage ('FlexRIC-RAN-Integration-Tests') {
+      when { expression {doBuildTest} }
+      steps {
+        script {
+            def localStatus = build job: 'FlexRIC-RAN-Tests',
+              parameters: [
+                string(name: 'flexric_tag', value: String.valueOf(flexric_tag)),
+                string(name: 'flexric_branch', value: String.valueOf(flexric_branch)),
+                // Source information, so the downstream report can show what was tested
+                string(name: 'git_url', value: String.valueOf(env.GIT_URL ?: '')),
+                string(name: 'is_pull_request', value: String.valueOf(isPullRequest)),
+                string(name: 'pr_url', value: String.valueOf(isPullRequest ? (env.GITHUB_PR_URL ?: '') : '')),
+                string(name: 'pr_title', value: String.valueOf(isPullRequest ? (env.GITHUB_PR_TITLE ?: '') : '')),
+                // For PRs, the two commits merged to build the images, so the downstream can redo that merge
+                string(name: 'git_src_commit', value: String.valueOf((isPullRequest ? env.GITHUB_PR_HEAD_SHA : env.GIT_COMMIT) ?: '')),
+                string(name: 'git_dst_branch', value: String.valueOf(targetBranch ?: '')),
+                string(name: 'git_dst_commit', value: String.valueOf(isPullRequest ? (targetCommit ?: '') : ''))
+              ], propagate: false
+
+            // Point this stage's GitHub check at the downstream build rather than at this one.
+            downstreamUrls[env.STAGE_NAME] = localStatus.getAbsoluteUrl()
+
+            // The downstream report is missing if that job failed before generating it
+            copyArtifacts(projectName: 'FlexRIC-RAN-Tests',
+                          filter: flexricRanReport,
+                          selector: specific(String.valueOf(localStatus.number)),
+                          optional: true)
+
+            if (localStatus.resultIsBetterOrEqualTo('SUCCESS')) {
+              echo "FlexRIC-RAN-Tests is OK"
+            } else {
+              error "FlexRIC-RAN-Tests is KO (${localStatus.getResult()})"
+            }
+        }
+      }
+      post {
+        success {
+          script {
+            notifyStageStatus('SUCCESS', 'Passed')
+          }
+        }
+        failure {
+          script {
+            recordFailure(fileExists(flexricRanReport) ? "${env.BUILD_URL}artifact/${flexricRanReport}" : null)
+          }
+        }
+      }
+    }
+    // Publish only on dev-branch pushes
+    // PR builds and other pushes stay in the private registry.
+    stage('Publish Images to Docker Hub') {
+      when {
+        expression { return !isPullRequest && flexric_branch == 'dev' }
+      }
+      parallel {
+        stage('Publish Ubuntu Image to Docker Hub') {
+          steps {
+            lock(UbuntuBuildResource) {
+              script {
+                  withCredentials([
+                    [$class: 'UsernamePasswordMultiBinding', credentialsId: "${DockerHubCredentials}", usernameVariable: 'DH_Username', passwordVariable: 'DH_Password']
+                  ]) {
+                    sh 'echo $DH_Password | docker login --username $DH_Username --password-stdin'
+                  }
+                  withCredentials([
+                    [$class: 'UsernamePasswordMultiBinding', credentialsId: "${privateRegistryCredentials}", usernameVariable: 'PR_Username', passwordVariable: 'PR_Password']
+                  ]) {
+                    sh "echo \$PR_Password | docker login --username \$PR_Username --password-stdin ${privateDockerRegistry}"
+                  }
+                  sh "docker buildx imagetools create -t ${dockerHubAccount}/oai-flexric:develop ${privateDockerRegistry}/oai-flexric:${flexric_tag}"
+                  sh "docker buildx imagetools create -t ${privateDockerRegistry}/oai-flexric:develop ${privateDockerRegistry}/oai-flexric:${flexric_tag}"
+                  sh "docker logout ${privateDockerRegistry}"
+                  sh "docker logout"
+              }
+            }
+          }
+          post {
+            failure {
+              script {
+                recordFailure()
+              }
+            }
+          }
+        }
+        // The EL image stays in the OpenShift ImageStream; copy it from there to Docker Hub
+        stage('Publish EL Image to Docker Hub') {
+          agent { label "${params.ElBuildNode}" }
+          steps {
+            lock(ElBuildResource) {
+              script {
+                withCredentials([
+                  [$class: 'UsernamePasswordMultiBinding', credentialsId: "${OcCredentials}", usernameVariable: 'OC_Username', passwordVariable: 'OC_Password'],
+                  [$class: 'UsernamePasswordMultiBinding', credentialsId: "${DockerHubCredentials}", usernameVariable: 'DH_Username', passwordVariable: 'DH_Password']
+                ]) {
+                  sh "oc login -u \$OC_Username -p \$OC_Password --server=${openshiftServer} --insecure-skip-tls-verify"
+                  // Public address of the ImageStream, e.g. <registry-route>/<namespace>/oai-flexric
+                  def elRepo = sh(returnStdout: true,
+                                  script: "oc get is oai-flexric -n ${openshiftNamespace} -o jsonpath='{.status.publicDockerImageRepository}'").trim()
+                  if (!elRepo) {
+                    error "The OpenShift registry has no public route, so the EL image cannot be copied to Docker Hub."
+                  }
+                  // Per-build auth file, so no registry credentials stay on the node
+                  withEnv(["REGISTRY_AUTH_FILE=${env.WORKSPACE}/skopeo-auth.json", "EL_REGISTRY=${elRepo.tokenize('/')[0]}"]) {
+                    sh '''
+                      oc whoami -t | skopeo login --tls-verify=false -u "$(oc whoami)" --password-stdin "$EL_REGISTRY"
+                      echo "$DH_Password" | skopeo login -u "$DH_Username" --password-stdin docker.io
+                    '''
+                    sh "skopeo copy --src-tls-verify=false docker://${elRepo}:${flexric_tag} " +
+                       "docker://docker.io/${dockerHubAccount}/oai-flexric:develop-centos"
+                  }
+                }
+              }
+            }
+          }
+          post {
+            failure {
+              script {
+                recordFailure()
+              }
+            }
+            cleanup {
+              sh "rm -f ${env.WORKSPACE}/skopeo-auth.json"
+              sh "oc logout || true"
+            }
+          }
+        }
+      }
+    }
+  }
+  post {
+    always {
+      echo "Build finished for FlexRIC: ${currentBuild.currentResult}"
+    }
+    success {
+      script {
+        if (isPullRequest) {
+          def message = "**CI Build:** [#${env.BUILD_NUMBER}](${env.BUILD_URL}) | **Passed**"
+          if (mrValidationWarning) {
+            message += "\n\n**Validation:** ${mrValidationWarning}"
+          }
+          githubPRComment comment: githubPRMessage(message)
+        }
+        notifyGitHub('SUCCESS', 'Build success', env.JOB_BASE_NAME)
+        echo "Pipeline is SUCCESSFUL"
+      }
+    }
+    failure {
+      script {
+        if (isPullRequest) {
+          def message = "**CI Build:** [#${env.BUILD_NUMBER}](${env.BUILD_URL}) | **Failed**"
+          if (failingStages) {
+            message += " on the following stages:${failingStages}"
+          } else if (!preBuildFailureMessage) {
+            message += "\nThe pipeline may have failed due to CI, validation, or scripting error. See the build for more details."
+          }
+          if (preBuildFailureMessage) {
+            message += "\n\n${preBuildFailureMessage}"
+          }
+          if (mrValidationWarning) {
+            message += "\n\n**Validation:** ${mrValidationWarning}"
+          }
+          githubPRComment comment: githubPRMessage(message)
+        }
+        notifyGitHub('FAILURE', 'Build failed', env.JOB_BASE_NAME)
+        echo "Pipeline FAILED"
+      }
+    }
+    aborted {
+      script {
+        // Neither success nor failure runs here, and without this the check stays pending forever.
+        if (isPullRequest) {
+          githubPRComment comment: githubPRMessage("**CI Build:** [#${env.BUILD_NUMBER}](${env.BUILD_URL}) | **Aborted**")
+        }
+        notifyGitHub('ERROR', 'Build aborted', env.JOB_BASE_NAME)
+        echo "Pipeline ABORTED"
+      }
+    }
+    cleanup {
+      script {
+        if (!fileExists('archives')) {
+          echo "No CI report: the build stopped before the workspace was prepared"
+          return
+        }
+        // Report generation must never be what fails the build, hence the try/catch.
+        try {
+          // Zip all archived log files
+          sh "zip -r -qq flexric_logs.zip archives || true"
+          if (fileExists('flexric_logs.zip')) {
+            archiveArtifacts artifacts: 'flexric_logs.zip'
+          }
+
+          // Generate the HTML report linked from the PR comment and the per-stage checks
+          def reportArgs = "--job-name ${env.JOB_NAME} --build-id ${env.BUILD_ID}" +
+                           " --build-url ${env.BUILD_URL} --git-url ${env.GIT_URL}"
+          if (isPullRequest) {
+            reportArgs += " --git-src-branch ${flexric_branch} --git-src-commit ${env.GITHUB_PR_HEAD_SHA}"
+            reportArgs += " --pull-request --pr-number ${env.GITHUB_PR_NUMBER}"
+            reportArgs += " --pr-url ${env.GITHUB_PR_URL}"
+            reportArgs += " --git-dst-branch ${targetBranch} --git-dst-commit ${env.GIT_COMMIT}"
+          } else {
+            reportArgs += " --git-src-branch ${flexric_branch} --git-src-commit ${env.GIT_COMMIT}"
+          }
+          withEnv(["FLEXRIC_PR_TITLE=${isPullRequest ? (env.GITHUB_PR_TITLE ?: '') : ''}"]) {
+            def reportStatus = sh(
+              returnStatus: true,
+              script: "./ci-scripts/generateFlexricReport.py ${reportArgs} " +
+                      '--pr-title "$FLEXRIC_PR_TITLE"'
+            )
+            echo(reportStatus == 0 ? "CI report: all container images built"
+               : reportStatus == 1 ? "CI report: one or more container images were not created"
+               : "CI report could not be generated (exit ${reportStatus}) -- see the traceback above")
+          }
+
+          // Both our own report and the one copied back from the downstream RAN job
+          def listOfFiles = sh(returnStdout: true, script: 'ls test_results*.html 2>/dev/null || true').trim()
+          if (listOfFiles) {
+            for (htmlFile in listOfFiles.split("\\n")) {
+              archiveArtifacts artifacts: htmlFile
+            }
+          }
+        } catch (InterruptedException interrupt) {
+          throw interrupt
+        } catch (e) {
+          echo "Could not generate or archive the CI report: ${e.message}"
+        }
+      }
+    }
+  }
+}
+
+// Records a failing stage so the PR comment can list it, and marks the build failed.
+def recordFailure(String reportLink = null, boolean emitCheck = true) {
+  currentBuild.result = 'FAILURE'
+  failingStages += reportLink ? "\n * [${env.STAGE_NAME}](${reportLink})" : "\n * ${env.STAGE_NAME}"
+  if (emitCheck) {
+    notifyStageStatus('FAILURE', 'Failed')
+  }
+}
+
+// Post a GitHub commit status; PR builds target the PR head, push builds the triggering commit.
+def notifyGitHub(String status, String description, String context, String targetUrl = null) {
+  if (!gitAccount || !gitRepo || !githubCredentialsId) {
+    echo "Skipping GitHub notification '${context}' (${status}): GitHub account/credentials not configured"
+    return
+  }
+  // A failed notification must not fail a stage that otherwise passed.
+  try {
+    githubNotify account: gitAccount,
+                 repo: gitRepo,
+                 credentialsId: githubCredentialsId,
+                 sha: isPullRequest ? env.GITHUB_PR_HEAD_SHA : env.GIT_COMMIT,
+                 status: status,
+                 description: description,
+                 targetUrl: targetUrl ?: env.BUILD_URL,
+                 context: context
+  } catch (e) {
+    echo "GitHub notification '${context}' (${status}) failed: ${e.message}"
+  }
+}
+
+// Per-stage check (context = stage name); test stages link to their downstream build, else this one.
+def notifyStageStatus(String status, String description) {
+  notifyGitHub(status, description, env.STAGE_NAME, downstreamUrls[env.STAGE_NAME])
+}
+
+// refs/pull/<N>/merge is computed asynchronously and can be stale, so merge locally.
+def prepareWorkspace() {
+  deleteDir() // Wipe the workspace before checking out
+  if (isPullRequest) {
+    echo "PR triggered - merging PR #${env.GITHUB_PR_NUMBER} into ${targetBranch}"
+    try {
+      checkout([
+        $class: 'GitSCM',
+        branches: [[name: "refs/remotes/origin/${targetBranch}"]],
+        userRemoteConfigs: [[
+          url: env.GIT_URL,
+          refspec: "+refs/heads/${targetBranch}:refs/remotes/origin/${targetBranch} " +
+                   "+refs/pull/${env.GITHUB_PR_NUMBER}/head:refs/remotes/origin/pr/${env.GITHUB_PR_NUMBER}/head",
+          credentialsId: githubCredentialsId
+        ]]
+      ])
+    } catch (InterruptedException interrupt) {
+      throw interrupt // Build aborted or timed out -- not a checkout problem.
+    } catch (e) {
+      error("Checkout of ${targetBranch} failed for PR #${env.GITHUB_PR_NUMBER}. (${e.message})")
+    }
+    echo "PR head commit: ${env.GITHUB_PR_HEAD_SHA}"
+    targetCommit = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
+    echo "Target commit : ${targetCommit}"
+    sh 'git config user.email "oaicicdteam@openairinterface.org"'
+    sh 'git config user.name "Duranta Jenkins"'
+    if (sh(script: "git merge --no-ff --no-edit ${env.GITHUB_PR_HEAD_SHA}", returnStatus: true) != 0) {
+      sh 'git merge --abort || true'
+      preBuildFailureMessage = "**Build failed:** PR #${env.GITHUB_PR_NUMBER} could not be merged into" +
+                               " `${targetBranch}`. Either it conflicts, or it was force-pushed after this" +
+                               " build started -- in which case a newer build should already be running."
+      error("PR #${env.GITHUB_PR_NUMBER} could not be merged into ${targetBranch} (conflict, or force-pushed since the webhook fired).")
+    }
+    sh 'echo "Merge commit  : $(git rev-parse HEAD)"'
+  } else {
+    echo "Push triggered - checking out ${env.GIT_COMMIT} on branch ${flexric_branch}"
+    try {
+      checkout([
+        $class: 'GitSCM',
+        branches: [[name: env.GIT_COMMIT]],
+        userRemoteConfigs: [[
+          url: env.GIT_URL,
+          credentialsId: githubCredentialsId
+        ]]
+      ])
+    } catch (InterruptedException interrupt) {
+      throw interrupt
+    } catch (e) {
+      error("Checkout failed for commit ${env.GIT_COMMIT} on branch ${flexric_branch} from ${env.GIT_URL}. (${e.message})")
+    }
+  }
+  sh "mkdir -p archives"
+}

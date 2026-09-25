@@ -232,6 +232,7 @@ bool supports_on_demand_report(const ran_func_def_report_t* report)
   return false;
 }
 
+#if defined(E2AP_V2) || defined(E2AP_V3)
 /* NR CGI ::= SEQUENCE { pLMN-Identity, nRCellIdentity }, TS 38.473 9.3.1.7:
  * a 3-octet PLMN Identity followed by the 36-bit NR Cell Identity BIT
  * STRING, left-aligned in 5 octets (4 unused low bits in the last octet). */
@@ -314,6 +315,7 @@ f1_du_t decode_f1_setup_req(byte_array_t f1_setup_req)
 
   return du;
 }
+#endif
 
 static
 param_report_def_t fill_param_report(uint32_t const ran_param_id, ran_param_def_t const* ran_param_def)
@@ -429,6 +431,7 @@ int main(int argc, char* argv[])
   f1_du_t* dus = NULL;
   size_t dus_len = 0;
   defer({ free_f1_dus(dus, dus_len); });
+#if defined(E2AP_V2) || defined(E2AP_V3)
   for (int i = 0; i < nodes.len; i++) {
     const e2_node_connected_xapp_t* n = &nodes.n[i];
     for (int j = 0; j < n->len_cca; j++)
@@ -438,6 +441,7 @@ int main(int argc, char* argv[])
         dus[dus_len++] = decode_f1_setup_req(n->cca[j].e2_node_comp_conf.request);
       }
   }
+#endif
 
   sem_init(&rc_ind_sem, 0, 0);
   defer({ sem_destroy(&rc_ind_sem); });
@@ -483,6 +487,10 @@ int main(int argc, char* argv[])
       }
     } else {
       printf("Preparing for N2 handover\n");
+      if (ue_cell.sz_neighbour_cells == 0) {
+        printf("No neighbour cell available for triggering handover on this E2 node\n");
+        continue;
+      }
       // taking the first neighbour NR CGI
       target_nr_cgi = encode_nr_cgi_plmn_cell(&ue_cell.neighbour_cells[0]);
     }
