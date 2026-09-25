@@ -90,7 +90,15 @@ pipeline {
         deleteDir() // Wipes the workspace clean
         checkout scm // Checks out the repository
         script {
-          sh "git checkout -f ${flexric_branch}"
+          if (is_pull_request) {
+            // Redo the upstream merge so the test files match the images under test. A fork's
+            // branch is not in this repo, but GitHub exposes every PR head as refs/pull/<N>/head.
+            sh "git fetch --no-tags origin ${git_dst_commit} refs/pull/${pr_url.tokenize('/').last()}/head"
+            sh "git checkout -f ${git_dst_commit}"
+            sh "git -c user.name='Duranta Jenkins' -c user.email=oaicicdteam@openairinterface.org merge --no-ff --no-edit ${git_src_commit}"
+          } else {
+            sh "git checkout -f ${flexric_branch}"
+          }
           def flexric_commit = sh(script: "git log -1 --pretty=format:'%H'", returnStdout: true).trim()
           echo "Current FlexRIC commit: ${flexric_commit}"
           sh "mkdir -p archives/ archives/oai5g-flexric archives/oai-cn5g"
