@@ -33,8 +33,9 @@ import groovy.transform.Field
 @Field def flexric_tag
 @Field def flexric_branch
 
-// PR target branch
+// PR target branch, and the commit of it the PR was merged into
 @Field def targetBranch
+@Field def targetCommit
 @Field def shortenShaOne
 
 // Docker Hub account to push to
@@ -448,9 +449,10 @@ pipeline {
                 string(name: 'is_pull_request', value: String.valueOf(isPullRequest)),
                 string(name: 'pr_url', value: String.valueOf(isPullRequest ? (env.GITHUB_PR_URL ?: '') : '')),
                 string(name: 'pr_title', value: String.valueOf(isPullRequest ? (env.GITHUB_PR_TITLE ?: '') : '')),
-                string(name: 'git_src_commit', value: String.valueOf(env.GIT_COMMIT ?: '')),
+                // For PRs, the two commits merged to build the images, so the downstream can redo that merge
+                string(name: 'git_src_commit', value: String.valueOf((isPullRequest ? env.GITHUB_PR_HEAD_SHA : env.GIT_COMMIT) ?: '')),
                 string(name: 'git_dst_branch', value: String.valueOf(targetBranch ?: '')),
-                string(name: 'git_dst_commit', value: String.valueOf(isPullRequest ? (env.GITHUB_PR_TARGET_BRANCH_HEAD_SHA ?: '') : ''))
+                string(name: 'git_dst_commit', value: String.valueOf(isPullRequest ? (targetCommit ?: '') : ''))
               ], propagate: false
 
             // Point this stage's GitHub check at the downstream build rather than at this one.
@@ -675,7 +677,8 @@ def prepareWorkspace() {
       error("Checkout of ${targetBranch} failed for PR #${env.GITHUB_PR_NUMBER}. (${e.message})")
     }
     echo "PR head commit: ${env.GITHUB_PR_HEAD_SHA}"
-    sh 'echo "Target commit : $(git rev-parse HEAD)"'
+    targetCommit = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
+    echo "Target commit : ${targetCommit}"
     sh 'git config user.email "oaicicdteam@openairinterface.org"'
     sh 'git config user.name "Duranta Jenkins"'
     if (sh(script: "git merge --no-ff --no-edit ${env.GITHUB_PR_HEAD_SHA}", returnStatus: true) != 0) {
