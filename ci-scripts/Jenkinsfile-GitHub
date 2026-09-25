@@ -486,34 +486,80 @@ pipeline {
     }
     // Publish only on dev-branch pushes
     // PR builds and other pushes stay in the private registry.
-    stage('Publish Image to Docker Hub') {
+    stage('Publish Images to Docker Hub') {
       when {
         expression { return !isPullRequest && flexric_branch == 'dev' }
       }
-      steps {
-        lock(UbuntuBuildResource) {
-          script {
-              withCredentials([
-                [$class: 'UsernamePasswordMultiBinding', credentialsId: "${DockerHubCredentials}", usernameVariable: 'DH_Username', passwordVariable: 'DH_Password']
-              ]) {
-                sh 'echo $DH_Password | docker login --username $DH_Username --password-stdin'
+      parallel {
+        stage('Publish Ubuntu Image to Docker Hub') {
+          steps {
+            lock(UbuntuBuildResource) {
+              script {
+                  withCredentials([
+                    [$class: 'UsernamePasswordMultiBinding', credentialsId: "${DockerHubCredentials}", usernameVariable: 'DH_Username', passwordVariable: 'DH_Password']
+                  ]) {
+                    sh 'echo $DH_Password | docker login --username $DH_Username --password-stdin'
+                  }
+                  withCredentials([
+                    [$class: 'UsernamePasswordMultiBinding', credentialsId: "${privateRegistryCredentials}", usernameVariable: 'PR_Username', passwordVariable: 'PR_Password']
+                  ]) {
+                    sh "echo \$PR_Password | docker login --username \$PR_Username --password-stdin ${privateDockerRegistry}"
+                  }
+                  sh "docker buildx imagetools create -t ${dockerHubAccount}/oai-flexric:develop ${privateDockerRegistry}/oai-flexric:${flexric_tag}"
+                  sh "docker buildx imagetools create -t ${privateDockerRegistry}/oai-flexric:develop ${privateDockerRegistry}/oai-flexric:${flexric_tag}"
+                  sh "docker logout ${privateDockerRegistry}"
+                  sh "docker logout"
               }
-              withCredentials([
-                [$class: 'UsernamePasswordMultiBinding', credentialsId: "${privateRegistryCredentials}", usernameVariable: 'PR_Username', passwordVariable: 'PR_Password']
-              ]) {
-                sh "echo \$PR_Password | docker login --username \$PR_Username --password-stdin ${privateDockerRegistry}"
+            }
+          }
+          post {
+            failure {
+              script {
+                recordFailure()
               }
-              sh "docker buildx imagetools create -t ${dockerHubAccount}/oai-flexric:develop ${privateDockerRegistry}/oai-flexric:${flexric_tag}"
-              sh "docker buildx imagetools create -t ${privateDockerRegistry}/oai-flexric:develop ${privateDockerRegistry}/oai-flexric:${flexric_tag}"
-              sh "docker logout ${privateDockerRegistry}"
-              sh "docker logout"
+            }
           }
         }
-      }
-      post {
-        failure {
-          script {
-            recordFailure()
+        // The EL image stays in the OpenShift ImageStream; copy it from there to Docker Hub
+        stage('Publish EL Image to Docker Hub') {
+          agent { label "${params.ElBuildNode}" }
+          steps {
+            lock(ElBuildResource) {
+              script {
+                withCredentials([
+                  [$class: 'UsernamePasswordMultiBinding', credentialsId: "${OcCredentials}", usernameVariable: 'OC_Username', passwordVariable: 'OC_Password'],
+                  [$class: 'UsernamePasswordMultiBinding', credentialsId: "${DockerHubCredentials}", usernameVariable: 'DH_Username', passwordVariable: 'DH_Password']
+                ]) {
+                  sh "oc login -u \$OC_Username -p \$OC_Password --server=${openshiftServer} --insecure-skip-tls-verify"
+                  // Public address of the ImageStream, e.g. <registry-route>/<namespace>/oai-flexric
+                  def elRepo = sh(returnStdout: true,
+                                  script: "oc get is oai-flexric -n ${openshiftNamespace} -o jsonpath='{.status.publicDockerImageRepository}'").trim()
+                  if (!elRepo) {
+                    error "The OpenShift registry has no public route, so the EL image cannot be copied to Docker Hub."
+                  }
+                  // Per-build auth file, so no registry credentials stay on the node
+                  withEnv(["REGISTRY_AUTH_FILE=${env.WORKSPACE}/skopeo-auth.json", "EL_REGISTRY=${elRepo.tokenize('/')[0]}"]) {
+                    sh '''
+                      oc whoami -t | skopeo login --tls-verify=false -u "$(oc whoami)" --password-stdin "$EL_REGISTRY"
+                      echo "$DH_Password" | skopeo login -u "$DH_Username" --password-stdin docker.io
+                    '''
+                    sh "skopeo copy --src-tls-verify=false docker://${elRepo}:${flexric_tag} " +
+                       "docker://docker.io/${dockerHubAccount}/oai-flexric:develop-centos"
+                  }
+                }
+              }
+            }
+          }
+          post {
+            failure {
+              script {
+                recordFailure()
+              }
+            }
+            cleanup {
+              sh "rm -f ${env.WORKSPACE}/skopeo-auth.json"
+              sh "oc logout || true"
+            }
           }
         }
       }
