@@ -95,7 +95,15 @@ sudo make install
 ```bash
 sudo apt-get install python3.10-dev
 ```
-
+#### 1.2.3 ASN.1 compiler (asn1c)
+E2AP, E2SM common IE, KPM and RC ASN.1 definitions are already precompiled in the
+repository. The [mouse07410/asn1c](https://github.com/mouse07410/asn1c) compiler
+(installed under `/opt/asn1c`) is only needed when working with RRC and F1AP ASN.1
+sources. From the FlexRIC repository root, run:
+```bash
+cd scripts
+bash install_asn1c.sh
+```
 ## 2. FlexRIC installation
 
 ### 2.1 Clone the FlexRIC repository
