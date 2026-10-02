@@ -4,6 +4,7 @@
 import logging
 import re
 import os
+import html as html_mod
 import argparse
 
 # Configure logging
@@ -107,6 +108,60 @@ def process_container_log(container: str, container_logs_dir: str, exit_code: st
     return status_class, status_text, info_html
 
 
+# --- Git Information Table ---
+
+MISSING = '-'
+
+
+def esc(value) -> str:
+    """HTML-escape a value coming from the job parameters."""
+    return html_mod.escape(str(value)) if value not in (None, "") else ""
+
+
+def git_row(glyph, label, value):
+    """One row of the git information table, in the ci-scripts/common layout."""
+    shown = value if value not in (None, '') else MISSING
+    return (f'    <tr>\n'
+            f'      <td bgcolor="lightcyan"> <span class="glyphicon glyphicon-{glyph}">'
+            f'</span> {esc(label)}</td>\n'
+            f'      <td>{shown}</td>\n'
+            f'    </tr>')
+
+
+def render_git_info(args):
+    url = esc(args.git_url)
+    rows = [git_row('wrench', 'Build Trigger',
+                    'Pull Request' if args.pull_request else 'Push Event'),
+            git_row('cloud-upload', 'GIT Repository', f'<a href="{url}">{url}</a>' if url else '')]
+
+    if args.pull_request:
+        pr_url = esc(args.pr_url)
+        rows.append(git_row('log-out', 'Pull Request URL',
+                            f'<a href="{pr_url}">{pr_url}</a>' if pr_url else ''))
+        rows.append(git_row('header', 'Pull Request Title', esc(args.pr_title)))
+        rows.append(git_row('log-out', 'Source Branch', esc(args.git_src_branch)))
+        rows.append(git_row('tag', 'Source Commit ID', esc(args.git_src_commit)))
+        rows.append(git_row('log-in', 'Target Branch', esc(args.git_dst_branch)))
+        rows.append(git_row('tag', 'Target Commit ID', esc(args.git_dst_commit)))
+    else:
+        rows.append(git_row('tree-deciduous', 'Branch', esc(args.git_src_branch)))
+        rows.append(git_row('tag', 'Commit ID', esc(args.git_src_commit)))
+
+    rows.append(git_row('tag', 'FlexRIC Image Tag', esc(args.flexric_tag)))
+    ran_url = esc(args.ran_repository)
+    rows.append(git_row('cloud-upload', 'RAN Repository',
+                        f'<a href="{ran_url}">{ran_url}</a>' if ran_url else ''))
+    rows.append(git_row('tree-deciduous', 'RAN Branch', esc(args.ran_branch)))
+    rows.append(git_row('tag', 'RAN Commit ID', esc(args.ran_commit)))
+    rows.append(git_row('tag', 'gNB Image Tag', esc(args.ran_image_tag)))
+    rows.append(git_row('tag', 'nrUE Image Tag', esc(args.nrue_image_tag)))
+
+    body = '\n'.join(rows)
+    return (f'  <table class="table-bordered git-info" width="80%" align="center" border="1">\n'
+            f'{body}\n'
+            f'  </table>\n  <br>')
+
+
 # --- Main Function ---
 
 def generate_report_with_info(
@@ -116,7 +171,8 @@ def generate_report_with_info(
     container_logs_dir: str,
     job_name: str,
     build_id: str,
-    build_url: str
+    build_url: str,
+    git_info: str = ""
 ):
     """Generates the full HTML report for iperf and container logs."""
     html, row_start, row_end, template_row = read_template(template_file)
@@ -189,6 +245,7 @@ def generate_report_with_info(
     html = html.replace("JOB_NAME", job_name)
     html = html.replace("BUILD_ID", build_id)
     html = html.replace("BUILD_URL", build_url)
+    html = html.replace("GIT_INFO", git_info)
     logging.info(f"Writing final HTML report: {output_file}")
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(html)
@@ -203,6 +260,22 @@ if __name__ == "__main__":
     parser.add_argument("--job-name", required=True)
     parser.add_argument("--build-id", required=True)
     parser.add_argument("--build-url", required=True)
+    # Git information shown at the top of the report. All optional: a value that
+    # is not supplied is rendered as "(not provided)" rather than omitted.
+    parser.add_argument("--git-url", default="")
+    parser.add_argument("--pull-request", action="store_true")
+    parser.add_argument("--pr-url", default="")
+    parser.add_argument("--pr-title", default="")
+    parser.add_argument("--git-src-branch", default="")
+    parser.add_argument("--git-src-commit", default="")
+    parser.add_argument("--git-dst-branch", default="")
+    parser.add_argument("--git-dst-commit", default="")
+    parser.add_argument("--flexric-tag", default="")
+    parser.add_argument("--ran-repository", default="")
+    parser.add_argument("--ran-branch", default="")
+    parser.add_argument("--ran-commit", default="")
+    parser.add_argument("--ran-image-tag", default="")
+    parser.add_argument("--nrue-image-tag", default="")
 
     args = parser.parse_args()
     generate_report_with_info(
@@ -212,5 +285,6 @@ if __name__ == "__main__":
         container_logs_dir="./archives/oai5g-flexric",
         job_name=args.job_name,
         build_id=args.build_id,
-        build_url=args.build_url
+        build_url=args.build_url,
+        git_info=render_git_info(args)
     )

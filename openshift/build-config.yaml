@@ -9,13 +9,9 @@ spec:
     runPolicy: "Serial"
     source:
         type: "Binary"
-        secrets:
-          - secret:
-              name: etc-pki-entitlement
-            destinationDir: etc-pki-entitlement
     strategy:
         dockerStrategy:
-            dockerfilePath: "docker/Dockerfile.flexric.rhel"
+            dockerfilePath: "docker/Dockerfile.flexric.centos"
     output:
         to:
             kind: "ImageStreamTag"

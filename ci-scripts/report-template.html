@@ -1,0 +1,88 @@
+<!-- SPDX-License-Identifier: MIT -->
+<!DOCTYPE html>
+<html class="no-js" lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <title>OAI FlexRIC Test Results for $job_name job build #$build_id</title>
+  <style>
+    .badge-primary {
+   color: #ebeef0;
+   background-color: #000080;
+}
+    .badge-danger {
+   color: #ebeef0;
+   background-color: #FF0000;
+}
+    code {
+   color: #337ab7;
+   background-color: transparent;
+   padding: 0;
+}
+    body {
+   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                'Helvetica Neue', Arial, sans-serif;
+   font-size: 15px;
+   color: #24292f;
+   -webkit-font-smoothing: antialiased;
+   -moz-osx-font-smoothing: grayscale;
+}
+    h1, h2, h3, h4, .well, b, strong {
+   font-weight: 600;
+   letter-spacing: -0.01em;
+}
+    h2 {
+   margin-top: 32px;
+   padding-bottom: 6px;
+   border-bottom: 1px solid #e6e8eb;
+}
+    code, pre, kbd, samp {
+   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+                'Liberation Mono', monospace;
+   font-size: 13.5px;
+}
+    table th {
+   font-weight: 600;
+}
+    .list-group-item-success {
+   background-color: #e7f6ec;
+   border-color: #cbe8d5;
+   color: #1a7f3c;
+}
+    .list-group-item-danger {
+   background-color: #fdeaea;
+   border-color: #f5c6c6;
+   color: #a4262c;
+}
+    .list-group-item .glyphicon {
+   margin-right: 8px;
+}
+  </style>
+</head>
+<body>
+  <div class="container-fluid" style="margin-left:1em; margin-right:1em">
+  <table width="100%" style="border-collapse: collapse; border: none;">
+   <tr style="border-collapse: collapse; border: none;">
+   <td style="border-collapse: collapse; border: none; vertical-align: middle; padding: 4px 24px 4px 0;">
+     <a href="http://www.openairinterface.org/">
+        <img src="https://raw.githubusercontent.com/duranta-project/governance/main/logos/Duranta-Logo-Color.png" alt="Duranta" style="height: 50px; width: auto; border: 0; display: block;">
+     </a>
+   </td>
+   <td style="border-collapse: collapse; border: none; vertical-align: middle;">
+     <b><font size="6">Job Summary -- Job: $job_name -- Build-ID: $build_link</font></b>
+   </td>
+   </tr>
+  </table>
+  <br>
+$git_info
+$build_summary
+$compilation_warnings
+$ctests
+  <div class="well well-lg">End of Test Report -- Copyright <span class="glyphicon glyphicon-copyright-mark"></span> $year <a href="http://www.openairinterface.org/">OpenAirInterface</a>. All Rights Reserved.</div>
+</div></body>
+</html>

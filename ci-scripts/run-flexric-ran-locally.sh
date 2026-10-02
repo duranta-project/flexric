@@ -54,7 +54,7 @@ while getopts ":f:r:h" opt; do
   esac
 done
 
-RAN_REPOSITORY="https://gitlab.eurecom.fr/oai/openairinterface5g.git"
+RAN_REPOSITORY="https://github.com/duranta-project/openairinterface5g.git"
 
 WORKDIR="$PWD"
 ARCHIVES="$WORKDIR/archives"
@@ -98,7 +98,6 @@ echo "RAN Commit: $RAN_COMMIT"
 # -----------------------------
 echo "[STEP] Preparing FlexRIC source..."
 git checkout "$FLEXRIC_BRANCH"
-git submodule update --init --recursive
 
 CORE_SERVICES=(
   mysql oai-nrf oai-udr oai-udm oai-ausf
