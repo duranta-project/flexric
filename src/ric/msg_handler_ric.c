@@ -212,7 +212,7 @@ void publish_ind_msg(near_ric_t* ric,  uint16_t ran_func_id, sm_ag_if_rd_ind_t* 
   assert(d.type == MAC_STATS_V0 || d.type == RLC_STATS_V0 
         || d.type == PDCP_STATS_V0 || d.type == SLICE_STATS_V0 
         || d.type == KPM_STATS_V3_0 || d.type == RAN_CTRL_STATS_V1_03 
-        || d.type == GTP_STATS_V0 || d.type == TC_STATS_V0 );
+        || d.type == GTP_STATS_V0 || d.type == TC_STATS_V0 || d.type == CCC_STATS_V6 );
 
   publish_ind_msg(ric, ran_func_id, &d);
 
@@ -314,9 +314,14 @@ void publish_ind_msg(near_ric_t* ric,  uint16_t ran_func_id, sm_ag_if_rd_ind_t* 
 #endif
 
   if (NODE_IS_MONOLITHIC(req->id.type))
-    printf("[E2AP]: E2 SETUP-REQUEST rx from PLMN %3d.%*d Node ID %d RAN type %s\n", plmn->mcc, plmn->mnc_digit_len, plmn->mnc, req->id.nb_id.nb_id, ran_type);
+  // The '0' flag in %03d and %0*d enables zero-padding.
+  // This ensures leading zeros are printed for the MCC and MNC.
+  // For example, MCC = 010 is printed as "010" instead of "10".
+  // If the '0' is removed (e.g., %3d or %*d), the values are space-padded
+  // and leading zeros are not displayed. 
+    printf("[E2AP]: E2 SETUP-REQUEST rx from PLMN %03d%0*d Node ID %d RAN type %s\n", plmn->mcc, plmn->mnc_digit_len, plmn->mnc, req->id.nb_id.nb_id, ran_type);
   else
-    printf("[E2AP]: E2 SETUP-REQUEST rx from PLMN %3d.%*d Node ID %d RAN type %s ID %ld\n", plmn->mcc, plmn->mnc_digit_len, plmn->mnc, req->id.nb_id.nb_id, ran_type, *req->id.cu_du_id);
+    printf("[E2AP]: E2 SETUP-REQUEST rx from PLMN %03d%0*d Node ID %d RAN type %s ID %ld\n", plmn->mcc, plmn->mnc_digit_len, plmn->mnc, req->id.nb_id.nb_id, ran_type, *req->id.cu_du_id);
 
   // Add the E2 Node into the iApp
 #ifdef E2AP_V1
