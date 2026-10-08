@@ -27,8 +27,12 @@ bool valid_pending_event(pending_event_t ev)
   assert(ev == SETUP_REQUEST_PENDING_EVENT
           || ev == SUBSCRIPTION_REQUEST_PENDING_EVENT
           || ev == SUBSCRIPTION_DELETE_REQUEST_PENDING_EVENT
+          || ev == CONTROL_REQUEST_PENDING_EVENT
           || ev == E42_SETUP_REQUEST_PENDING_EVENT
+          || ev == E42_RIC_SUBSCRIPTION_REQUEST_PENDING_EVENT
+          || ev == RIC_SUBSCRIPTION_DELETE_REQUEST_PENDING_EVENT
+          || ev == E42_RIC_SUBSCRIPTION_DELETE_REQUEST_PENDING_EVENT
+          || ev == E42_RIC_CONTROL_REQUEST_PENDING_EVENT
           );
   return true;
 }
-

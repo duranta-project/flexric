@@ -5,23 +5,25 @@
 #
 #---------------------------------------------------------------------
 #
-# Dockerfile for the Open-Air-Interface FlexRIC service
-#   Valid for UBI 9.x | RHEL 9.x
+# Dockerfile for the Duranta FlexRIC service
+#   Valid for CentOS Stream 10
+#
+# Three stages:
+#   oai-flexric-base    -- toolchain + asn1c
+#   oai-flexric-builder -- compiles FlexRIC from the build context
+#   oai-flexric         -- slim runtime
 #
 #---------------------------------------------------------------------
 # BUILDER IMAGE
 #---------------------------------------------------------------------
-FROM registry.access.redhat.com/ubi9/ubi:latest AS oai-flexric-base
+FROM quay.io/centos/centos:stream10 AS oai-flexric-base
 ENV TZ=Europe/Paris
 
-# Copy the entitlements
-COPY ./etc-pki-entitlement /etc/pki/entitlement
-
-#install developers pkg/repo
-RUN rm -f /etc/rhsm-host && \
-    subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms && \
+# install developers pkg/repo
+RUN dnf install -y 'dnf-command(config-manager)' && \
+    dnf config-manager --set-enabled crb && \
     dnf update -y && \
-    # here just to display the current version
+    # display the current version
     cat /etc/os-release && \
     dnf install -y \
        lksctp-tools-devel \
@@ -29,6 +31,7 @@ RUN rm -f /etc/rhsm-host && \
        bash \
        wget \
        tar \
+       diffutils \
        m4 \
        automake \
        libtool \
@@ -42,36 +45,41 @@ RUN rm -f /etc/rhsm-host && \
        pcre2-devel \
        python3-devel \
        python3-pip \
-       gcc-toolset-12-gcc \
-       gcc-toolset-12-gcc-c++ \
+       gcc \
+       gcc-c++ \
        ninja-build && \
+    dnf clean all && \
     echo "/usr/local/lib" > /etc/ld.so.conf.d/local-lib.conf && \
     echo "/usr/local/lib64" >> /etc/ld.so.conf.d/local-lib.conf && \
-    # Remove entitlements and Subscription Manager configs
-    rm -rf /etc/pki/entitlement
+    ldconfig && \
+    gcc --version
 
+# swig >= 4.1 is required by src/xApp/swig (EL10 packages 4.3, but build from
+# source to stay in sync with the Ubuntu image). Needs pcre2-devel.
 RUN git clone https://github.com/swig/swig.git && \
     cd swig && \
     git checkout release-4.1 && \
-    scl enable gcc-toolset-12 "\
     ./autogen.sh && \
     ./configure --prefix=/usr/ && \
     make -j8 && \
-    make install" && \
+    make install && \
     ldconfig
 
+# asn1c is not packaged on EL: build the mouse07410 fork from source;
+# pinned to a commit.
 RUN rm -rf /tmp/asn1c && \
     git clone https://github.com/mouse07410/asn1c /tmp/asn1c && \
     cd /tmp/asn1c && \
     git checkout 940dd5fa9f3917913fd487b13dfddfacd0ded06e && \
-    # Showing which version is used
+    # version used
     git log -n1 && \
     autoreconf -iv && \
     ./configure --prefix /opt/asn1c/ && \
     make -j`nproc` && \
     make install
 
-FROM oai-flexric-base as oai-flexric-builder
+FROM oai-flexric-base AS oai-flexric-builder
+# E2AP/KPM wire versions are compile-time; override with --build-arg to retarget
 ARG E2AP_VERSION=E2AP_V3
 ARG KPM_VERSION=KPM_V3_00
 
@@ -81,12 +89,11 @@ COPY . .
 
 RUN mkdir build && \
     cd build && \
-    scl enable gcc-toolset-12 "\
     cmake -GNinja -DCMAKE_BUILD_TYPE=Release \
           -DE2AP_VERSION=$E2AP_VERSION \
           -DKPM_VERSION=$KPM_VERSION .. && \
     ninja && \
-    ninja install" && \
+    ninja install && \
     echo "--- Check shared objects dependencies for executable nearRT-RIC ---" && \
     ldd /flexric/build/examples/ric/nearRT-RIC && \
     echo "--- Check shared objects dependencies for xApp shared library ---" && \
@@ -96,18 +103,11 @@ RUN mkdir build && \
 # TARGET IMAGE
 #---------------------------------------------------------------------
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS oai-flexric
+FROM quay.io/centos/centos:stream10-minimal AS oai-flexric
 ENV TZ=Europe/Paris
 
-# Copy the entitlements
-COPY ./etc-pki-entitlement /etc/pki/entitlement
-
-# Copy the subscription manager configurations
-COPY --from=oai-flexric-base /etc/rhsm /etc/rhsm
-
-#install pkg/repo needed to run
-RUN  rm -f /etc/rhsm-host && \
-    microdnf update -y && \
+# install pkg/repo needed to run
+RUN microdnf update -y && \
     microdnf install -y \
        tzdata \
        psmisc \
@@ -120,6 +120,7 @@ RUN  rm -f /etc/rhsm-host && \
     echo "/usr/local/lib" > /etc/ld.so.conf.d/local-lib.conf && \
     echo "/usr/local/lib64" >> /etc/ld.so.conf.d/local-lib.conf
 
+## Copy service model plugins, loaded at runtime by the nearRT-RIC
 WORKDIR /usr/local/lib64/flexric/
 
 COPY --from=oai-flexric-builder \
