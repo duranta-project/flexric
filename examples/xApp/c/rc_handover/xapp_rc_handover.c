@@ -448,8 +448,8 @@ int main(int argc, char* argv[])
   sem_init(&rc_ind_sem, 0, 0);
   defer({ sem_destroy(&rc_ind_sem); });
 
-  /* The handover is driven at the CU-CP, which owns the UE context and the F1
-   * connections to the candidate DUs, so only gNB-CU nodes are addressed. */
+  /* The handover is driven at the RRC layer, which owns the UE context.
+   * Depending on the RAN topology, either F1 or N2 handover is triggered. */
   for (int i = 0; i < nodes.len; i++) {
     e2_node_connected_xapp_t* n = &nodes.n[i];
     if (n->id.type != ngran_gNB_CU && n->id.type != ngran_gNB_CUCP && n->id.type != ngran_gNB)
