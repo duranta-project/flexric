@@ -2,6 +2,64 @@
 
 # RELEASE NOTES:
 
+## [v3.0.0](https://github.com/duranta-project/flexric/releases/tag/v3.0.0) -> October 2026.
+
+Release v3.0.0 for FlexRIC. Changes since release v2.0.0:
+
+### Major:
+
+- New Service Model: E2SM-CCC v6.00
+- E2SM-RC extensions:
+   * REPORT Style 1 ("RRC Message" and "UE ID") and support for multiple REPORT styles
+   * REPORT Style 5 ("On Demand Report") with aperiodic RIC Indication sent on demand
+   * Neighbour Relation Table IE
+   * RAN Parameter Definition encoding/decoding, including nested (recursive) definitions
+   * Channel quality parameters retrieved when available
+- E2SM-KPM extensions:
+   * REPORT Style 1 ("E2 Node Measurement") - Cell-level measurements, distribution bins (distBinX/Y/Z)
+   * Hash table of measurements defined by 3GPP TS 28.552
+   * CU-UP support (and fixes for CU-CP/CU-UP in E2AP v1/v3)
+- New xApps:
+   * RF channel reconfiguration xApp (`xapp_rf_reconfiguration`)
+   * Handover xApp driving RC Control Style 3 (`xapp_rc_handover`)
+   * RC monitor xApp (`xapp_rc_moni`)
+   * Zero-touch Energy Saving xApp based on cell utilization (`xapp_es_with_cell_util`)
+- Monitoring: SQLite backend for KPM (all measurements, distributions) and RC data, plus Grafana dashboards for bare-metal and Docker
+- F1AP ASN.1 definitions added
+- RRC ASN.1 definitions added
+- Symbols of E2AP v1/v2/v3 are suffixed and hidden (`-fvisibility=hidden`) to avoid clashes when linking with OAI RAN
+- Graceful exit (SIGTERM) for the nearRT-RIC and E2 agents
+- Licensing and documentation
+   * Re-license the project from OAI Public License v1.1 to CSSL v1.0
+   * Re-license documentation under CC-BY-4.0 and orchestration/CI assets under MIT
+   * Add NOTICE, LICENSES/, SECURITY.md, AGENTS.md
+   * Update main README.md: installation guide, `ns-O-RAN-flexric` (`ns3-oran`) integration by Orange Innovation Egypt and Orange Polska, O-RAN SC nearRT-RIC notes, Keysight PlugFest Fall 2023 notes
+- Repository moved to GitHub under Duranta Project
+
+### Minor:
+
+- E2 agent emulators support KPM and RC (including aperiodic subscriptions and multiple RC REPORT styles)
+- Removal of aperiodic subscriptions, including multiple aperiodic delete subscriptions
+- Handling of the RIC CONTROL FAILURE message
+- Build: minimum CMake version 3.16, gcc version check, security build options (incl. `FORTIFY_SOURCE`), and `XAPP_MULTILANGUAGE` off by default
+- Docker: Ubuntu and CentOS Stream 10 (replaces RHEL 9 and Rocky 9) images, E2 agent emulators and xApps containers, plus a Docker test environment
+- Runtime options: nearRT-RIC IP address, DB directory and name, and `XAPP_DURATION` (infinite by default)
+- Clang/gcc warnings cleaned up (integer widths, aliasing, missing returns, static functions)
+
+### Bug fixes:
+
+- nearRT-RIC no longer aborts when an xApp connects before any E2 node is registered
+- E2AP: warn instead of aborting on unexpected initiating criticality
+- E2AP v3 fix when using CU and DU
+- Fix `fd > 0` failure at `consume_fd` in the RIC (externally reported)
+- E2SM-RC: correct RAN Function Name, fix encoding/comparison/copy/free of nested RAN Parameter Definitions, and drop invalid size asserts
+- E2SM-KPM: fix RAN Function Name memory leak, PDSCH MCS measurement, PHR expected value, and measurement units of RRU.PrbTotDl/Ul and DRB.PdcpSduVolumeDL/UL (aligned with TS 28.552)
+- Database: support channel quality measurements obtained via E2SM-RC, and E2SM-KPM measurements
+- Larger RIC SUBSCRIPTION REQUEST buffer and correct `call_process_id` allocation
+- Bimap fix, wrong AMF region ID assert removed, and memory leak fixed in `xapp_rc_moni`
+- Fixes in the TC xApp message type check, slice monitor script and JSON indication output
+- All declared pending event types are accepted in the library
+
 ## [v2.0.0](https://github.com/duranta-project/flexric/releases/tag/v2.0.0) -> December 2023.
 
 Release v2.0.0 for FlexRIC. Some changes from release 1.0.0
