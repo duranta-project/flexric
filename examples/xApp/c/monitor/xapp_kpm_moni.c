@@ -153,13 +153,22 @@ void log_real_value(const char *name_str, const label_info_lst_t label_info, con
   printf("%s = %.2f %s\n", name_str, meas_record.real_val, name_unit);
 }
 
+static
+void log_no_value(const char *name_str, const label_info_lst_t label_info, const meas_record_lst_t meas_record)
+{
+  // The E2 node reports the measurement as not available (noValue), e.g. OCUDU for DRB.RlcDelayUl
+  (void)label_info;
+  (void)meas_record;
+  printf("%s = no value\n", name_str);
+}
+
 typedef void (*log_meas_value)(const char *name_str, const label_info_lst_t label_info, const meas_record_lst_t meas_record);
 
 static
 log_meas_value get_meas_value[END_MEAS_VALUE] = {
     log_int_value,
     log_real_value,
-    NULL,
+    log_no_value,
 };
 
 static
@@ -568,6 +577,13 @@ int main(int argc, char* argv[])
     assert(hndl[i] != NULL);
     for (size_t j = 0; j < sz_report_styles; j++) {
       ric_report_style_item_t *report_item = &n->rf[idx].defn.kpm.ric_report_style_list[j];
+      // Skip REPORT styles advertised by the E2 node but not implemented in this xApp
+      // (e.g. OCUDU advertises styles 1-5): calling a NULL entry of get_kpm_act_def crashes the xApp.
+      const ric_service_report_e style = report_item->report_style_type;
+      if ((unsigned)style >= END_RIC_SERVICE_REPORT || get_kpm_act_def[style] == NULL) {
+        printf("[xApp]: Skipping unsupported E2SM-KPM REPORT style %d\n", (int)style + 1);
+        continue;
+      }
       // Generate KPM SUBSCRIPTION message
       kpm_sub_data_t kpm_sub = gen_kpm_subs(&n->rf[idx].defn.kpm, report_item);
 
