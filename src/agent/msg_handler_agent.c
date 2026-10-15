@@ -456,73 +456,62 @@ e2ap_msg_t e2ap_handle_setup_response_agent(e2_agent_t* ag, const e2ap_msg_t* ms
   return ans; 
 }
 
+// The kind of an E2AP cause, for the log. A table indexed by cause.present
+// cannot serve every version: E2AP v2 inserted e2Node before transport, so each
+// later kind moved up by one.
+static
+char const* cause_kind(cause_t const* cause)
+{
+  switch(cause->present){
+    case CAUSE_RICREQUEST: return "ricRequest";
+    case CAUSE_RICSERVICE: return "ricService";
+#if defined(E2AP_V2) || defined(E2AP_V3)
+    case CAUSE_E2NODE: return "e2Node";
+#endif
+    case CAUSE_TRANSPORT: return "transport";
+    case CAUSE_PROTOCOL: return "protocol";
+    case CAUSE_MISC: return "misc";
+    default: return "unknown";
+  }
+}
+
+static
+int cause_value(cause_t const* cause)
+{
+  switch(cause->present){
+    case CAUSE_RICREQUEST: return cause->ricRequest;
+    case CAUSE_RICSERVICE: return cause->ricService;
+#if defined(E2AP_V2) || defined(E2AP_V3)
+    case CAUSE_E2NODE: return cause->e2Node;
+#endif
+    case CAUSE_TRANSPORT: return cause->transport;
+    case CAUSE_PROTOCOL: return cause->protocol;
+    case CAUSE_MISC: return cause->misc;
+    default: return -1;
+  }
+}
+
 e2ap_msg_t e2ap_handle_setup_failure_agent(e2_agent_t* ag, const e2ap_msg_t* msg)
 {
   assert(ag != NULL);
   assert(msg != NULL);
   assert(msg->type == E2_SETUP_FAILURE);
 
-	char const* str[] = { 
-   "CAUSE_NOTHING",	/* NO COMPONENTS PRESENT */
-	 "CAUSE_RICREQUEST",
-	 "CAUSE_RICSERVICE",
-	 "CAUSE_TRANSPORT",
-	 "CAUSE_PROTOCOL",
-	 "CAUSE_MISC"
-  };
-
-  const char* str2[6][11] = { 
-    {
-      "CAUSE_NOTHING",
-    },
-    {
-      "CAUSE_RIC_RAN_FUNCTION_ID_INVALID",
-      "CAUSE_RIC_ACTION_NOT_SUPPORTED",
-      "CAUSE_RIC_EXCESSIVE_ACTIONS",
-      "CAUSE_RIC_DUPLICATE_ACTION",
-      "CAUSE_RIC_DUPLICATE_EVENT",
-      "CAUSE_RIC_FUNCTION_RESOURCE_LIMIT",
-      "CAUSE_RIC_REQUEST_ID_UNKNOWN",
-      "CAUSE_RIC_INCONSISTENT_ACTION_SUBSEQUENT_ACTION_SEQUENCE",
-      "CAUSE_RIC_CONTROL_MESSAGE_INVALID",
-      "CAUSE_RIC_CALL_PROCESS_ID_INVALID",
-      "CAUSE_RIC_UNSPECIFIED"	
-    }, 
-    {
-      "CAUSE_RICSERVICE_FUNCTION_NOT_REQUIRED",
-      "CAUSE_RICSERVICE_EXCESSIVE_FUNCTIONS",
-      "CAUSE_RICSERVICE_RIC_RESOURCE_LIMIT"
-    },
-    {
-      "CAUSE_TRANSPORT_UNSPECIFIED",
-      "CAUSE_TRANSPORT_TRANSPORT_RESOURCE_UNAVAILABLE"
-    },
-    {
-      "CAUSE_PROTOCOL_TRANSFER_SYNTAX_ERROR",
-      "CAUSE_PROTOCOL_ABSTRACT_SYNTAX_ERROR_REJECT",
-      "CAUSE_PROTOCOL_ABSTRACT_SYNTAX_ERROR_IGNORE_AND_NOTIFY",
-      "CAUSE_PROTOCOL_MESSAGE_NOT_COMPATIBLE_WITH_RECEIVER_STATE",
-      "CAUSE_PROTOCOL_SEMANTIC_ERROR",
-      "CAUSE_PROTOCOL_ABSTRACT_SYNTAX_ERROR_FALSELY_CONSTRUCTED_MESSAGE",
-      "CAUSE_PROTOCOL_UNSPECIFIED"
-    },
-    {
-      "CAUSE_MISC_CONTROL_PROCESSING_OVERLOAD",
-      "CAUSE_MISC_HARDWARE_FAILURE",
-      "CAUSE_MISC_OM_INTERVENTION",
-      "CAUSE_MISC_UNSPECIFIED"
-    }
-  };
-
-  e2_setup_failure_t const* e2_stp_fail = &msg->u_msgs.e2_stp_fail;
-	int const present = e2_stp_fail->cause.present;
-  assert(present < 6);
-  int const idx = e2_stp_fail->cause.ricRequest;
-  assert(idx < 11);
-  printf("[E2-AGENT]: E2 SETUP FAILURE rx %s %s\n", str[present], str2[present][idx]);
+  // Everything here comes from the RIC, so nothing is asserted on. The E2 SETUP
+  // REQUEST timer keeps running and the request goes out again within 3 s.
+  // TimeToWait asks for longer; it is logged but not honoured, so that a RIC
+  // that accepts the node again sooner is not kept waiting.
+  static int const time_to_wait_s[] = {1, 2, 5, 10, 20, 60};
+  e2_setup_failure_t const* sf = &msg->u_msgs.e2_stp_fail;
+  e2ap_time_to_wait_e const* ttw = sf->time_to_wait_ms;
+  if(ttw != NULL && *ttw >= TIMETOWAIT_V1S && *ttw <= TIMETOWAIT_V60S)
+    printf("[E2-AGENT]: E2 SETUP FAILURE rx, cause %s %d, TimeToWait %d s not honoured, retrying\n",
+           cause_kind(&sf->cause), cause_value(&sf->cause), time_to_wait_s[*ttw]);
+  else
+    printf("[E2-AGENT]: E2 SETUP FAILURE rx, cause %s %d, retrying\n", cause_kind(&sf->cause), cause_value(&sf->cause));
 
   e2ap_msg_t ans = {.type = NONE_E2_MSG_TYPE};
-  return ans; 
+  return ans;
 }
 
 e2ap_msg_t e2ap_handle_reset_request_agent(e2_agent_t* ag, const e2ap_msg_t* msg)

@@ -58,3 +58,32 @@ target_link_libraries(test_reset
 target_compile_definitions(test_reset PRIVATE ${E2AP_ENCODING} ${E2AP_VERSION} ${KPM_VERSION})
 
 add_test(Unit_test_reset test_reset)
+
+#####################################
+# Unit test: an E2 SETUP FAILURE with criticality ignore on the TransactionID
+#####################################
+
+# Built from the generated E2AP ASN.1 types, which exist for v2 and v3 only.
+if(E2AP_VERSION STREQUAL "E2AP_V2" OR E2AP_VERSION STREQUAL "E2AP_V3")
+  if(E2AP_VERSION STREQUAL "E2AP_V2")
+    set(TEST_E2AP_ASN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../src/lib/e2ap/v2_03/ie/asn/")
+  else()
+    set(TEST_E2AP_ASN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../src/lib/e2ap/v3_01/ie/asn/")
+  endif()
+
+  add_executable(test_setup_failure
+    test_setup_failure.c
+    )
+
+  target_link_libraries(test_setup_failure
+    PUBLIC
+    e2_agent
+    -pthread
+    -lsctp
+    -ldl)
+
+  target_compile_definitions(test_setup_failure PRIVATE ${E2AP_ENCODING} ${E2AP_VERSION} ${KPM_VERSION})
+  target_include_directories(test_setup_failure PRIVATE ${TEST_E2AP_ASN_DIR})
+
+  add_test(Unit_test_setup_failure test_setup_failure)
+endif()

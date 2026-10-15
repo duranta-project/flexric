@@ -1860,7 +1860,8 @@ e2ap_msg_t e2ap_dec_setup_failure(const E2AP_PDU_t* pdu)
   // TransactionID. Mandatory
   const E2setupFailureIEs_t* trans_id = out->protocolIEs.list.array[0];
   assert(trans_id->id == ProtocolIE_ID_id_TransactionID);
-  assert(trans_id->criticality == Criticality_reject);
+  // The O-RAN SC RIC sends this IE with criticality ignore instead of reject.
+  // Nothing depends on it, so it is accepted either way.
   assert(trans_id->value.present == E2setupFailureIEs__value_PR_TransactionID);
   assert(trans_id->value.choice.TransactionID < 256);
   sf->trans_id = trans_id->value.choice.TransactionID;
