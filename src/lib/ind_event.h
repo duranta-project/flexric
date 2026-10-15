@@ -13,6 +13,12 @@
 
 typedef struct{
   ric_gen_id_t ric_id;
+
+  // The asio fd this subscription is keyed by in e2_agent_t::ind_event: a timerfd
+  // when periodic, a negative synthetic one when aperiodic. Unique per
+  // subscription, it is the tie-breaker in cmp_ind_event.
+  int fd;
+
   // Non-owning ptr
   sm_agent_t* sm;
   uint8_t action_id;
@@ -26,14 +32,12 @@ typedef struct{
   void* act_def; // i.e., kpm_act_def_t 
 
   // Free function to call for aperiodic events
-  void (*free_subs_aperiodic)(uint32_t ric_req_id);
+  void (*free_subs_aperiodic)(ric_gen_id_t ric_id);
   };
 
 } ind_event_t;
 
 int cmp_ind_event(void const* m0_v, void const* m1_v);
-
-bool eq_ind_event_ric_req_id(const void* value, const void* key);
 
 bool eq_ind_event(const void* value, const void* key);
 
