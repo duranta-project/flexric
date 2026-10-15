@@ -37,47 +37,73 @@ bool check_valid_msg_type(e2_msg_type_t msg_type )
 // stop_ind_event() can tell them apart from the timer fds of periodic ones.
 static _Atomic int next_aperiodic_fd = -1;
 
+// Unlink the subscription under id from both trees and copy it out. Returns
+// false when there is none. The caller must then release_ind_event() it, with
+// ag->mtx_ind_event no longer held.
 static
-bool stop_ind_event(e2_agent_t* ag, ric_gen_id_t id)
+bool unlink_ind_event(e2_agent_t* ag, ric_gen_id_t id, ind_event_t* out)
 {
   assert(ag != NULL);
-  ind_event_t tmp = {.ric_id = id, .sm = NULL, .action_id =0 };
+  assert(out != NULL);
 
-  // Fix this! bi_map should liberate the memory itself 
-  void* start_r = assoc_rb_tree_front(&ag->ind_event.right);
-  void* end_r = assoc_rb_tree_end(&ag->ind_event.right);
-  void* it_r = find_if_rb_tree(&ag->ind_event.right, start_r, end_r, &tmp, eq_ind_event); 
+  // Insert takes the mutex, and e2_async_event_agent() traverses the right tree
+  // under it from the RAN threads, so the unlink must as well.
+  lock_guard(&ag->mtx_ind_event);
+
+  assoc_rb_tree_t* tree = &ag->ind_event.right;
+  void* end_r = assoc_rb_tree_end(tree);
+  void* it_r = find_if_rb_tree(tree, assoc_rb_tree_front(tree), end_r, &id, eq_ind_event);
   if(it_r == end_r){
     printf("[E2 AGENT]: RAN_FUNC_ID %d RIC_REQ_ID %d not found. Spuriously occurs when abruptly closing the xApp\n", id.ran_func_id, id.ric_req_id);
-    return false;;
+    return false;
   }
 
-  assert(it_r != end_r);
-  ind_event_t* ind_ev = assoc_rb_tree_key(&ag->ind_event.right, it_r);
-
-  if (ind_ev->type == PERIODIC_SUBSCRIPTION_FLRC) {
-    if (ind_ev->sm->free_act_def != NULL)
-      ind_ev->sm->free_act_def(ind_ev->sm, ind_ev->act_def);
-  } else if(ind_ev->type == APERIODIC_SUBSCRIPTION_FLRC) {
-    ind_ev->free_subs_aperiodic(id);
-  } else {
-    assert(0!=0 && "Unknown subscritpion type");
-  }
+  *out = *(ind_event_t*)assoc_rb_tree_key(tree, it_r);
 
   // Extract by the fd, i.e. the left key: it is unique, whereas several entries
   // can share one RIC ID. Extracting by the right key let assoc_extract's binary
   // search unlink a different entry than the linear scan above had found, which
   // freed one entry's act_def and left the other live with a freed pointer and an
   // armed timer.
-  int const fd = ind_ev->fd;
-  ind_event_t* val = bi_map_extract_left(&ag->ind_event, (int*)&fd, sizeof(fd), NULL);
+  int fd = out->fd;
+  ind_event_t* val = bi_map_extract_left(&ag->ind_event, &fd, sizeof(fd), NULL);
   assert(val != NULL);
   free(val);
 
-  if (fd > -1)
-    rm_fd_asio_agent(&ag->io, fd);
+  return true;
+}
 
-  return true;;
+// Stop the subscription's producer and hand its payload back to its owner. Must
+// run with ag->mtx_ind_event released: free_act_def and free_subs_aperiodic are
+// service model and RAN code that take their own locks.
+static
+void release_ind_event(e2_agent_t* ag, ind_event_t const* ev)
+{
+  assert(ag != NULL);
+  assert(ev != NULL);
+
+  if(ev->fd > -1)
+    rm_fd_asio_agent(&ag->io, ev->fd);
+
+  if(ev->type == PERIODIC_SUBSCRIPTION_FLRC){
+    if(ev->sm->free_act_def != NULL)
+      ev->sm->free_act_def(ev->sm, ev->act_def);
+  } else if(ev->type == APERIODIC_SUBSCRIPTION_FLRC){
+    ev->free_subs_aperiodic(ev->ric_id);
+  } else {
+    assert(0!=0 && "Unknown subscritpion type");
+  }
+}
+
+static
+bool stop_ind_event(e2_agent_t* ag, ric_gen_id_t id)
+{
+  ind_event_t ev = {0};
+  if(unlink_ind_event(ag, id, &ev) == false)
+    return false;
+
+  release_ind_event(ag, &ev);
+  return true;
 }
 
 void init_handle_msg_agent(size_t len, handle_msg_fp_agent (*handle_msg)[len])
