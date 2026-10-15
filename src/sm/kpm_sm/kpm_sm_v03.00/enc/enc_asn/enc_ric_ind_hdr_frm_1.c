@@ -5,29 +5,11 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <arpa/inet.h> // htonl
 
 #include "../../../../../util/conversions.h"
+#include "../../../../../util/ntp_time.h"
 
 #include "enc_ric_ind_hdr_frm_1.h"
-
-// #define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
-
-// uint64_t htonll(uint64_t x)
-// {
-//   return (uint64_t)((uint64_t)htonl((x) & 0xFFFFFFFFLL) << 32) | (uint32_t)htonl(x);
-// }
-
-uint64_t htonll(uint64_t x)
-{
-    uint32_t x1 = (uint32_t)((x & 0xFFFFFFFF00000000LL) >> 32);
-    uint32_t x2 = (uint32_t)(x & 0xFFFFFFFFLL);
-    x1 = htonl(x1);
-    x2 = htonl(x2);
-    uint64_t v = ((uint64_t)x1) << 32 | x2;
-
-    return v;
-}
 
 E2SM_KPM_IndicationHeader_Format1_t * kpm_enc_ind_hdr_frm_1_asn(const kpm_ric_ind_hdr_format_1_t * ind_hdr)
 {
@@ -35,11 +17,14 @@ E2SM_KPM_IndicationHeader_Format1_t * kpm_enc_ind_hdr_frm_1_asn(const kpm_ric_in
     assert(ind_hdr_asn != NULL && "Memory exhausted");
 
 
-    uint64_t ts = htonll(ind_hdr->collectStartTime);
-    ind_hdr_asn->colletStartTime = int_64_to_octet_string(ts);
+    // big-endian, as per RFC 5905
+    const uint64_t ts = unix_us_to_ntp64(ind_hdr->collectStartTime);
+    uint8_t ts_be[8];
+    for (int i = 0; i < 8; ++i)
+        ts_be[i] = (uint8_t)(ts >> (56 - 8 * i));
+    int ret = OCTET_STRING_fromBuf(&ind_hdr_asn->colletStartTime, (char *)ts_be, sizeof(ts_be));
+    assert(ret == 0);
 
-
-    int ret;
 
     if (ind_hdr->fileformat_version != NULL){
         ind_hdr_asn->fileFormatversion = calloc(1, sizeof(*ind_hdr_asn->fileFormatversion));
