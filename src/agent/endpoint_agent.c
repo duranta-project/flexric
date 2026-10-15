@@ -5,6 +5,7 @@
 #include "endpoint_agent.h"
 #include <arpa/inet.h>       // for inet_pton
 #include <assert.h>          // for assert
+#include <errno.h>           // for errno
 #include <netinet/sctp.h>
 #include <netinet/in.h>      // for sockaddr_in, IPPROTO_SCTP, htonl, htons
 #include <stdio.h>           // for NULL
@@ -14,8 +15,42 @@
 #include <sys/socket.h>      // for setsockopt, AF_INET, socket, SOCK_SEQPACKET
 #include "lib/ep/e2ap_ep.h"  // for e2ap_ep_t, e2ap_recv_bytes, e2ap_send_bytes
 
+// Bound how long a nearRT-RIC that went away without a SHUTDOWN takes to be
+// noticed: the kernel declares the association lost (SCTP_COMM_LOST) after
+// max_retrans retransmissions, of data or of heartbeats, each waiting at most
+// rto_max_ms, and its defaults take minutes. Set on the endpoint before any
+// association exists, so every association it opens inherits them -- including
+// the one an E2 SETUP retry re-opens after a loss. A value the kernel refuses
+// leaves its default in place: slower detection, not a reason to stop the RAN.
 static
-void init_sctp_conn_client(e2ap_ep_ag_t* ep, const char* addr, int port)
+void set_sctp_timers(int sock_fd, fr_sctp_timers_t t)
+{
+  // The kernel refuses a minimum RTO above the maximum. Its default minimum is
+  // 1000 ms, so it is only lowered when the maximum is; 0 leaves it unchanged.
+  int const rto_low = t.rto_max_ms < 1000 ? t.rto_max_ms : 1000;
+  struct sctp_rtoinfo rto = { .srto_initial = rto_low,
+                              .srto_max = t.rto_max_ms,
+                              .srto_min = t.rto_max_ms < 1000 ? t.rto_max_ms : 0 };
+  if(setsockopt(sock_fd, IPPROTO_SCTP, SCTP_RTOINFO, &rto, sizeof(rto)) != 0)
+    printf("[E2 AGENT]: SCTP_RTOINFO refused (%s), keeping the kernel's retransmission timeout\n", strerror(errno));
+
+  struct sctp_assocparams assoc = { .sasoc_asocmaxrxt = t.max_retrans };
+  if(setsockopt(sock_fd, IPPROTO_SCTP, SCTP_ASSOCINFO, &assoc, sizeof(assoc)) != 0)
+    printf("[E2 AGENT]: SCTP_ASSOCINFO refused (%s), keeping the kernel's retransmission limit\n", strerror(errno));
+
+  // A zeroed address applies to the endpoint, i.e. to every future association.
+  struct sctp_paddrparams paddr = { .spp_hbinterval = t.hb_interval_ms,
+                                    .spp_pathmaxrxt = t.max_retrans,
+                                    .spp_flags = SPP_HB_ENABLE };
+  if(setsockopt(sock_fd, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &paddr, sizeof(paddr)) != 0)
+    printf("[E2 AGENT]: SCTP_PEER_ADDR_PARAMS refused (%s), keeping the kernel's heartbeat\n", strerror(errno));
+
+  printf("[E2 AGENT]: SCTP heartbeat %d ms, max RTO %d ms, association lost after %d retransmissions\n",
+         t.hb_interval_ms, t.rto_max_ms, t.max_retrans);
+}
+
+static
+void init_sctp_conn_client(e2ap_ep_ag_t* ep, const char* addr, int port, fr_sctp_timers_t sctp_timers)
 {
   int sock_fd = socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
   assert(sock_fd != -1);
@@ -46,6 +81,8 @@ void init_sctp_conn_client(e2ap_ep_ag_t* ep, const char* addr, int port)
   rc = setsockopt(sock_fd, IPPROTO_SCTP, SCTP_NODELAY, &no_delay, sizeof(no_delay));
   assert(rc == 0);
 
+  set_sctp_timers(sock_fd, sctp_timers);
+
   ep->to = servaddr;
   *(int*)(&ep->base.port) = port; 
   *(int*)(&ep->base.fd) = sock_fd;
@@ -53,13 +90,13 @@ void init_sctp_conn_client(e2ap_ep_ag_t* ep, const char* addr, int port)
   ((char*)(&ep->base.addr))[15] = '\0';
 }
 
-void e2ap_init_ep_agent(e2ap_ep_ag_t* ep, const char* addr, int port)
+void e2ap_init_ep_agent(e2ap_ep_ag_t* ep, const char* addr, int port, fr_sctp_timers_t sctp_timers)
 {
   assert(ep != NULL);
   assert(addr != NULL);
   assert(strlen(addr) < 16);
   assert(port > 0 && port < 65535);
-  init_sctp_conn_client(ep, addr, port);
+  init_sctp_conn_client(ep, addr, port, sctp_timers);
 }
 
 /*

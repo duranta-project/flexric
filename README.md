@@ -455,6 +455,20 @@ sudo phc2sys -m -s InterfaceName -w
 
 ![alt text](fig/3.png)
 
+### 5.6 E2 agent: noticing a lost nearRT-RIC
+
+The E2 agent ends the E2 session -- it drops every RIC subscription and sends a new E2 SETUP REQUEST -- whenever its SCTP association to the nearRT-RIC ends: on a graceful SHUTDOWN, when the association is lost (`SCTP_COMM_LOST`, e.g. the nearRT-RIC host or the network went away), or when the nearRT-RIC restarts (`SCTP_RESTART`).
+
+How fast a lost association is noticed depends on SCTP timers. The kernel defaults take minutes, so the agent sets its own:
+
+| `[NEAR-RIC]` key in `flexric.conf` | `fr_args_t` field | Default | Meaning |
+|---|---|---|---|
+| `SCTP_HB_INTERVAL_MS` | `sctp_hb_interval_ms` | 1000 | Heartbeat interval on an idle association |
+| `SCTP_RTO_MAX_MS` | `sctp_rto_max_ms` | 2000 | Ceiling of the retransmission timeout |
+| `SCTP_MAX_RETRANS` | `sctp_max_retrans` | 5 | Retransmissions before the association is declared lost |
+
+With the defaults, a lost association is noticed in roughly 10 s while indications flow, and somewhat later when it is idle. Lower values notice sooner but also treat a shorter outage as a loss, and every loss drops all subscriptions, which the xApps then have to install again: keep some margin on unstable links. A RAN that fills `fr_args_t` itself, such as OAI, sets the fields; `0` leaves a field to the config file and then to the default.
+
 ## 6. Integration with other nearRT-RICs
 
 ### 6.1 O-RAN SC nearRT-RIC

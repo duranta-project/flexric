@@ -435,7 +435,7 @@ void e2_event_loop_agent(e2_agent_t* ag)
   ag->agent_stopped = true;
 }
 
-e2_agent_t* e2_init_agent(const char* addr, int port, global_e2_node_id_t ge2nid, sm_io_ag_ran_t io, char const* libs_dir)
+e2_agent_t* e2_init_agent(const char* addr, int port, fr_sctp_timers_t sctp_timers, global_e2_node_id_t ge2nid, sm_io_ag_ran_t io, char const* libs_dir)
 {
   assert(addr != NULL);
   assert(port > 0 && port < 65535);
@@ -445,7 +445,7 @@ e2_agent_t* e2_init_agent(const char* addr, int port, global_e2_node_id_t ge2nid
   e2_agent_t* ag = calloc(1, sizeof(*ag));
   assert(ag != NULL && "Memory exhausted");
 
-  e2ap_init_ep_agent(&ag->ep, addr, port);
+  e2ap_init_ep_agent(&ag->ep, addr, port, sctp_timers);
 
   init_asio_agent(&ag->io); 
 

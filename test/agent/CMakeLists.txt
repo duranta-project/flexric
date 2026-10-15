@@ -87,3 +87,22 @@ if(E2AP_VERSION STREQUAL "E2AP_V2" OR E2AP_VERSION STREQUAL "E2AP_V3")
 
   add_test(Unit_test_setup_failure test_setup_failure)
 endif()
+
+#####################################
+# Unit test: the E2 agent's SCTP timers, from fr_args_t or the config file to the socket
+#####################################
+
+add_executable(test_sctp_timers
+  test_sctp_timers.c
+  )
+
+target_link_libraries(test_sctp_timers
+  PUBLIC
+  e2_agent
+  -pthread
+  -lsctp
+  -ldl)
+
+target_compile_definitions(test_sctp_timers PRIVATE ${E2AP_ENCODING} ${E2AP_VERSION} ${KPM_VERSION})
+
+add_test(Unit_test_sctp_timers test_sctp_timers)
