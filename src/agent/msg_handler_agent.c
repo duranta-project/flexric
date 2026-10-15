@@ -11,6 +11,7 @@
 #include "util/compare.h"
 
 #include <assert.h>
+#include <stdatomic.h>
 #include <stdio.h>
 
 static
@@ -31,6 +32,10 @@ bool check_valid_msg_type(e2_msg_type_t msg_type )
       || msg_type == E2_NODE_CONFIGURATION_UPDATE_FAILURE
       || msg_type == E2_CONNECTION_UPDATE;
 }
+
+// Aperiodic subscriptions have no real fd; they are keyed by a negative one so
+// stop_ind_event() can tell them apart from the timer fds of periodic ones.
+static _Atomic int next_aperiodic_fd = -1;
 
 static
 bool stop_ind_event(e2_agent_t* ag, ric_gen_id_t id)
@@ -54,7 +59,7 @@ bool stop_ind_event(e2_agent_t* ag, ric_gen_id_t id)
     if (ind_ev->sm->free_act_def != NULL)
       ind_ev->sm->free_act_def(ind_ev->sm, ind_ev->act_def);
   } else if(ind_ev->type == APERIODIC_SUBSCRIPTION_FLRC) {
-    ind_ev->free_subs_aperiodic(id.ric_req_id);
+    ind_ev->free_subs_aperiodic(id);
   } else {
     assert(0!=0 && "Unknown subscritpion type");
   }
@@ -114,7 +119,7 @@ sm_subs_data_t generate_sm_subs_data(ric_subscription_request_t const* sr)
   assert(sr != NULL);
   sm_subs_data_t data =  { .event_trigger = sr->event_trigger.buf,
                            .len_et = sr->event_trigger.len,
-                           .ric_req_id = sr->ric_id.ric_req_id };
+                           .ric_id = sr->ric_id };
 
   if(sr->action->definition != NULL){
     data.action_def = sr->action->definition->buf;
@@ -178,20 +183,25 @@ e2ap_msg_t e2ap_handle_subscription_request_agent(e2_agent_t* ag, const e2ap_msg
   } else if(ev.type == APERIODIC_SUBSCRIPTION_FLRC){
     ev.free_subs_aperiodic = subs.aper.free_aper_subs;
     // Aperiodic indication generated i.e., the RAN will generate it via
-    // void async_event_agent_api(uint32_t ric_req_id, void* ind_data);
+    // void async_event_agent_api(ric_gen_id_t ric_id, void* ind_data);
     // however, the fd has to be unique per subscription (e.g. two xApp running in parallel
     // can subscribe to the same parameters, but when deleting one via bi_map_extract_right()
-    // it would not find the correct one due to cmp_fd() if not different)
-    int fd = -ev.ric_id.ric_req_id;
+    // it would not find the correct one due to cmp_fd() if not different).
+    // The Requestor ID is not that: E2AP identifies a subscription by
+    // {RequestorID, InstanceID}, so two subscriptions sharing one -- which is what the
+    // OSC near-RT RIC hands out -- would collide on this key. -ric_req_id also yields 0
+    // for Requestor ID 0, which reads back as a real fd. Count down instead.
+    int fd = atomic_fetch_sub(&next_aperiodic_fd, 1);
+    assert(fd < 0 && "Too many aperiodic subscriptions");
     {
       lock_guard(&ag->mtx_ind_event);
       bi_map_insert(&ag->ind_event, &fd, sizeof(int), &ev, sizeof(ev));
     }
 
     // Some report styles require sending RIC Indication out of on_subscription,
-    // but can only be sent when ric_req_id is registered.
+    // but can only be sent when the subscription is registered.
     if(subs.aper.imm_ind_data != NULL)
-      e2_async_event_agent(ag, ev.ric_id.ric_req_id, subs.aper.imm_ind_data);
+      e2_async_event_agent(ag, ev.ric_id, subs.aper.imm_ind_data);
   } else {
     assert(0!=0 && "Unknown subscritpion type");
   }
