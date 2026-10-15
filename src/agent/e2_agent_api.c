@@ -160,3 +160,22 @@ void trigger_ric_service_update_api(uint16_t ran_func_id)
   free(su.modified[0].oid.buf);
   free(su.modified);
 }
+
+void complete_control_agent_api(uint64_t key, uint8_t* ctrl_out, size_t len_out)
+{
+  if (agent == NULL) {
+    printf("[E2 AGENT]: not initialised yet, dropping deferred control outcome (key=%lu)\n",
+           (unsigned long)key);
+    free(ctrl_out);
+    return;
+  }
+  e2_agent_complete_control(agent, key, ctrl_out, len_out);
+}
+
+void sweep_pending_control_agent_api(void)
+{
+  if (agent == NULL)
+    return;
+  e2_agent_sweep_pending_control(agent);
+}
+

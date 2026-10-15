@@ -155,6 +155,18 @@ static sm_ctrl_out_data_t on_control_dapp_sm_ag(sm_agent_t const* sm_agent, sm_c
 
   /* Forward control to the RAN via the SM I/O interface */
   sm_ag_if_ans_t ret = sm->base.io.write_ctrl(&dapp_ctrl);
+
+  /* The RAN relays the control over E3 and cannot know the outcome yet, so it
+   * answers NONE and completes the procedure later through
+   * e2_agent_complete_control(). Park it under the sequence-id from the control
+   * header: that is the id the RAN will name the completion with, and the only
+   * component that can read it is this one. */
+  if (ret.type == NONE_SM_AG_IF_ANS_V0) {
+    sm_ctrl_out_data_t deferred = {.deferred = true,
+                                   .defer_key = (uint64_t)dapp_ctrl.hdr.frmt_1.sequence_id};
+    return deferred;
+  }
+
   assert(ret.type == CTRL_OUTCOME_SM_AG_IF_ANS_V0);
   assert(ret.ctrl_out.type == DAPP_AGENT_IF_CTRL_ANS_V0);
   defer({ free_e2sm_dapp_ctrl_out(&ret.ctrl_out.dapp); });
