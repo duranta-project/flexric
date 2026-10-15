@@ -16,6 +16,8 @@
 #include "util/compare.h"
 
 #include <assert.h>
+#include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 
 static
@@ -244,15 +246,19 @@ void consume_fd_sync(int fd)
   assert(bytes <= (ssize_t)sizeof(read_buf));
 }
 
+// Take exactly ONE token: one queued aperiodic indication. Reading more would
+// swallow the tokens of items the current batch has not drained yet, and the pipe
+// is blocking, so the next iteration would stall instead of erroring.
 static
 int consume_fd_async(int fd)
 {
   assert(fd > 0);
-  uint32_t read_buf = 0;
-  ssize_t const bytes = read(fd,&read_buf, sizeof(read_buf));
-  //assert(bytes == 4);
-  //printf("Consumed %u \n", read_buf);
-  return bytes;
+  uint8_t token = 0;
+  ssize_t bytes = 0;
+  do {
+    bytes = read(fd, &token, sizeof(token));
+  } while (bytes == -1 && errno == EINTR);
+  return (int)bytes;
 }
 
 static
@@ -337,7 +343,7 @@ void e2_event_loop_agent(e2_agent_t* ag)
             // Condition not matched e.g., No UE matches condition 
             if(exp.has_value == false) {
               int rc = consume_fd_async(ag->io.pipe.r); 
-              assert(rc != 1 && "No bytes in the pipe but message in the queue! ");
+              assert(rc == 1 && "Aperiodic indication drained but its pipe token is missing");
               continue;  
             }
 
@@ -350,7 +356,7 @@ void e2_event_loop_agent(e2_agent_t* ag)
             e2ap_send_bytes_agent(&ag->ep, ba);
 
             int rc = consume_fd_async(ag->io.pipe.r); 
-            assert(rc != 1 && "No bytes in the pipe but message in the queue! ");
+            assert(rc == 1 && "Aperiodic indication drained but its pipe token is missing");
           }
           break;
         }
@@ -554,15 +560,20 @@ void e2_async_event_agent(e2_agent_t* ag, uint32_t ric_req_id, void* ind_data)
   // Push the data into the queue
   push_tsq(&ag->aind, &aind, sizeof(aind_event_t));
 
-  // Inform epoll that an aperiodic event happened
-  int const num_char = 32;
-  char str[num_char];
-  memset(str, '\0', num_char);
-  rc = snprintf(str, num_char ,"%u", ric_req_id );
-  assert(rc > 0 && rc < num_char -1);
-
-  rc = write(ag->io.pipe.w, str, rc);
-  assert(rc != 0);
+  // Inform epoll that an aperiodic event happened: exactly ONE token per item
+  // pushed above.
+  //
+  // The pipe is a counter, not a channel -- aind_event() drains ag->aind and never
+  // reads these bytes. Writing the decimal ric_req_id put a variable number of
+  // bytes in for a single item (one byte for id 2, two for id 21, four for 1234),
+  // so the byte count and the item count drifted apart and the consumer either
+  // aborted or, since the pipe is blocking, stalled the event loop.
+  uint8_t const token = 0;
+  ssize_t written = 0;
+  do {
+    written = write(ag->io.pipe.w, &token, sizeof(token));
+  } while (written == -1 && errno == EINTR);
+  assert(written == 1 && "Failed to signal the aperiodic indication queue");
 }
 
 //////////////////////////////////
