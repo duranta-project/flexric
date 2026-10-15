@@ -253,6 +253,22 @@ void consume_fd_sync(int fd)
   assert(bytes <= (ssize_t)sizeof(read_buf));
 }
 
+// Indications belong to an E2 session, and there is none between the end of an
+// association and the next E2 SETUP RESPONSE. A send in that window does not
+// fail: the socket is one-to-many, so sctp_sendmsg() silently opens a new
+// association to the RIC's address and delivers the message there, to a
+// nearRT-RIC that has seen no E2 SETUP from this node. Answers to a RIC message
+// need no check: they go back on the association the message came in on.
+static
+bool in_e2_session(e2_agent_t const* ag, char const* what)
+{
+  if(ag->e2_session_up == true)
+    return true;
+
+  printf("[E2 AGENT]: no E2 session with the nearRT-RIC, dropping %s\n", what);
+  return false;
+}
+
 static
 async_event_t next_async_event_agent(e2_agent_t* ag)
 {
@@ -338,6 +354,15 @@ void e2_event_loop_agent(e2_agent_t* ag)
             // Condition not matched e.g., No UE matches condition 
             if(exp.has_value == false)
               continue;
+
+            // Queued before the session ended, or raced its end. on_indication
+            // has released ind_data either way; only the encoded parts are left.
+            if(in_e2_session(ag, "an aperiodic indication") == false){
+              free(exp.data.ind_hdr);
+              free(exp.data.ind_msg);
+              free(exp.data.call_process_id);
+              continue;
+            }
 
             ric_indication_t ind = generate_aindication(ag, &exp.data, &aind->arr[i]);
             defer({ e2ap_free_indication(&ind); } );
@@ -448,6 +473,7 @@ e2_agent_t* e2_init_agent(const char* addr, int port, global_e2_node_id_t ge2nid
 #endif
 
   ag->global_e2_node_id = ge2nid;
+  ag->e2_session_up = false;
   ag->stop_token = false;
   ag->agent_stopped = false;
   
@@ -614,6 +640,9 @@ void e2_send_indication_agent(e2_agent_t* ag, const ric_indication_t* indication
 {
   assert(ag != NULL);
   assert(indication != NULL);
+
+  if(in_e2_session(ag, "a RIC INDICATION") == false)
+    return;
 
   byte_array_t ba = e2ap_enc_indication_ag(&ag->ap, indication);
   e2ap_send_bytes_agent(&ag->ep, ba);

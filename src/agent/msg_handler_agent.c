@@ -425,6 +425,17 @@ e2ap_msg_t e2ap_handle_setup_response_agent(e2_agent_t* ag, const e2ap_msg_t* ms
 
   e2ap_msg_t ans = {.type = NONE_E2_MSG_TYPE};
 
+#if defined(E2AP_V2) || defined(E2AP_V3)
+  // Before the timer is stopped: a response this node never asked for must not
+  // cancel the retry of the request it is about to send. After a lost
+  // association the retry is armed but nothing is sent until it fires, and
+  // stopping it here would leave the agent with no E2 SETUP to send, ever.
+  if(ag->trans_id_setup_req == 0){
+    printf("[E2-AGENT]: E2 SETUP RESPONSE rx, eventhough no E2 SETUP-REQUEST was sent from this E2 Node. Ignoring it\n");
+    return ans;
+  }
+#endif
+
   // Stop the timer
   pending_event_t ev = SETUP_REQUEST_PENDING_EVENT;
   if(stop_pending_event(ag, ev) == false){
@@ -433,16 +444,15 @@ e2ap_msg_t e2ap_handle_setup_response_agent(e2_agent_t* ag, const e2ap_msg_t* ms
   }
 
 #if defined(E2AP_V2) || defined(E2AP_V3)
-  if(ag->trans_id_setup_req == 0){
-    printf("[E2-AGENT]: E2 SETUP RESPONSE rx, eventhough no E2 SETUP-REQUEST was sent from this E2 Node. Ignoring it\n");
-    return ans;
-  }
   /* The two transaction ids are reported but not compared: a RIC is not
    * guaranteed to echo the one it was sent, and rejecting the mismatch would
    * drop the only response such a RIC ever sends. */
   printf("[E2-AGENT]: Transaction ID E2 SETUP-REQUEST %u E2 SETUP-RESPONSE %u \n", --ag->trans_id_setup_req, msg->u_msgs.e2_stp_resp.trans_id);
   ag->trans_id_setup_req = 0;
 #endif
+
+  // Indications may go out from here on, until the association ends.
+  ag->e2_session_up = true;
   return ans; 
 }
 

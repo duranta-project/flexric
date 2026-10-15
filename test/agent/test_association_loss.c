@@ -129,9 +129,11 @@ void expect_session_ended(sctp_msg_t const* msg, char const* name)
   e2_agent_t ag = {0};
   init_agent_stub(&ag);
   install_aperiodic_subscription(&ag);
+  ag.e2_session_up = true;
 
   notification_handle_ag(&ag, msg);
 
+  assert(ag.e2_session_up == false && "no indication may go out until the next E2 SETUP RESPONSE");
   assert(bi_map_size(&ag.ind_event) == 0 && "the subscription was dropped");
   assert(released == 1 && "the RAN was told to un-register it");
   assert(bi_map_size(&ag.pending) == 1 && "an E2 SETUP REQUEST retry is armed");
@@ -147,9 +149,11 @@ void expect_session_kept(sctp_msg_t const* msg, char const* name)
   e2_agent_t ag = {0};
   init_agent_stub(&ag);
   install_aperiodic_subscription(&ag);
+  ag.e2_session_up = true;
 
   notification_handle_ag(&ag, msg);
 
+  assert(ag.e2_session_up == true);
   assert(bi_map_size(&ag.ind_event) == 1 && "the subscription survives");
   assert(released == 0);
   assert(bi_map_size(&ag.pending) == 0 && "no retry is armed");
@@ -184,6 +188,23 @@ void test_one_retry_timer_only(void)
   printf("[TEST]: repeated losses arm a single E2 SETUP REQUEST retry\n");
 }
 
+// An indication handed to the agent while no E2 session is up is dropped rather
+// than encoded and sent: the agent's zeroed codec and endpoint would fault on it
+// otherwise, and a live one would open a new association to the RIC.
+static
+void test_no_indication_outside_session(void)
+{
+  e2_agent_t ag = {0};
+  init_agent_stub(&ag);
+  assert(ag.e2_session_up == false);
+
+  ric_indication_t const ind = {0};
+  e2_send_indication_agent(&ag, &ind);
+
+  free_agent_stub(&ag);
+  printf("[TEST]: an indication outside an E2 session is dropped\n");
+}
+
 int main()
 {
   union sctp_notification n;
@@ -207,6 +228,8 @@ int main()
   expect_session_kept(&msg, "SCTP_SHUTDOWN_COMP");
 
   test_one_retry_timer_only();
+
+  test_no_indication_outside_session();
 
   printf("[TEST]: association loss handling OK\n");
   return EXIT_SUCCESS;

@@ -66,6 +66,11 @@ typedef struct e2_agent_s
   _Atomic uint32_t trans_id_setup_req;
 #endif
 
+  // An E2 session runs from an accepted E2 SETUP RESPONSE to the end of the
+  // association it arrived on (see notification_handle_ag). Outside one,
+  // indications may not go out. Written by the agent thread, read by any.
+  atomic_bool e2_session_up;
+
   atomic_bool stop_token;
   atomic_bool agent_stopped;
 } e2_agent_t;

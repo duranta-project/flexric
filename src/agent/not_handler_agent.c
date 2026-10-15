@@ -48,6 +48,10 @@ void end_e2_session(e2_agent_t* ag)
 {
   assert(ag != NULL);
 
+  // First, so that nothing queued behind this goes out on the association the
+  // next E2 SETUP REQUEST opens before the RIC has answered it.
+  ag->e2_session_up = false;
+
   stop_all_ind_events(ag);
 
   // A pending event is created along with a timer of 3000 ms,

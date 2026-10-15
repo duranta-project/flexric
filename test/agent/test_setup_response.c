@@ -99,11 +99,13 @@ void test_duplicate_setup_response(void)
   e2ap_msg_t const first = e2ap_handle_setup_response_agent(&ag, &msg);
   assert(first.type == NONE_E2_MSG_TYPE);
   assert(bi_map_size(&ag.pending) == 0 && "the first response consumes the pending timer");
+  assert(ag.e2_session_up == true && "the first response opens the E2 session");
 
   // Used to abort: assoc_rb_tree_extract on a key that is no longer there.
   e2ap_msg_t const second = e2ap_handle_setup_response_agent(&ag, &msg);
   assert(second.type == NONE_E2_MSG_TYPE);
   assert(bi_map_size(&ag.pending) == 0);
+  assert(ag.e2_session_up == true);
 
   free_agent_stub(&ag);
   printf("[TEST]: duplicate E2 SETUP RESPONSE ignored\n");
@@ -121,6 +123,7 @@ void test_unsolicited_setup_response(void)
   e2ap_msg_t const ans = e2ap_handle_setup_response_agent(&ag, &msg);
   assert(ans.type == NONE_E2_MSG_TYPE);
   assert(bi_map_size(&ag.pending) == 0);
+  assert(ag.e2_session_up == false && "an ignored response opens no session");
 
   free_agent_stub(&ag);
   printf("[TEST]: unsolicited E2 SETUP RESPONSE ignored\n");
@@ -140,16 +143,45 @@ void test_mismatched_trans_id_is_accepted(void)
   e2ap_msg_t const ans = e2ap_handle_setup_response_agent(&ag, &msg);
   assert(ans.type == NONE_E2_MSG_TYPE);
   assert(bi_map_size(&ag.pending) == 0 && "the response was accepted, not rejected");
+  assert(ag.e2_session_up == true);
 
   free_agent_stub(&ag);
   printf("[TEST]: E2 SETUP RESPONSE with a non-echoed transaction id accepted\n");
 }
+
+#if defined(E2AP_V2) || defined(E2AP_V3)
+// After a lost association the retry timer is armed, but no request goes out
+// until it fires. A response arriving in that window answers nothing this node
+// sent, and used to stop the timer anyway: the agent was left with no E2 SETUP
+// REQUEST to send, ever.
+static
+void test_response_before_request_keeps_retry(void)
+{
+  e2_agent_t ag = {0};
+  init_agent_stub(&ag);
+  arm_setup_request(&ag);
+  ag.trans_id_setup_req = 0; // armed by end_e2_session(), not sent yet
+
+  e2ap_msg_t const msg = setup_response_msg(21);
+
+  e2ap_msg_t const ans = e2ap_handle_setup_response_agent(&ag, &msg);
+  assert(ans.type == NONE_E2_MSG_TYPE);
+  assert(bi_map_size(&ag.pending) == 1 && "the retry timer survives");
+  assert(ag.e2_session_up == false);
+
+  free_agent_stub(&ag);
+  printf("[TEST]: E2 SETUP RESPONSE before the retry fires keeps the retry\n");
+}
+#endif
 
 int main()
 {
   test_duplicate_setup_response();
   test_unsolicited_setup_response();
   test_mismatched_trans_id_is_accepted();
+#if defined(E2AP_V2) || defined(E2AP_V3)
+  test_response_before_request_keeps_retry();
+#endif
 
   printf("[TEST]: E2 SETUP RESPONSE handling OK\n");
   return EXIT_SUCCESS;
