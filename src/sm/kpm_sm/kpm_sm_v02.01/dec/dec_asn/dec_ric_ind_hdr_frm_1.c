@@ -3,6 +3,7 @@
  */
 
 #include "../../../../../util/conversions.h"
+#include "../../../../../util/ntp_time.h"
 #include <assert.h>
 #include <arpa/inet.h>
 #include "dec_ric_ind_hdr_frm_1.h"
@@ -11,9 +12,9 @@ kpm_ric_ind_hdr_format_1_t kpm_dec_ind_hdr_frm_1_asn(const E2SM_KPM_IndicationHe
 {
     kpm_ric_ind_hdr_format_1_t ind_hdr = {0};
 
-    uint32_t reversed_ts;
-    OCTET_STRING_TO_INT32(&ind_hdr_asn->colletStartTime, reversed_ts);
-    ind_hdr.collectStartTime = ntohl(reversed_ts);
+    uint32_t ntp_ts;
+    OCTET_STRING_TO_INT32(&ind_hdr_asn->colletStartTime, ntp_ts);
+    ind_hdr.collectStartTime = ntp32_to_unix_us(ntp_ts);
     
     if (ind_hdr_asn->fileFormatversion != NULL){
       ind_hdr.fileformat_version = calloc(1, sizeof(byte_array_t));
