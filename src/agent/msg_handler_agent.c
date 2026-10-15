@@ -106,6 +106,39 @@ bool stop_ind_event(e2_agent_t* ag, ric_gen_id_t id)
   return true;
 }
 
+// Drop every installed subscription: E2AP keeps none across an association.
+// Agent thread only.
+void stop_all_ind_events(e2_agent_t* ag)
+{
+  assert(ag != NULL);
+
+  size_t dropped = 0;
+  for(;;){
+    ind_event_t ev = {0};
+    {
+      lock_guard(&ag->mtx_ind_event);
+
+      assoc_rb_tree_t* left = &ag->ind_event.left;
+      void* it = assoc_rb_tree_front(left);
+      if(it == assoc_rb_tree_end(left))
+        break;
+
+      // Re-read front() after every extraction: assoc_rb_tree_extract frees the
+      // node, so an iterator held across one would dangle.
+      int fd = *(int*)assoc_rb_tree_key(left, it);
+      ind_event_t* val = bi_map_extract_left(&ag->ind_event, &fd, sizeof(fd), NULL);
+      assert(val != NULL);
+      ev = *val;
+      free(val);
+    }
+    release_ind_event(ag, &ev);
+    ++dropped;
+  }
+
+  if(dropped > 0)
+    printf("[E2 AGENT]: dropped %zu RIC subscription(s) with the association\n", dropped);
+}
+
 void init_handle_msg_agent(size_t len, handle_msg_fp_agent (*handle_msg)[len])
 {
   assert(len == NONE_E2_MSG_TYPE);

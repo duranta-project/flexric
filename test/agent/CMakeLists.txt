@@ -20,3 +20,22 @@ target_compile_definitions(test_setup_response PRIVATE ${E2AP_ENCODING} ${E2AP_V
 
 enable_testing()
 add_test(Unit_test_setup_response test_setup_response)
+
+#####################################
+# Unit test: a SCTP shutdown ends the E2 session
+#####################################
+
+add_executable(test_association_loss
+  test_association_loss.c
+  )
+
+target_link_libraries(test_association_loss
+  PUBLIC
+  e2_agent
+  -pthread
+  -lsctp
+  -ldl)
+
+target_compile_definitions(test_association_loss PRIVATE ${E2AP_ENCODING} ${E2AP_VERSION} ${KPM_VERSION})
+
+add_test(Unit_test_association_loss test_association_loss)
