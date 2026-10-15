@@ -22,7 +22,7 @@ enable_testing()
 add_test(Unit_test_setup_response test_setup_response)
 
 #####################################
-# Unit test: a SCTP shutdown ends the E2 session
+# Unit test: every way the SCTP association can end ends the E2 session
 #####################################
 
 add_executable(test_association_loss

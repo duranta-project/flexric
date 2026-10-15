@@ -11,22 +11,42 @@
 
 #include "../lib/pending_events.h"
 
-void notification_handle_ag(e2_agent_t* ag, sctp_msg_t const* msg)
+// Why a notification ends the E2 session with the nearRT-RIC, or NULL when it
+// does not. The association can end three ways:
+//  - SCTP_SHUTDOWN_EVENT: the RIC closed it gracefully.
+//  - SCTP_COMM_LOST: it died (RIC host or network gone, or the peer sent an
+//    ABORT); no SHUTDOWN is sent.
+//  - SCTP_RESTART: the RIC came back under the same addresses and re-joined the
+//    association, having forgotten every subscription and the E2 setup.
+// The other association states are not an end: SCTP_COMM_UP is one coming up,
+// SCTP_CANT_STR_ASSOC a setup attempt the retry timer repeats, and
+// SCTP_SHUTDOWN_COMP closes the shutdown already reported.
+static
+char const* e2_session_end_reason(union sctp_notification const* notif)
+{
+  assert(notif != NULL);
+
+  if(notif->sn_header.sn_type == SCTP_SHUTDOWN_EVENT)
+    return "the nearRT-RIC shut the association down";
+
+  if(notif->sn_header.sn_type != SCTP_ASSOC_CHANGE)
+    return NULL;
+
+  switch(notif->sn_assoc_change.sac_state){
+    case SCTP_COMM_LOST:
+      return "the association with the nearRT-RIC was lost";
+    case SCTP_RESTART:
+      return "the nearRT-RIC restarted";
+    default:
+      return NULL;
+  }
+}
+
+// The E2 session is over: drop what it installed and start a new one.
+static
+void end_e2_session(e2_agent_t* ag)
 {
   assert(ag != NULL);
-  assert(msg != NULL && msg->type == SCTP_MSG_NOTIFICATION);
-
-  // next_async_event_agent routes every SCTP notification here, and
-  // e2ap_recv_sctp_msg does not filter on sn_type either. Only the shutdown
-  // ends the E2 session: cp_sctp_notification decodes SCTP_COMM_UP too, and
-  // dropping every subscription on an association coming up would cause an
-  // outage.
-  if(msg->notif->sn_header.sn_type != SCTP_SHUTDOWN_EVENT){
-    printf("[E2 AGENT]: SCTP notification type %u ignored\n", msg->notif->sn_header.sn_type);
-    return;
-  }
-
-  printf("[E2 AGENT]: Communication with the nearRT-RIC lost\n" );
 
   stop_all_ind_events(ag);
 
@@ -43,4 +63,20 @@ void notification_handle_ag(e2_agent_t* ag, sctp_msg_t const* msg)
 
     bi_map_insert(&ag->pending, &fd_timer, sizeof(fd_timer), &ev, sizeof(ev));
   }
+}
+
+void notification_handle_ag(e2_agent_t* ag, sctp_msg_t const* msg)
+{
+  assert(ag != NULL);
+  assert(msg != NULL && msg->type == SCTP_MSG_NOTIFICATION);
+
+  char const* reason = e2_session_end_reason(msg->notif);
+  if(reason == NULL){
+    printf("[E2 AGENT]: SCTP notification type %u ignored\n", msg->notif->sn_header.sn_type);
+    return;
+  }
+
+  printf("[E2 AGENT]: E2 session with the nearRT-RIC ended: %s\n", reason);
+
+  end_e2_session(ag);
 }

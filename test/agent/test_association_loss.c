@@ -3,8 +3,15 @@
  */
 
 /*
- * A SCTP shutdown from the nearRT-RIC must end the E2 session: drop every
- * subscription and arm a single E2 SETUP REQUEST retry.
+ * Every way the SCTP association to the nearRT-RIC can end must end the E2
+ * session, not only a graceful SHUTDOWN.
+ *
+ * notification_handle_ag() acted on SCTP_SHUTDOWN_EVENT alone, and the agent did
+ * not subscribe to association events at all. A RIC that went away without a
+ * SHUTDOWN (SCTP_COMM_LOST: host or network gone, or an ABORT) or that came back
+ * under the same addresses (SCTP_RESTART) left every subscription installed and
+ * no E2 SETUP REQUEST armed, so the RAN kept producing indications for a RIC that
+ * had forgotten them and never set the E2 session up again.
  */
 
 // The asserts are the test: keep them in builds that define NDEBUG.
@@ -105,6 +112,15 @@ sctp_msg_t shutdown_event(union sctp_notification* n)
   return (sctp_msg_t){.type = SCTP_MSG_NOTIFICATION, .notif = n};
 }
 
+static
+sctp_msg_t assoc_change(union sctp_notification* n, uint16_t state)
+{
+  memset(n, 0, sizeof(*n));
+  n->sn_header.sn_type = SCTP_ASSOC_CHANGE;
+  n->sn_assoc_change.sac_state = state;
+  return (sctp_msg_t){.type = SCTP_MSG_NOTIFICATION, .notif = n};
+}
+
 // The session ends: the subscription is released through the RAN's callback and
 // an E2 SETUP REQUEST retry is armed to open the next one.
 static
@@ -124,6 +140,27 @@ void expect_session_ended(sctp_msg_t const* msg, char const* name)
   printf("[TEST]: %s ends the E2 session\n", name);
 }
 
+// Not an end: nothing is torn down and no retry is armed.
+static
+void expect_session_kept(sctp_msg_t const* msg, char const* name)
+{
+  e2_agent_t ag = {0};
+  init_agent_stub(&ag);
+  install_aperiodic_subscription(&ag);
+
+  notification_handle_ag(&ag, msg);
+
+  assert(bi_map_size(&ag.ind_event) == 1 && "the subscription survives");
+  assert(released == 0);
+  assert(bi_map_size(&ag.pending) == 0 && "no retry is armed");
+
+  stop_all_ind_events(&ag);
+  assert(released == 1);
+
+  free_agent_stub(&ag);
+  printf("[TEST]: %s leaves the E2 session alone\n", name);
+}
+
 // pend_event() asserts the pending map holds exactly one entry, so a loss while a
 // setup is already outstanding -- or two losses in a row -- must not arm a second
 // timer.
@@ -135,7 +172,7 @@ void test_one_retry_timer_only(void)
   arm_setup_request(&ag);
 
   union sctp_notification n;
-  sctp_msg_t const lost = shutdown_event(&n);
+  sctp_msg_t const lost = assoc_change(&n, SCTP_COMM_LOST);
 
   notification_handle_ag(&ag, &lost);
   assert(bi_map_size(&ag.pending) == 1);
@@ -144,7 +181,7 @@ void test_one_retry_timer_only(void)
   assert(bi_map_size(&ag.pending) == 1);
 
   free_agent_stub(&ag);
-  printf("[TEST]: repeated shutdowns arm a single E2 SETUP REQUEST retry\n");
+  printf("[TEST]: repeated losses arm a single E2 SETUP REQUEST retry\n");
 }
 
 int main()
@@ -153,6 +190,21 @@ int main()
 
   sctp_msg_t msg = shutdown_event(&n);
   expect_session_ended(&msg, "SCTP_SHUTDOWN_EVENT");
+
+  msg = assoc_change(&n, SCTP_COMM_LOST);
+  expect_session_ended(&msg, "SCTP_COMM_LOST");
+
+  msg = assoc_change(&n, SCTP_RESTART);
+  expect_session_ended(&msg, "SCTP_RESTART");
+
+  msg = assoc_change(&n, SCTP_COMM_UP);
+  expect_session_kept(&msg, "SCTP_COMM_UP");
+
+  msg = assoc_change(&n, SCTP_CANT_STR_ASSOC);
+  expect_session_kept(&msg, "SCTP_CANT_STR_ASSOC");
+
+  msg = assoc_change(&n, SCTP_SHUTDOWN_COMP);
+  expect_session_kept(&msg, "SCTP_SHUTDOWN_COMP");
 
   test_one_retry_timer_only();
 
