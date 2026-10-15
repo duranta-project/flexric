@@ -222,6 +222,16 @@ e2ap_msg_t e2ap_handle_subscription_request_agent(e2_agent_t* ag, const e2ap_msg
 
   printf("[E2 AGENT]: RIC_SUBSCRIPTION_REQUEST rx RAN_FUNC_ID %d RIC_REQ_ID %d\n", sr->ric_id.ran_func_id, sr->ric_id.ric_req_id);
 
+  // Replace, do not duplicate: a RIC that installs a subscription the agent
+  // still holds (its delete never arrived, or its Requestor ID is a constant, as
+  // the O-RAN SC one is) would otherwise leave two timers and two action
+  // definitions under one RIC ID. Done before on_subscription(), as an aperiodic
+  // entry's free_subs_aperiodic() lets the RAN un-register the RIC ID, which
+  // on_subscription() may have just registered.
+  if(stop_ind_event(ag, sr->ric_id) == true)
+    printf("[E2 AGENT]: RIC_SUBSCRIPTION_REQUEST replaces an existing subscription RAN_FUNC_ID %d RIC_REQ_ID %d INST_ID %d\n",
+           sr->ric_id.ran_func_id, sr->ric_id.ric_req_id, sr->ric_id.ric_inst_id);
+
   sm_subs_data_t data = generate_sm_subs_data(sr);
   uint16_t const ran_func_id = sr->ric_id.ran_func_id;
   sm_agent_t* sm = sm_plugin_ag(&ag->plugin, ran_func_id);
