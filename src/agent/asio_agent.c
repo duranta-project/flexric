@@ -130,6 +130,12 @@ int event_asio_agent(asio_agent_t const* io)
 
   const int events_ready = epoll_wait(io->efd, events, maxevents, timeout_ms);
   if (events_ready < 0) {
+    // EINTR is not an error: any signal delivered to the process interrupts
+    // epoll_wait, and attaching a debugger or profiler guarantees it. Treat it
+    // as an idle tick and let the caller poll again instead of aborting the
+    // whole RAN process.
+    if (errno == EINTR)
+      return -1;
     fprintf(stderr, "epoll_wait() returned -1: errno %d, %s\n", errno, strerror(errno));
     assert(0);
   }
