@@ -9,6 +9,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 ////////////////////////////////////
 // 5 ORAN E2AP procedures 
@@ -76,6 +77,22 @@ void free_sm_ctrl_req_data(sm_ctrl_req_data_t*);
 typedef struct{
   uint8_t* ctrl_out;
   size_t len_out;
+
+  /* The Service Model has taken responsibility for the outcome and will supply
+   * it later, so the agent must not acknowledge now. ctrl_out is NULL in that
+   * case, which on its own is indistinguishable from an SM that simply has no
+   * outcome to return (the dApp SM's non-E3 build does exactly that and must
+   * keep acknowledging immediately) -- hence an explicit flag rather than a
+   * NULL check. See e2_agent_complete_control(). */
+  bool deferred;
+
+  /* The key the outcome will arrive under, meaningful only when deferred. Only
+   * the Service Model can supply it, because only the SM decodes the E2SM that
+   * carries it -- for the dApp SM it is the E2SM-DAPP sequence-id. Never 0:
+   * that is the "no correlation id" sentinel, and a control carrying it cannot
+   * be completed later, so the SM rejects such a control rather than deferring
+   * it. */
+  uint64_t defer_key;
 } sm_ctrl_out_data_t;
 
 void free_sm_ctrl_out_data(sm_ctrl_out_data_t*);

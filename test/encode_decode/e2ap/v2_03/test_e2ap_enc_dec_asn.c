@@ -665,39 +665,71 @@ void test_reset_response()
 
 void test_service_update()
 {
-  byte_array_t ba;
-  memset(&ba, 0, sizeof(byte_array_t));
+  // Exercise all three lists at once: added and modified are distinct CHOICE
+  // members of the same ASN.1 type, and deleted is a RANfunctionsID-List, so a
+  // round trip that only fills one of them would not catch a member mix-up.
   const char* def = "This is a dummy definition";
-  ba.buf =  malloc(strlen(def));
-  memcpy(ba.buf, def, strlen(def));
-  ba.len = strlen(def);
 
   const size_t len_added = 1;
-  ran_function_t* added = calloc(len_added, sizeof(ran_function_t ));
-  added->id = 42;
-  added->rev = 0;
-  added->defn = ba;
+  ran_function_t* added = calloc(len_added, sizeof(ran_function_t));
+  assert(added != NULL);
+  added[0].id = 42;
+  added[0].rev = 0;
+  added[0].defn = copy_str_to_ba(def);
+  added[0].oid = copy_str_to_ba("1.3.6.1.4.1.53148.1.1.2.2");
 
-  ran_function_t* modified = NULL;
-  const size_t len_modified = 0;
-  e2ap_ran_function_id_rev_t* deleted = NULL;
-  size_t len_deleted = 0;
+  const size_t len_modified = 1;
+  ran_function_t* modified = calloc(len_modified, sizeof(ran_function_t));
+  assert(modified != NULL);
+  modified[0].id = 143;
+  modified[0].rev = 7;
+  modified[0].defn = copy_str_to_ba(def);
+  modified[0].oid = copy_str_to_ba("1.3.6.1.4.1.53148.1.1.2.3");
+
+  const size_t len_deleted = 2;
+  e2ap_ran_function_id_rev_t* deleted = calloc(len_deleted, sizeof(e2ap_ran_function_id_rev_t));
+  assert(deleted != NULL);
+  deleted[0].id = 144;
+  deleted[0].rev = 1;
+  deleted[1].id = 145;
+  deleted[1].rev = 2;
 
   ric_service_update_t su_begin = {
+    .trans_id = 5,
     .len_added = len_added,
-    .added = added,  
+    .added = added,
     .modified = modified,
-    .len_modified = len_modified, 
+    .len_modified = len_modified,
     .deleted = deleted,
     .len_deleted = len_deleted,
   };
 
   E2AP_PDU_t* pdu = e2ap_enc_service_update_asn_pdu(&su_begin);
   e2ap_msg_t msg = e2ap_dec_service_update(pdu);
-  free_pdu(pdu); 
-  assert(msg.type == RIC_SERVICE_UPDATE); 
+  free_pdu(pdu);
+  assert(msg.type == RIC_SERVICE_UPDATE);
   ric_service_update_t* su_end = &msg.u_msgs.ric_serv_updt;
 
+  assert(su_end->trans_id == su_begin.trans_id);
+  assert(eq_ric_service_update(&su_begin, su_end) == true);
+  e2ap_free_service_update(&su_begin);
+  e2ap_free_service_update(su_end);
+}
+
+// Only the mandatory TransactionID: every RAN-function list in a RIC Service
+// Update is optional, and an update with none of them must still round trip.
+void test_service_update_empty()
+{
+  ric_service_update_t su_begin = {.trans_id = 11};
+
+  E2AP_PDU_t* pdu = e2ap_enc_service_update_asn_pdu(&su_begin);
+  e2ap_msg_t msg = e2ap_dec_service_update(pdu);
+  free_pdu(pdu);
+  assert(msg.type == RIC_SERVICE_UPDATE);
+  ric_service_update_t* su_end = &msg.u_msgs.ric_serv_updt;
+
+  assert(su_end->trans_id == su_begin.trans_id);
+  assert(su_end->len_added == 0 && su_end->len_modified == 0 && su_end->len_deleted == 0);
   assert(eq_ric_service_update(&su_begin, su_end) == true);
   e2ap_free_service_update(&su_begin);
   e2ap_free_service_update(su_end);
@@ -714,6 +746,7 @@ void test_service_update_ack()
   size_t len_rejected = 0;
 
   ric_service_update_ack_t su_begin = {
+    .trans_id = 5,
     .accepted = accepted,
     .len_accepted = len_accepted,
     .rejected = rejected,
@@ -726,6 +759,7 @@ void test_service_update_ack()
   assert(msg.type == RIC_SERVICE_UPDATE_ACKNOWLEDGE); 
   ric_service_update_ack_t* su_end = &msg.u_msgs.ric_serv_updt_ack;
 
+  assert(su_end->trans_id == su_begin.trans_id);
   assert(eq_ric_service_update_ack(&su_begin, su_end) == true);
   e2ap_free_service_update_ack(&su_begin);
   e2ap_free_service_update_ack(su_end);
@@ -1140,8 +1174,9 @@ int main()
     
     //test_reset_request(); 
     //test_reset_response();
-    //test_service_update();
-    //test_service_update_ack();
+    test_service_update();
+    test_service_update_empty();
+    test_service_update_ack();
     //test_service_update_failure();
     //test_service_query();
 

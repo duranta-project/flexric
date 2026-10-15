@@ -12,6 +12,7 @@
 #include "util/compare.h"
 #include "util/alg_ds/ds/lock_guard/lock_guard.h"
 #include "util/time_now_us.h"
+#include "../../lib/msg_hand/reg_e2_nodes.h"
 
 #include "iapp_if_generic.h"
 #include "xapp_ric_id.h"
@@ -33,7 +34,8 @@ bool check_valid_msg_type(e2_msg_type_t msg_type )
       || msg_type == RIC_CONTROL_ACKNOWLEDGE
       || msg_type == RIC_INDICATION
       || msg_type == RIC_SUBSCRIPTION_DELETE_RESPONSE
-      || msg_type == RIC_CONTROL_FAILURE;
+      || msg_type == RIC_CONTROL_FAILURE
+      || msg_type == RIC_SERVICE_UPDATE;
 }
 
 void init_handle_msg_iapp(size_t len, handle_msg_fp_iapp (*handle_msg)[len])
@@ -51,6 +53,7 @@ void init_handle_msg_iapp(size_t len, handle_msg_fp_iapp (*handle_msg)[len])
   (*handle_msg)[RIC_CONTROL_FAILURE] = e2ap_handle_e42_ric_control_failure_iapp;
   (*handle_msg)[RIC_INDICATION] = e2ap_handle_ric_indication_iapp;
   (*handle_msg)[RIC_SUBSCRIPTION_DELETE_RESPONSE] = e2ap_handle_subscription_delete_response_iapp;
+  (*handle_msg)[RIC_SERVICE_UPDATE] = e2ap_handle_ric_service_update_iapp;
 
 //  (*handle_msg)[RIC_SUBSCRIPTION_REQUEST] = e2ap_handle_subscription_request_iapp;
 //  (*handle_msg)[RIC_SUBSCRIPTION_DELETE_REQUEST] =  e2ap_handle_subscription_delete_request_iapp;
@@ -491,7 +494,27 @@ e2ap_msg_t e2ap_handle_reset_response_iapp(e42_iapp_t* iapp, const e2ap_msg_t* m
   e2ap_msg_t ans = {.type = NONE_E2_MSG_TYPE};
   return ans; 
 }
-  
+
+e2ap_msg_t e2ap_handle_ric_service_update_iapp(e42_iapp_t* iapp, const e2ap_msg_t* msg)
+{
+  assert(iapp != NULL);
+  assert(msg != NULL);
+  assert(msg->type == RIC_SERVICE_UPDATE);
+
+  ric_service_update_t const* su = &msg->u_msgs.ric_serv_updt;
+
+  printf("[iApp]: RIC SERVICE UPDATE rx (added=%zu, modified=%zu, deleted=%zu)\n",
+         su->len_added, su->len_modified, su->len_deleted);
+
+  update_reg_e2_node(&iapp->e2_nodes, &su->e2_node_id,
+                     su->len_added,    su->added,
+                     su->len_modified,  su->modified,
+                     su->len_deleted,   su->deleted);
+
+  e2ap_msg_t ans = {.type = NONE_E2_MSG_TYPE};
+  return ans;
+}
+
 e2ap_msg_t e2ap_handle_service_update_ack_iapp(e42_iapp_t* iapp, const e2ap_msg_t* msg)
 {
   assert(iapp != NULL);

@@ -16,6 +16,7 @@
 #include "../../kpm_sm/kpm_data_ie_wrapper.h"
 #include "../../rc_sm/ie/rc_data_ie.h"
 #include "../../ccc_sm/ie/ccc_data_ie.h"
+#include "../../dapp_sm/ie/dapp_data_ie.h"
 
 //////////////////////
 //////////////////////
@@ -33,6 +34,7 @@ typedef enum{
   GTP_CTRL_REQ_V0 = 5,
   RAN_CONTROL_CTRL_V1_03 = 6,
   CCC_CTRL_REQ_V0 = 7,
+  DAPP_CTRL_V0 = 8,
   SM_AGENT_IF_WRITE_CTRL_V0_END,
 } sm_ag_if_ctrl_e;
 
@@ -47,6 +49,7 @@ typedef struct{
     gtp_ctrl_req_data_t gtp_ctrl;
     rc_ctrl_req_data_t rc_ctrl;
     ccc_ctrl_req_data_t ccc_ctrl;
+    dapp_ctrl_req_data_t dapp_ctrl;
   };
 }  sm_ag_if_wr_ctrl_t;
 
@@ -67,6 +70,7 @@ typedef enum{
   CCC_SUBS_V0, 
   KPM_SUBS_V3_0, 
   RAN_CTRL_SUBS_V1_03, 
+  DAPP_SUBS_V0,
   SM_AGENT_IF_WRITE_SUBS_V0_END,
 } sm_ag_if_subs_e;
 
@@ -74,6 +78,11 @@ typedef struct{
   uint32_t ric_req_id;
   rc_sub_data_t rc;
 } wr_rc_sub_data_t;
+
+typedef struct{ 
+  uint32_t ric_req_id;
+  dapp_sub_data_t dapp;
+} wr_dapp_sub_data_t;
 
 
 typedef struct{
@@ -88,6 +97,7 @@ typedef struct{
     ccc_sub_data_t ccc;
     kpm_sub_data_t kpm;
     wr_rc_sub_data_t wr_rc;
+    wr_dapp_sub_data_t wr_dapp;
   };
 } sm_ag_if_wr_subs_t;
 
