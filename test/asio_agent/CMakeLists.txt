@@ -17,3 +17,16 @@ target_link_libraries(test_asio_eintr
 
 enable_testing()
 add_test(Unit_test_asio_eintr test_asio_eintr)
+
+add_executable(test_asio_level_triggered
+  test_asio_level_triggered.c
+  )
+
+target_link_libraries(test_asio_level_triggered
+  PUBLIC
+  e2_agent
+  -pthread
+  -lsctp
+  -ldl)
+
+add_test(Unit_test_asio_level_triggered test_asio_level_triggered)
