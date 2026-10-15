@@ -429,7 +429,7 @@ e2_agent_t* e2_init_agent(const char* addr, int port, global_e2_node_id_t ge2nid
 
   init_asio_agent(&ag->io); 
 
-  add_fd_asio_agent(&ag->io, ag->ep.base.fd);
+  add_fd_level_asio_agent(&ag->io, ag->ep.base.fd);
 
   init_ap(&ag->ap.base.type);
 

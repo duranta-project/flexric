@@ -23,6 +23,8 @@ void init_asio_agent(asio_agent_t* io);
 
 void add_fd_asio_agent(asio_agent_t* io, int fd);
 
+void add_fd_level_asio_agent(asio_agent_t* io, int fd);
+
 void rm_fd_asio_agent(asio_agent_t* io, int fd);
 
 int create_timer_ms_asio_agent(asio_agent_t* io, long initial_ms, long interval_ms);
