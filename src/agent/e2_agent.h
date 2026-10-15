@@ -97,6 +97,8 @@ void e2_send_control_acknowledge(e2_agent_t* ag, const ric_control_acknowledge_t
 
 void e2_send_control_failure(e2_agent_t* ag, const ric_control_failure_t* cf);
 
+void e2_send_ric_service_update(e2_agent_t* ag, const ric_service_update_t* su);
+
 ////////////////////////////////////////////////
 
 #undef NUM_HANDLE_MSG 

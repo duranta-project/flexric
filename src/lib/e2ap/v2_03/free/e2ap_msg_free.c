@@ -408,6 +408,8 @@ void e2ap_free_service_update(ric_service_update_t* su)
   free(su->modified);
 
   free(su->deleted);
+
+  free_global_e2_node_id(&su->e2_node_id);
 }
 
 // RIC -> E2
