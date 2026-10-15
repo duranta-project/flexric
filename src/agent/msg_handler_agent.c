@@ -529,20 +529,33 @@ e2ap_msg_t e2ap_handle_reset_request_agent(e2_agent_t* ag, const e2ap_msg_t* msg
 {
   assert(ag != NULL);
   assert(msg != NULL);
-  assert(0!=0 && "Not implemented");
+  assert(msg->type == E2AP_RESET_REQUEST);
 
-  e2ap_msg_t ans = {.type = NONE_E2_MSG_TYPE};
-  return ans; 
+  // The nearRT-RIC asks to start over on the association it already has, e.g.
+  // after losing its own state. A RESET undoes what E2 procedures installed since
+  // the E2 SETUP -- the RIC subscriptions -- and keeps the E2 setup itself, so
+  // the E2 session stays up and no E2 SETUP REQUEST follows.
+  printf("[E2-AGENT]: E2 RESET REQUEST rx, dropping every RIC subscription\n");
+  stop_all_ind_events(ag);
+
+  e2ap_msg_t ans = {.type = E2AP_RESET_RESPONSE};
+#if defined(E2AP_V2) || defined(E2AP_V3)
+  ans.u_msgs.rst_resp.trans_id = msg->u_msgs.rst_req.trans_id;
+#endif
+  return ans;
 }
 
 e2ap_msg_t e2ap_handle_reset_response_agent(e2_agent_t* ag, const e2ap_msg_t* msg)
 {
   assert(ag != NULL);
   assert(msg != NULL);
-  assert(0!=0 && "Not implemented");
+  assert(msg->type == E2AP_RESET_RESPONSE);
+
+  // This node never sends an E2 RESET REQUEST, so there is nothing to answer.
+  printf("[E2-AGENT]: E2 RESET RESPONSE rx with no E2 RESET REQUEST outstanding. Ignoring it\n");
 
   e2ap_msg_t ans = {.type = NONE_E2_MSG_TYPE};
-  return ans; 
+  return ans;
 }
   
 e2ap_msg_t e2ap_handle_service_update_ack_agent(e2_agent_t* ag, const e2ap_msg_t* msg)

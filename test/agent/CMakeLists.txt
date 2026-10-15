@@ -39,3 +39,22 @@ target_link_libraries(test_association_loss
 target_compile_definitions(test_association_loss PRIVATE ${E2AP_ENCODING} ${E2AP_VERSION} ${KPM_VERSION})
 
 add_test(Unit_test_association_loss test_association_loss)
+
+#####################################
+# Unit test: E2 RESET REQUEST and RESET RESPONSE handling
+#####################################
+
+add_executable(test_reset
+  test_reset.c
+  )
+
+target_link_libraries(test_reset
+  PUBLIC
+  e2_agent
+  -pthread
+  -lsctp
+  -ldl)
+
+target_compile_definitions(test_reset PRIVATE ${E2AP_ENCODING} ${E2AP_VERSION} ${KPM_VERSION})
+
+add_test(Unit_test_reset test_reset)
