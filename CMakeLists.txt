@@ -290,6 +290,11 @@ set(SM_ENCODING_CCC "JSON" CACHE STRING "The CCC SM encoding to use")
 set_property(CACHE SM_ENCODING_CCC PROPERTY STRINGS "JSON")
 message(STATUS "Selected CCC SM_ENCODING: ${SM_ENCODING_CCC}")
 
+# E2SM-DAPP Service Model
+set(SM_ENCODING_DAPP "ASN" CACHE STRING "The DAPP SM encoding to use")
+set_property(CACHE SM_ENCODING_DAPP PROPERTY STRINGS "ASN")
+message(STATUS "Selected DAPP SM_ENCODING: ${SM_ENCODING_DAPP}")
+
 #######
 ## Flatbuffer encoding
 #######
@@ -345,6 +350,7 @@ install(TARGETS gtp_sm DESTINATION ${CMAKE_INSTALL_LIBDIR}/flexric)
 install(TARGETS kpm_sm DESTINATION ${CMAKE_INSTALL_LIBDIR}/flexric)
 install(TARGETS rc_sm DESTINATION ${CMAKE_INSTALL_LIBDIR}/flexric)
 install(TARGETS ccc_sm DESTINATION ${CMAKE_INSTALL_LIBDIR}/flexric)
+install(TARGETS dapp_sm DESTINATION ${CMAKE_INSTALL_LIBDIR}/flexric)
 
 #######
 ## Install globally nearRT-RIC

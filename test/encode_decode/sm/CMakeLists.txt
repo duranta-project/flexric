@@ -2,6 +2,7 @@
 
 add_subdirectory(kpm)
 add_subdirectory(rc)
+add_subdirectory(dapp)
 enable_testing()
 
 
