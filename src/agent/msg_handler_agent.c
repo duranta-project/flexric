@@ -271,6 +271,18 @@ e2ap_msg_t e2ap_handle_control_request_agent(e2_agent_t* ag, const e2ap_msg_t* m
   sm_ctrl_out_data_t ctrl_ans = sm->proc.on_control(sm, &data);
   defer({ free_sm_ctrl_out_data(&ctrl_ans); } );
 
+  if(ctrl_ans.deferred == true){
+    /* Park the RIC ID and answer nothing now. The event loop skips a
+     * NONE_E2_MSG_TYPE, so no acknowledge goes out until the SM completes the
+     * procedure. A table that is full is not a reason to lose the exchange:
+     * fall through and acknowledge immediately, the same as an SM that never
+     * deferred. */
+    if(park_pending_ctrl(&ag->pending_ctrl, ctrl_ans.defer_key, ctrl_req->ric_id) == true){
+      e2ap_msg_t none = {.type = NONE_E2_MSG_TYPE};
+      return none;
+    }
+    printf("[E2-AGENT]: pending control table full, acknowledging immediately\n");
+  }
 
   byte_array_t* ba_ctrl_ans = ba_from_ctrl_out(&ctrl_ans);
 

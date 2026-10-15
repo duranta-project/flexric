@@ -203,14 +203,42 @@ bool aind_event(e2_agent_t* ag, int fd, arr_aind_event_t* dst)
   if(fd != ag->io.pipe.r)
     return false;
 
+  // Two producers share this pipe now -- aperiodic indications and deferred
+  // control acknowledges -- so an empty queue no longer means a lost item, it
+  // means the token belonged to the other one. Fall through and let
+  // ctrl_ack_event() look.
   const size_t sz = size_tsq(&ag->aind);
-  assert(sz > 0 && "Aperiodic Event detected but the queue is empty!");
+  if(sz == 0)
+    return false;
   dst->len = sz;
   dst->arr = calloc(sz, sizeof(aind_event_t));
   assert(dst->arr != NULL && "Memory exhausted");
 
   for(size_t i = 0; i < sz; ++i)
     pop_tsq(&ag->aind, &dst->arr[i], sizeof(aind_event_t));
+
+  return true;
+}
+
+// Deferred control acknowledges that are ready to go out. Same shape as
+// aind_event above and on the same pipe: drain everything queued, or report
+// "not mine" so the next handler gets a look.
+static inline
+bool ctrl_ack_event(e2_agent_t* ag, int fd, arr_ctrl_ack_event_t* dst)
+{
+  if(fd != ag->io.pipe.r)
+    return false;
+
+  const size_t sz = size_tsq(&ag->ctrl_ack);
+  if(sz == 0)
+    return false;
+
+  dst->len = sz;
+  dst->arr = calloc(sz, sizeof(ctrl_ack_event_t));
+  assert(dst->arr != NULL && "Memory exhausted");
+
+  for(size_t i = 0; i < sz; ++i)
+    pop_tsq(&ag->ctrl_ack, &dst->arr[i], sizeof(ctrl_ack_event_t));
 
   return true;
 }
@@ -283,6 +311,14 @@ async_event_t next_async_event_agent(e2_agent_t* ag)
   } else if(aind_event(ag, fd, &e.ai_ev) == true) {
     e.type = APERIODIC_INDICATION_EVENT;
 
+  } else if(ctrl_ack_event(ag, fd, &e.ca_ev) == true) {
+    e.type = CONTROL_ACK_EVENT;
+
+  } else if(fd == ag->io.pipe.r) {
+    // A token on the shared pipe whose queue was already drained by an earlier
+    // token. Benign: nothing is lost, there is simply nothing left to do.
+    e.type = CHECK_STOP_TOKEN_EVENT;
+
   } else if (ind_event(ag, fd, &e.i_ev) == true) {
     e.type = INDICATION_EVENT;
 
@@ -351,6 +387,39 @@ void e2_event_loop_agent(e2_agent_t* ag)
 
             int rc = consume_fd_async(ag->io.pipe.r); 
             assert(rc != 1 && "No bytes in the pipe but message in the queue! ");
+          }
+          break;
+        }
+      case CONTROL_ACK_EVENT:
+        {
+          // A control the Service Model deferred has completed. Everything the
+          // acknowledge needs was decided by the completing thread; all that is
+          // left here is to frame and send it on the agent's own thread, which
+          // is the only one that may touch the SCTP endpoint.
+          arr_ctrl_ack_event_t* ca = &e.ca_ev;
+          assert(ca->len > 0 && ca->arr != NULL);
+          defer({ free(ca->arr); });
+          for(size_t i = 0; i < ca->len; ++i){
+            byte_array_t ba_out = {.buf = ca->arr[i].ctrl_out, .len = ca->arr[i].len_out};
+
+            ric_control_acknowledge_t ack = {.ric_id = ca->arr[i].ric_id,
+                                             .call_process_id = NULL,
+#ifdef E2AP_V1
+                                             .status = RIC_CONTROL_STATUS_SUCCESS,
+#endif
+                                             .control_outcome = ba_out.len > 0 ? &ba_out : NULL};
+
+            e2ap_msg_t msg = {.type = RIC_CONTROL_ACKNOWLEDGE};
+            msg.u_msgs.ric_ctrl_ack = ack;
+
+            byte_array_t ba = e2ap_msg_enc_ag(&ag->ap, &msg);
+            e2ap_send_bytes_agent(&ag->ep, ba);
+            free_byte_array(ba);
+
+            free(ca->arr[i].ctrl_out);
+
+            int rc = consume_fd_async(ag->io.pipe.r);
+            assert(rc == 1 && "Deferred control ack drained but its pipe token is missing");
           }
           break;
         }
@@ -443,6 +512,8 @@ e2_agent_t* e2_init_agent(const char* addr, int port, global_e2_node_id_t ge2nid
   init_indication_event(ag);
 
   init_tsq(&ag->aind, sizeof(aind_event_t));
+  init_tsq(&ag->ctrl_ack, sizeof(ctrl_ack_event_t));
+  init_pending_ctrl(&ag->pending_ctrl);
 
 #if defined(E2AP_V2) || defined (E2AP_V3)
   // Read RAN 
@@ -500,12 +571,64 @@ void e2_free_agent(e2_agent_t* ag)
   free_indication_event(ag);
 
   free_tsq(&ag->aind, NULL);
+  free_tsq(&ag->ctrl_ack, NULL);
+  free_pending_ctrl(&ag->pending_ctrl);
 
   free_global_e2_node_id(&ag->global_e2_node_id);
 
   e2ap_free_ep_agent(&ag->ep);
 
   free(ag);
+}
+
+void e2_agent_complete_control(e2_agent_t* ag, uint64_t key, uint8_t* ctrl_out, size_t len_out)
+{
+  assert(ag != NULL);
+  assert(ctrl_out != NULL || len_out == 0);
+
+  ric_gen_id_t ric_id = {0};
+  if(claim_pending_ctrl(&ag->pending_ctrl, key, &ric_id) == false){
+    // Either the timeout sweep already answered this control, or the completion
+    // names a key that was never parked. Both are the caller's to notice, not
+    // ours to abort on -- drop the outcome and return.
+    free(ctrl_out);
+    return;
+  }
+
+  ctrl_ack_event_t ev = {.ric_id = ric_id, .ctrl_out = ctrl_out, .len_out = len_out};
+  push_tsq(&ag->ctrl_ack, &ev, sizeof(ctrl_ack_event_t));
+
+  // One token per item, same contract as the aperiodic queue: the pipe counts,
+  // it does not carry.
+  uint8_t const token = 0;
+  ssize_t written = 0;
+  do {
+    written = write(ag->io.pipe.w, &token, sizeof(token));
+  } while (written == -1 && errno == EINTR);
+  assert(written == 1 && "Failed to signal the deferred control ack queue");
+}
+
+void e2_agent_sweep_pending_control(e2_agent_t* ag)
+{
+  assert(ag != NULL);
+
+  ric_gen_id_t timed_out[PENDING_CTRL_MAX];
+  size_t const n = sweep_pending_ctrl(&ag->pending_ctrl, timed_out);
+
+  // Answer with an outcome-less acknowledge. The xApp learns the procedure
+  // ended without an applied result, which is what happened, rather than
+  // waiting forever on a dApp that is not going to answer.
+  for(size_t i = 0; i < n; ++i){
+    ctrl_ack_event_t ev = {.ric_id = timed_out[i], .ctrl_out = NULL, .len_out = 0};
+    push_tsq(&ag->ctrl_ack, &ev, sizeof(ctrl_ack_event_t));
+
+    uint8_t const token = 0;
+    ssize_t written = 0;
+    do {
+      written = write(ag->io.pipe.w, &token, sizeof(token));
+    } while (written == -1 && errno == EINTR);
+    assert(written == 1 && "Failed to signal the deferred control ack queue");
+  }
 }
 
 void e2_async_event_agent(e2_agent_t* ag, uint32_t ric_req_id, void* ind_data)
