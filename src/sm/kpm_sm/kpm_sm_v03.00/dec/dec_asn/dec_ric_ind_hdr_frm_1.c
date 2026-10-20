@@ -4,40 +4,19 @@
 
 #include <assert.h>
 #include "../../../../../util/conversions.h"
-#include <arpa/inet.h> // ntohl
+#include "../../../../../util/ntp_time.h"
 
 #include "dec_ric_ind_hdr_frm_1.h"
-
-// #define ntohll(x) ((1==ntohl(1)) ? (x) : ((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
-
-// uint64_t ntohll(uint64_t x)
-// {
-//   return (uint64_t)((uint64_t)ntohl((x) & 0xFFFFFFFFLL) << 32) | (uint32_t)ntohl(x);
-// }
-
-// #define ntohll(x) ((((uint64_t)ntohl(x)) << 32) + ntohl((x) >> 32))
-
-// #define NTOHLL(x) ((1==ntohl(1)) ? (x) : (((uint64_t)ntohl((x) & 0xFFFFFFFFUL)) << 32) | ntohl((uint32_t)((x) >> 32)))
-
-uint64_t ntohll(uint64_t x)
-{
-  uint32_t x1 = (uint32_t)((x & 0xFFFFFFFF00000000LL) >> 32);
-  uint32_t x2 = (uint32_t)(x & 0xFFFFFFFFLL);
-  x1 = ntohl(x1);
-  x2 = ntohl(x2);
-  uint64_t v = ((uint64_t)x1) << 32 | x2;
-
-  return v;
-}
-
 
 kpm_ric_ind_hdr_format_1_t kpm_dec_ind_hdr_frm_1_asn(const E2SM_KPM_IndicationHeader_Format1_t * ind_hdr_asn)
 {
     kpm_ric_ind_hdr_format_1_t ind_hdr = {0};
 
-    uint64_t reversed_ts;
-    reversed_ts = octet_string_to_int_64(ind_hdr_asn->colletStartTime);
-    ind_hdr.collectStartTime = ntohll(reversed_ts);
+    uint64_t ntp_ts = 0;
+    assert(ind_hdr_asn->colletStartTime.size == 8);
+    for (int i = 0; i < 8; ++i)
+        ntp_ts = ntp_ts << 8 | ind_hdr_asn->colletStartTime.buf[i];
+    ind_hdr.collectStartTime = ntp64_to_unix_us(ntp_ts);
     
     if (ind_hdr_asn->fileFormatversion != NULL){
       ind_hdr.fileformat_version = calloc(1, sizeof(byte_array_t));
