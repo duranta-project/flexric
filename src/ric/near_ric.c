@@ -188,7 +188,7 @@ near_ric_t* init_near_ric(fr_args_t const* args)
   char* addr = get_near_ric_ip(args);
   defer({ free(addr); } );
 
-  const int port = 36421;
+  const int port = get_near_ric_port(args);
   printf("[NEAR-RIC]: nearRT-RIC IP Address = %s, PORT = %d\n", addr, port);
   e2ap_init_ep_ric(&ric->ep, addr, port);
 
@@ -212,7 +212,7 @@ near_ric_t* init_near_ric(fr_args_t const* args)
   init_pending_events(ric);
 
   near_ric_if_t ric_if = {.type = ric};
-  init_iapp_api(addr, ric_if);
+  init_iapp_api(addr, get_near_ric_e42_port(args), ric_if);
 
   uint32_t const num_threads = TASK_MAN_NUMBER_THREADS;
   printf("[NEAR-RIC]: Initializing Task Manager with %u threads \n", num_threads);
