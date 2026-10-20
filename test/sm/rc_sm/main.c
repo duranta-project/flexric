@@ -92,9 +92,9 @@ sm_ag_if_ans_t write_ctrl_rc(void const* data)
 }
 
 static
-void free_aperiodic_subscription(uint32_t ric_req_id)
+void free_aperiodic_subscription(ric_gen_id_t ric_id)
 {
-  (void)ric_req_id;
+  (void)ric_id;
 }
 
 static 
