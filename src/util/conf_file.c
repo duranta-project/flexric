@@ -256,6 +256,12 @@ char *rtrim(char *s)
 }
 
 static
+bool valid_port(long port)
+{
+  return port > 0 && port < 65536;
+}
+
+static
 bool is_directory(const char* path)
 {
   assert(path != NULL);
@@ -305,9 +311,11 @@ void print_usage(void)
   printf("  -a         : nearRT-RIC IP address\n");
   printf("  -d         : DB_DIR\n");
   printf("  -n         : DB_NAME\n");
+  printf("  -e         : E2AP port, i.e., the nearRT-RIC port the E2 agents connect to\n");
+  printf("  -x         : E42 port, i.e., the nearRT-RIC port the xApps connect to\n");
   printf(
       "\n");
-  printf("Ex. -p /usr/local/lib/flexric/ -c /usr/local/etc/flexric/flexric.conf -a 127.0.0.1 -d /flexric/ -n xapp_db\n");
+  printf("Ex. -p /usr/local/lib/flexric/ -c /usr/local/etc/flexric/flexric.conf -a 127.0.0.1 -d /flexric/ -n xapp_db -e 36421 -x 36422\n");
 } 
 
 static
@@ -318,7 +326,7 @@ void parse_args(int argc, char* const* argv, fr_args_t* args)
   assert(args != NULL);
 
   int opt = '?';
-  const char *optstring = "hc:p:a:d:n:";
+  const char *optstring = "hc:p:a:d:n:e:x:";
   while((opt = getopt(argc, argv, optstring)) != -1) {
     switch(opt) {
       case 'h':{
@@ -396,6 +404,32 @@ void parse_args(int argc, char* const* argv, fr_args_t* args)
 
                  break;
                }
+      case 'e':{
+                 char* end = NULL;
+                 long const port = strtol(optarg, &end, 10);
+
+                 if (end == optarg || *end != '\0' || valid_port(port) == false) {
+                   printf("Error: %s is not a valid E2AP port \n", optarg);
+                   exit(EXIT_FAILURE);
+                 }
+
+                 args->e2ap_port = port;
+
+                 break;
+               }
+      case 'x':{
+                 char* end = NULL;
+                 long const port = strtol(optarg, &end, 10);
+
+                 if (end == optarg || *end != '\0' || valid_port(port) == false) {
+                   printf("Error: %s is not a valid E42 port \n", optarg);
+                   exit(EXIT_FAILURE);
+                 }
+
+                 args->e42_port = port;
+
+                 break;
+               }
       case '?':{
                  printf("Error: unknown flag %c ??\n ",optopt);
                  print_usage();
@@ -430,7 +464,7 @@ fr_args_t init_fr_args(int argc, char* argv[])
   load_default_val(&args);
   
   if(argc > 1){
-    assert(argc < 12 && "Supported flags: -h -c -p -a -d -n");
+    assert(argc < 16 && "Supported flags: -h -c -p -a -d -n -e -x");
     assert(argv != NULL);
     parse_args(argc, argv, &args);
   }
@@ -484,6 +518,106 @@ char* get_near_ric_ip(fr_args_t const* args)
   free(line);
   fclose(fp); 
   return strdup(ip_addr);
+}
+
+// Unlike the IP address, a missing key or a missing config file is not an error:
+// the value then falls back to def. The E2 agent is linked into RAN processes that
+// fill fr_args_t themselves and never set conf_file.
+static
+long read_conf_long(fr_args_t const* args, const char* needle, long def, long min, long max)
+{
+  assert(args != NULL);
+  assert(needle != NULL);
+
+  FILE* fp = fopen(args->conf_file, "r");
+  if (fp == NULL)
+    return def;
+
+  defer({ fclose(fp); });
+
+  char* line = NULL;
+  defer({ free(line); });
+  size_t len = 0;
+  ssize_t read = 0;
+
+  while ((read = getline(&line, &len, fp)) != -1) {
+    // strstr matches anywhere in the line, so a commented-out key would otherwise win
+    if (*ltrim(line) == '#')
+      continue;
+
+    char* ans = strstr(line, needle);
+    if (ans == NULL)
+      continue;
+
+    ans += strlen(needle);
+    ans = ltrim(ans);
+    ans = rtrim(ans);
+
+    char* end = NULL;
+    long const val = strtol(ans, &end, 10);
+    if (end == ans || *end != '\0' || val < min || val > max) {
+      printf("Invalid value = %s in \"%s\", expected %ld to %ld. Check the config file\n", ans, needle, min, max);
+      exit(EXIT_FAILURE);
+    }
+
+    return val;
+  }
+
+  return def;
+}
+
+static
+int read_conf_port(fr_args_t const* args, const char* needle, int def)
+{
+  return read_conf_long(args, needle, def, 1, 65535);
+}
+
+// An E2 agent SCTP timer: the fr_args_t value when the RAN set one, else the
+// config file, else def. Read once at start-up, so an out-of-range value stops
+// the process there instead of running with a timer the kernel would refuse.
+static
+int sctp_timer(fr_args_t const* args, int arg, const char* needle, int def, int min, int max)
+{
+  if (arg == 0)
+    return read_conf_long(args, needle, def, min, max);
+
+  if (arg < min || arg > max) {
+    printf("Invalid value = %d for \"%s\", expected %d to %d\n", arg, needle, min, max);
+    exit(EXIT_FAILURE);
+  }
+
+  return arg;
+}
+
+fr_sctp_timers_t get_e2ap_sctp_timers(fr_args_t const* args)
+{
+  assert(args != NULL);
+
+  fr_sctp_timers_t const t = {
+    .hb_interval_ms = sctp_timer(args, args->sctp_hb_interval_ms, "SCTP_HB_INTERVAL_MS =", SCTP_DEFAULT_HB_INTERVAL_MS, 100, 300000),
+    .rto_max_ms = sctp_timer(args, args->sctp_rto_max_ms, "SCTP_RTO_MAX_MS =", SCTP_DEFAULT_RTO_MAX_MS, 200, 120000),
+    .max_retrans = sctp_timer(args, args->sctp_max_retrans, "SCTP_MAX_RETRANS =", SCTP_DEFAULT_MAX_RETRANS, 1, 30),
+  };
+
+  return t;
+}
+
+int get_near_ric_port(fr_args_t const* args)
+{
+  // fast path
+  if (args->e2ap_port != 0)
+    return args->e2ap_port;
+
+  return read_conf_port(args, "E2AP_PORT =", E2AP_DEFAULT_PORT);
+}
+
+int get_near_ric_e42_port(fr_args_t const* args)
+{
+  // fast path
+  if (args->e42_port != 0)
+    return args->e42_port;
+
+  return read_conf_port(args, "E42_PORT =", E42_DEFAULT_PORT);
 }
 
 char* get_conf_db_dir(fr_args_t const* args)
