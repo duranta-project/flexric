@@ -28,7 +28,7 @@ bool eq_ric_service_update(const ric_service_update_t* m0, const ric_service_upd
     return false;
 
   for(size_t i = 0; i < m0->len_modified; ++i){
-    if(eq_ran_function(&m0->modified[i], &m1->modified[i]))
+    if(eq_ran_function(&m0->modified[i], &m1->modified[i]) == false)
       return false;
   }
 
