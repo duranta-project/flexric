@@ -1,0 +1,156 @@
+ASN_MODULE_SRCS=	\
+	compiled_output/Spectrum-RanFunctionData.c	\
+	compiled_output/Spectrum-SensingIndication.c	\
+	compiled_output/Spectrum-PRBBlacklistControl.c	\
+	compiled_output/Spectrum-SensingPolicyControl.c	\
+	compiled_output/Spectrum-DAppControlPayload.c	\
+	compiled_output/Spectrum-DAppControlData.c	\
+	compiled_output/Spectrum-PRBBlacklistReport.c	\
+	compiled_output/Spectrum-DAppReportPayload.c	\
+	compiled_output/Spectrum-DAppReportData.c	\
+	compiled_output/Spectrum-PRBBlockedControl.c	\
+	compiled_output/Spectrum-ConfigControl.c	\
+	compiled_output/Spectrum-XAppControlPayload.c	\
+	compiled_output/Spectrum-XAppControlData.c	\
+	compiled_output/EXTERNAL.c
+
+ASN_MODULE_HDRS=	\
+	compiled_output/Spectrum-RanFunctionData.h	\
+	compiled_output/Spectrum-SensingIndication.h	\
+	compiled_output/Spectrum-PRBBlacklistControl.h	\
+	compiled_output/Spectrum-SensingPolicyControl.h	\
+	compiled_output/Spectrum-DAppControlPayload.h	\
+	compiled_output/Spectrum-DAppControlData.h	\
+	compiled_output/Spectrum-PRBBlacklistReport.h	\
+	compiled_output/Spectrum-DAppReportPayload.h	\
+	compiled_output/Spectrum-DAppReportData.h	\
+	compiled_output/Spectrum-PRBBlockedControl.h	\
+	compiled_output/Spectrum-ConfigControl.h	\
+	compiled_output/Spectrum-XAppControlPayload.h	\
+	compiled_output/Spectrum-XAppControlData.h	\
+	compiled_output/EXTERNAL.h
+
+ASN_MODULE_HDRS+=compiled_output/ANY.h
+ASN_MODULE_SRCS+=compiled_output/ANY.c
+ASN_MODULE_HDRS+=compiled_output/OCTET_STRING.h
+ASN_MODULE_HDRS+=compiled_output/OPEN_TYPE.h
+ASN_MODULE_SRCS+=compiled_output/OPEN_TYPE.c
+ASN_MODULE_HDRS+=compiled_output/constr_CHOICE.h
+ASN_MODULE_HDRS+=compiled_output/BOOLEAN.h
+ASN_MODULE_SRCS+=compiled_output/BOOLEAN.c
+ASN_MODULE_HDRS+=compiled_output/GraphicString.h
+ASN_MODULE_SRCS+=compiled_output/GraphicString.c
+ASN_MODULE_HDRS+=compiled_output/INTEGER.h
+ASN_MODULE_SRCS+=compiled_output/INTEGER.c
+ASN_MODULE_HDRS+=compiled_output/NativeInteger.h
+ASN_MODULE_SRCS+=compiled_output/NativeInteger.c
+ASN_MODULE_HDRS+=compiled_output/OBJECT_IDENTIFIER.h
+ASN_MODULE_SRCS+=compiled_output/OBJECT_IDENTIFIER.c
+ASN_MODULE_HDRS+=compiled_output/asn_codecs_prim.h
+ASN_MODULE_HDRS+=compiled_output/ObjectDescriptor.h
+ASN_MODULE_SRCS+=compiled_output/ObjectDescriptor.c
+ASN_MODULE_HDRS+=compiled_output/asn_SEQUENCE_OF.h
+ASN_MODULE_SRCS+=compiled_output/asn_SEQUENCE_OF.c
+ASN_MODULE_HDRS+=compiled_output/asn_SET_OF.h
+ASN_MODULE_SRCS+=compiled_output/asn_SET_OF.c
+ASN_MODULE_SRCS+=compiled_output/constr_CHOICE.c
+ASN_MODULE_HDRS+=compiled_output/constr_SEQUENCE.h
+ASN_MODULE_SRCS+=compiled_output/constr_SEQUENCE.c
+ASN_MODULE_HDRS+=compiled_output/constr_SEQUENCE_OF.h
+ASN_MODULE_SRCS+=compiled_output/constr_SEQUENCE_OF.c
+ASN_MODULE_HDRS+=compiled_output/constr_SET_OF.h
+ASN_MODULE_SRCS+=compiled_output/constr_SET_OF.c
+ASN_MODULE_HDRS+=compiled_output/asn_application.h
+ASN_MODULE_SRCS+=compiled_output/asn_application.c
+ASN_MODULE_HDRS+=compiled_output/asn_ioc.h
+ASN_MODULE_HDRS+=compiled_output/asn_system.h
+ASN_MODULE_HDRS+=compiled_output/asn_codecs.h
+ASN_MODULE_HDRS+=compiled_output/asn_internal.h
+ASN_MODULE_SRCS+=compiled_output/asn_internal.c
+ASN_MODULE_HDRS+=compiled_output/asn_bit_data.h
+ASN_MODULE_SRCS+=compiled_output/asn_bit_data.c
+ASN_MODULE_SRCS+=compiled_output/OCTET_STRING.c
+ASN_MODULE_HDRS+=compiled_output/BIT_STRING.h
+ASN_MODULE_SRCS+=compiled_output/BIT_STRING.c
+ASN_MODULE_SRCS+=compiled_output/asn_codecs_prim.c
+ASN_MODULE_HDRS+=compiled_output/ber_tlv_length.h
+ASN_MODULE_SRCS+=compiled_output/ber_tlv_length.c
+ASN_MODULE_HDRS+=compiled_output/ber_tlv_tag.h
+ASN_MODULE_SRCS+=compiled_output/ber_tlv_tag.c
+ASN_MODULE_HDRS+=compiled_output/constr_TYPE.h
+ASN_MODULE_SRCS+=compiled_output/constr_TYPE.c
+ASN_MODULE_HDRS+=compiled_output/constraints.h
+ASN_MODULE_SRCS+=compiled_output/constraints.c
+ASN_MODULE_HDRS+=compiled_output/xer_support.h
+ASN_MODULE_HDRS+=compiled_output/xer_decoder.h
+ASN_MODULE_HDRS+=compiled_output/xer_encoder.h
+ASN_MODULE_SRCS+=compiled_output/xer_support.c
+ASN_MODULE_SRCS+=compiled_output/xer_decoder.c
+ASN_MODULE_SRCS+=compiled_output/xer_encoder.c
+ASN_MODULE_SRCS+=compiled_output/ANY_xer.c
+ASN_MODULE_SRCS+=compiled_output/BIT_STRING_xer.c
+ASN_MODULE_SRCS+=compiled_output/BOOLEAN_xer.c
+ASN_MODULE_SRCS+=compiled_output/INTEGER_xer.c
+ASN_MODULE_SRCS+=compiled_output/NativeInteger_xer.c
+ASN_MODULE_SRCS+=compiled_output/OBJECT_IDENTIFIER_xer.c
+ASN_MODULE_SRCS+=compiled_output/OCTET_STRING_xer.c
+ASN_MODULE_SRCS+=compiled_output/OPEN_TYPE_xer.c
+ASN_MODULE_SRCS+=compiled_output/asn_codecs_prim_xer.c
+ASN_MODULE_SRCS+=compiled_output/constr_CHOICE_xer.c
+ASN_MODULE_SRCS+=compiled_output/constr_SEQUENCE_OF_xer.c
+ASN_MODULE_SRCS+=compiled_output/constr_SEQUENCE_xer.c
+ASN_MODULE_SRCS+=compiled_output/constr_SET_OF_xer.c
+ASN_MODULE_HDRS+=compiled_output/per_decoder.h
+ASN_MODULE_HDRS+=compiled_output/per_encoder.h
+ASN_MODULE_HDRS+=compiled_output/per_support.h
+ASN_MODULE_HDRS+=compiled_output/per_opentype.h
+ASN_MODULE_SRCS+=compiled_output/per_decoder.c
+ASN_MODULE_SRCS+=compiled_output/per_encoder.c
+ASN_MODULE_SRCS+=compiled_output/per_support.c
+ASN_MODULE_SRCS+=compiled_output/per_opentype.c
+ASN_MODULE_HDRS+=compiled_output/aper_decoder.h
+ASN_MODULE_HDRS+=compiled_output/aper_encoder.h
+ASN_MODULE_HDRS+=compiled_output/aper_support.h
+ASN_MODULE_HDRS+=compiled_output/aper_opentype.h
+ASN_MODULE_SRCS+=compiled_output/aper_decoder.c
+ASN_MODULE_SRCS+=compiled_output/aper_encoder.c
+ASN_MODULE_SRCS+=compiled_output/aper_support.c
+ASN_MODULE_SRCS+=compiled_output/aper_opentype.c
+ASN_MODULE_SRCS+=compiled_output/ANY_aper.c
+ASN_MODULE_SRCS+=compiled_output/BOOLEAN_aper.c
+ASN_MODULE_SRCS+=compiled_output/INTEGER_aper.c
+ASN_MODULE_SRCS+=compiled_output/NativeInteger_aper.c
+ASN_MODULE_SRCS+=compiled_output/OCTET_STRING_aper.c
+ASN_MODULE_SRCS+=compiled_output/OPEN_TYPE_aper.c
+ASN_MODULE_SRCS+=compiled_output/constr_CHOICE_aper.c
+ASN_MODULE_SRCS+=compiled_output/constr_SEQUENCE_OF_aper.c
+ASN_MODULE_SRCS+=compiled_output/constr_SEQUENCE_aper.c
+ASN_MODULE_SRCS+=compiled_output/constr_SET_OF_aper.c
+ASN_MODULE_SRCS+=compiled_output/BIT_STRING_print.c
+ASN_MODULE_SRCS+=compiled_output/BOOLEAN_print.c
+ASN_MODULE_SRCS+=compiled_output/INTEGER_print.c
+ASN_MODULE_SRCS+=compiled_output/NativeInteger_print.c
+ASN_MODULE_SRCS+=compiled_output/OBJECT_IDENTIFIER_print.c
+ASN_MODULE_SRCS+=compiled_output/OCTET_STRING_print.c
+ASN_MODULE_SRCS+=compiled_output/constr_CHOICE_print.c
+ASN_MODULE_SRCS+=compiled_output/constr_SEQUENCE_print.c
+ASN_MODULE_SRCS+=compiled_output/constr_SET_OF_print.c
+ASN_MODULE_HDRS+=compiled_output/asn_random_fill.h
+ASN_MODULE_SRCS+=compiled_output/asn_random_fill.c
+ASN_MODULE_SRCS+=compiled_output/BIT_STRING_rfill.c
+ASN_MODULE_SRCS+=compiled_output/BOOLEAN_rfill.c
+ASN_MODULE_SRCS+=compiled_output/INTEGER_rfill.c
+ASN_MODULE_SRCS+=compiled_output/NativeInteger_rfill.c
+ASN_MODULE_SRCS+=compiled_output/OBJECT_IDENTIFIER_rfill.c
+ASN_MODULE_SRCS+=compiled_output/OCTET_STRING_rfill.c
+ASN_MODULE_SRCS+=compiled_output/constr_CHOICE_rfill.c
+ASN_MODULE_SRCS+=compiled_output/constr_SEQUENCE_rfill.c
+ASN_MODULE_SRCS+=compiled_output/constr_SET_OF_rfill.c
+
+ASN_MODULE_CFLAGS=-DASN_DISABLE_BER_SUPPORT -DASN_DISABLE_OER_SUPPORT -DASN_DISABLE_UPER_SUPPORT 
+
+lib_LTLIBRARIES+=libasncodec.la
+libasncodec_la_SOURCES=$(ASN_MODULE_SRCS) $(ASN_MODULE_HDRS)
+libasncodec_la_CPPFLAGS=-I$(top_srcdir)/compiled_output/
+libasncodec_la_CFLAGS=$(ASN_MODULE_CFLAGS)
+libasncodec_la_LDFLAGS=-lm
