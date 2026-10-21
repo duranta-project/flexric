@@ -389,13 +389,20 @@ void sctp_msg_arrived_event(void* arg)
   sctp_msg_t const* sctp_msg = &ric_ev->msg;
   defer({free_sctp_msg((sctp_msg_t*)sctp_msg);});
 
-  e2ap_msg_t const msg = e2ap_msg_dec_ric(&ric->ap, sctp_msg->ba); 
-  defer({e2ap_msg_free_ric(&ric->ap, (e2ap_msg_t*)&msg); } );
+  e2ap_msg_t msg = e2ap_msg_dec_ric(&ric->ap, sctp_msg->ba);
+  defer({e2ap_msg_free_ric(&ric->ap, &msg); } );
 
   if(msg.type == E2_SETUP_REQUEST){
     global_e2_node_id_t const* id = &msg.u_msgs.e2_stp_req.id;
     //printf("Received message with id = %d, port = %d \n", id->nb_id.nb_id, sctp_msg->info.addr.sin_port);
     e2ap_reg_sock_addr_ric(&ric->ep, id, &sctp_msg->info);
+  }
+
+  if(msg.type == RIC_SERVICE_UPDATE){
+    // The update itself does not carry the node id; it is implied by the socket
+    // it arrived on. An unregistered socket leaves the id zeroed and the handler
+    // drops the message.
+    find_map_sad_e2_node(&ric->ep.e2_nodes, &sctp_msg->info, &msg.u_msgs.ric_serv_updt.e2_node_id);
   }
 
   e2ap_msg_t ans = e2ap_msg_handle_ric(ric, &msg);

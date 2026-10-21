@@ -83,6 +83,10 @@ set(XAPP_SRC
   ../sm/tc_sm/ie/tc_data_ie.c
   ../sm/gtp_sm/ie/gtp_data_ie.c
   ../sm/ccc_sm/ie/ccc_data_ie.c
+  ../sm/dapp_sm/ie/dapp_data_ie.c
+
+  $<TARGET_OBJECTS:e2sm_dapp_ir_obj>
+  $<TARGET_OBJECTS:e3sm_ir_obj>
 
   )
 
