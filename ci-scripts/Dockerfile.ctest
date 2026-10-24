@@ -84,4 +84,4 @@ RUN mkdir build && \
           .. && \
     ninja && \
     ninja install && \
-    ctest -j8 --output-on-failure -E Unit_test_TC_SM
+    ctest -j8 --output-on-failure
