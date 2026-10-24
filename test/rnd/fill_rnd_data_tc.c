@@ -7,7 +7,6 @@
 
 #include <assert.h>
 #include <stdlib.h>
-#include <time.h>
 
 
 static
@@ -217,8 +216,6 @@ void fill_tc_shp_q_plc(tc_ind_msg_t* msg)
 void fill_tc_ind_data(tc_ind_data_t* ind_msg)
 {
   assert(ind_msg != NULL);
-
-  srand(time(0));
 
   ind_msg->msg.tstamp = time_now_us();
 
