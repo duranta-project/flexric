@@ -731,7 +731,6 @@ size_t cal_tc_add_ctrl_payload_cls_osi(tc_add_cls_osi_t const* osi)
 
   return sizeof(osi->l3) +
           sizeof(osi->l4) +
-          sizeof(osi->l7) +
           sizeof(osi->dst_queue);
 }
 
