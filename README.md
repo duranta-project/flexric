@@ -107,7 +107,7 @@ sudo make install
 
 - Python dependency
 ```bash
-sudo apt-get install python3.10-dev
+sudo apt-get install python3-dev
 ```
 #### 1.2.3 ASN.1 compiler (asn1c)
 E2AP, E2SM common IE, KPM and RC ASN.1 definitions are already precompiled in the
