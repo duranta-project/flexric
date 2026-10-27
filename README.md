@@ -77,7 +77,9 @@ sudo update-alternatives --config gcc # chose gcc-13
 > **Note:** gcc-11 is not supported in FlexRIC
 
 #### 1.1.2 (opt.) Wireshark
-Per `O-RAN.WG3.E2GAP-v02.00` specifications, no SCTP port is specified for E2AP protocol. In our implementation, we use port number 36421. Please, add the following configuration in Wireshark:
+According to the O-RAN.WG3.E2GAP-v02.00 specification, no SCTP port is specified for the E2AP protocol. In our implementation, the port is defined by `E2AP_PORT`, which defaults to 36421.
+
+Please add the following decoding configuration in Wireshark:
 
 ![E2AP configuration](fig/4.png)
 
@@ -456,7 +458,7 @@ sudo phc2sys -m -s InterfaceName -w
 We showcased the successful integration between OAI E2 agent and O-RAN SC nearRT-RIC in [the OAI E2AP tutorial](https://github.com/duranta-project/openairinterface5g/blob/develop/openair2/E2AP/README.md#5-o-ran-sc-nearrt-ric-interoperability).
 
 > **Note** that the OSC nearRT-RIC can also be tested with FlexRIC E2 agent emulators (`build/examples/emulator/agent/`).
-Before proceeding with integration, please set the `e2ap_server_port` to 36422 (the default is 36421), as the E2AP port for OSC nearRT-RIC is 36422.
+Before proceeding with integration, set `E2AP_PORT = 36422` in `flexric.conf` (or pass `-e 36422`), as the E2AP port for OSC nearRT-RIC is 36422 (the default is 36421).
 
 ## 7. Support/further resources
 * Mailing list: if you need help or have some questions, you can subscribe to the mailing list `techs@mosaic-5g.io` that you can find at [GitHub](https://github.com/duranta-project/flexric/wiki/MailingList). The emails are archived and available publicly.
