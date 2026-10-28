@@ -65,14 +65,14 @@ Please see [NOTICE](NOTICE) for third party softwares that are used by flexric.
 ### 1.1 Prerequisites
 
 #### 1.1.1 GCC compiler
-- Please make sure you have gcc-13 installed (gcc-10 and 12 are compatible as well). Follow the next steps:
+- Upgrade to the recommended GCC version 16:
 ```bash
 sudo apt update -y
 sudo apt upgrade -y
 sudo apt install -y build-essential
-sudo apt install -y gcc-13 g++-13 cpp-13
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100 --slave /usr/bin/g++ g++ /usr/bin/g++-13 --slave /usr/bin/gcov gcov /usr/bin/gcov-13
-sudo update-alternatives --config gcc # chose gcc-13
+sudo apt install -y gcc-16
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-16 16
+sudo update-alternatives --config gcc # chose gcc-16
 ```
 > **Note:** gcc-11 is not supported in FlexRIC
 
@@ -107,7 +107,7 @@ sudo make install
 
 - Python dependency
 ```bash
-sudo apt-get install python3.10-dev
+sudo apt-get install python3-dev
 ```
 #### 1.2.3 ASN.1 compiler (asn1c)
 E2AP, E2SM common IE, KPM and RC ASN.1 definitions are already precompiled in the
@@ -154,6 +154,13 @@ If you want to profile FlexRIC, or just need a fast nearRT-RIC, you should build
 ```bash
 mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j8
 ```
+
+If you build FlexRIC with TSan (`-DSANITIZER=THREAD`), check the address space layout randomization (ASLR) setting of your kernel first:
+```bash
+cat /proc/sys/vm/mmap_rnd_bits
+```
+Some recent kernels set it to `32`. TSan reserves fixed memory ranges for its own use and expects the binary and the shared libraries to be loaded in the default ASLR range (`28` bits).
+To set this permanently, add `vm.mmap_rnd_bits=28` line in `/etc/sysctl.conf`.
 
 ### 2.3 Installation of Service Models (SMs)
 The service models are shared by xApps and the RAN. Therefore, they have to be installed in a place where the RAN can access them. The easiest is to install them globally, by typing:
