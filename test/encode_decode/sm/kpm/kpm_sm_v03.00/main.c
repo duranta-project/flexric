@@ -7,6 +7,7 @@
 #include "../../../../../src/sm/kpm_sm/kpm_sm_v03.00/enc/kpm_enc_asn.h"
 #include "../../../../../src/sm/kpm_sm/kpm_sm_v03.00/dec/kpm_dec_asn.h"
 #include "../../../../rnd/fill_rnd_data_kpm.h"
+#include "../../../../rnd/rnd_seed.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -84,10 +85,9 @@ void test_kpm_ran_function(void)
   assert(eq_kpm_ran_function_def(&msg, &out) == true);
 }
 
-int main()
+int main(int argc, char* argv[])
 {
-  time_t t;
-  srand((unsigned) time(&t));
+  init_rnd_seed(argc > 1 ? argv[1] : NULL);
 
   for (size_t i = 0; i < 16; i++) {
 

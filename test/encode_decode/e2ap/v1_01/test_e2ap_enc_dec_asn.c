@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <time.h>
+#include "../../../rnd/rnd_seed.h"
 
 #include <E2AP-PDU.h>
 
@@ -723,8 +724,6 @@ E2AP_PDU_t* e2ap_create_pdu(const uint8_t* buffer, int buffer_len)
 
 void test_e42_setup_request()
 {
-  time_t t;
-  srand((unsigned) time(&t));
   uint32_t r = rand()%8 + 1;
 
   e42_setup_request_t sr_begin = {
@@ -754,8 +753,6 @@ void test_e42_setup_request()
 
 void test_e42_setup_response()
 {
-  time_t t;
-  srand((unsigned) time(&t));
 
   e2ap_plmn_t plmn = {
     .mcc = 10,
@@ -975,8 +972,9 @@ void test_e42_control_request()
 }
 
 
-int main()
+int main(int argc, char* argv[])
 {
+  init_rnd_seed(argc > 1 ? argv[1] : NULL);
 
   for(size_t i =0 ; i < 1024; ++i){
     test_subscription_request();

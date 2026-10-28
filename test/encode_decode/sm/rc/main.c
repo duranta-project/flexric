@@ -8,6 +8,7 @@
 #include "../../../../src/sm/rc_sm/enc/rc_enc_asn.h"
 #include "../../../../src/sm/rc_sm/dec/rc_dec_asn.h"
 #include "../../../rnd/fill_rnd_data_rc.h"
+#include "../../../rnd/rnd_seed.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -162,10 +163,9 @@ void test_rc_ran_func_def_nested_ctrl(void)
   assert(eq_e2sm_rc_func_def(&msg, &out) == true);
 }
 
-int main()
+int main(int argc, char* argv[])
 {
-  time_t t;
-  srand((unsigned) time(&t));
+  init_rnd_seed(argc > 1 ? argv[1] : NULL);
 
   // Test off all the functions
   printf("\nRC SM enc/dec test launched\n");
