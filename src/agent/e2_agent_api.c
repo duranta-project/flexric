@@ -6,6 +6,8 @@
 
 #include <assert.h>                                        // for assert
 #include <pthread.h>                                       // for pthread_cr...
+#include <stdatomic.h>
+#include <string.h>                                        // for strdup, strlen
 #include <stdlib.h>
 #include <stdio.h>                                         // for NULL
 #include "e2_agent.h"                                      // for e2_free_agent
@@ -112,3 +114,49 @@ void async_event_agent_api(uint32_t ric_req_id, void* ind_data)
   e2_async_event_agent(agent, ric_req_id, ind_data);
 }
 
+/* Re-advertise one RAN function to the RIC with a bumped revision.
+ *
+ * A service model whose RAN function definition changes at runtime -- because
+ * what it exposes depends on state the RAN learns after E2 SETUP -- has no way
+ * to tell the RIC without this: E2 SETUP happens once. The revision is
+ * per-call and monotonic, which is what makes the RIC replace the stored
+ * definition rather than reject it as a duplicate. */
+void trigger_ric_service_update_api(uint16_t ran_func_id)
+{
+  if (agent == NULL) {
+    printf("[E2 AGENT]: not initialised yet, skipping RIC Service Update\n");
+    return;
+  }
+
+  sm_agent_t* sm = sm_plugin_ag(&agent->plugin, ran_func_id);
+  if (sm == NULL) {
+    printf("[E2 AGENT]: no service model for RAN function %u, cannot send RIC Service Update\n", ran_func_id);
+    return;
+  }
+
+  static _Atomic uint16_t service_update_rev = 1;
+
+  sm_e2_setup_data_t setup = sm->proc.on_e2_setup(sm);
+
+  ric_service_update_t su = {0};
+  su.trans_id = (uint8_t)(atomic_load(&service_update_rev) % 256);
+
+  su.len_modified = 1;
+  su.modified = calloc(1, sizeof(ran_function_t));
+  assert(su.modified != NULL && "Memory exhausted");
+
+  su.modified[0].id = sm->info.id();
+  su.modified[0].rev = atomic_fetch_add(&service_update_rev, 1);
+  su.modified[0].defn.buf = setup.ran_fun_def;
+  su.modified[0].defn.len = setup.len_rfd;
+
+  const char* oid = sm->info.oid();
+  su.modified[0].oid.buf = (uint8_t*)strdup(oid);
+  su.modified[0].oid.len = strlen(oid);
+
+  e2_send_ric_service_update(agent, &su);
+
+  free(su.modified[0].defn.buf);
+  free(su.modified[0].oid.buf);
+  free(su.modified);
+}

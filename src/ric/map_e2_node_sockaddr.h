@@ -40,5 +40,10 @@ sctp_info_t find_map_e2_node_sad(map_e2_node_sockaddr_t* m, global_e2_node_id_t 
 
 sctp_info_t find_map_e2_node_sad(map_e2_node_sockaddr_t * m, global_e2_node_id_t const* id);
 
+/* Reverse lookup: the E2 node registered for a socket. Returns false when the
+   socket has no node registered, rather than asserting -- the caller is driven
+   by inbound SCTP traffic. */
+bool find_map_sad_e2_node(map_e2_node_sockaddr_t* m, sctp_info_t const* s, global_e2_node_id_t* id);
+
 #endif
 
