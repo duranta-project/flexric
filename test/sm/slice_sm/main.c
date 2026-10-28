@@ -3,6 +3,7 @@
  */
 
 #include "../../rnd/fill_rnd_data_slice.h"
+#include "../../rnd/rnd_seed.h"
 #include "../../../src/sm/slice_sm/slice_sm_agent.h"
 #include "../../../src/sm/slice_sm/slice_sm_ric.h"
 #include "../../../src/util/alg_ds/alg/defer.h"
@@ -163,8 +164,9 @@ void check_ctrl(sm_agent_t* ag, sm_ric_t* ric)
   free_slice_ctrl_msg(&cp_ctrl.msg);
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+  init_rnd_seed(argc > 1 ? argv[1] : NULL);
   sm_io_ag_ran_t io_ag = {0}; //.read = read_RAN, .write = write_RAN};  
   io_ag.read_ind_tbl[SLICE_STATS_V0] = read_ind_slice;
   io_ag.write_ctrl_tbl[SLICE_CTRL_REQ_V0] = write_ctrl_slice;

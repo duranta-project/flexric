@@ -13,8 +13,6 @@ void fill_rlc_ind_data(rlc_ind_data_t* ind)
 {
   assert(ind != NULL);
 
-  srand(time(0));
-
   int const mod = 1024;
 
   rlc_ind_msg_t* ind_msg = &ind->msg;
