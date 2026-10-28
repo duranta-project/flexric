@@ -27,18 +27,6 @@ int cmp_ind_event(void const* m0_v, void const* m1_v)
   return cmp;
 }
 
-bool eq_ind_event_ric_req_id(const void* value, const void* key)
-{
-  assert(value != NULL);
-  assert(key != NULL);
-  
-  uint32_t* ric_id = (uint32_t*)value; 
-  ind_event_t* ind_ev = (ind_event_t*)key;
-  bool eq = (*ric_id == ind_ev->ric_id.ric_req_id);
-  return eq;
-}
-
-
 bool eq_ind_event(const void* value, const void* key)
 {
   assert(value != NULL);

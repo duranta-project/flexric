@@ -508,7 +508,31 @@ void e2_free_agent(e2_agent_t* ag)
   free(ag);
 }
 
-void e2_async_event_agent(e2_agent_t* ag, uint32_t ric_req_id, void* ind_data)
+// Nothing is subscribed under this RIC ID. Discard the payload rather than abort:
+// the RAN owns no free function for it, so hand it to the RAN function's own SM,
+// which frees it on the way out of on_indication, and throw the encoded buffers away.
+static
+void drop_orphan_aind(e2_agent_t* ag, ric_gen_id_t ric_id, void* ind_data)
+{
+  printf("[E2 AGENT]: no subscription for RAN_FUNC_ID %d RIC_REQ_ID %d INST_ID %d, dropping indication\n",
+         ric_id.ran_func_id, ric_id.ric_req_id, ric_id.ric_inst_id);
+
+  sm_agent_t* sm = sm_plugin_ag(&ag->plugin, ric_id.ran_func_id);
+  if(sm == NULL){
+    printf("[E2 AGENT]: RAN_FUNC_ID %d has no service model either, leaking the indication data\n",
+           ric_id.ran_func_id);
+    return;
+  }
+
+  exp_ind_data_t exp = sm->proc.on_indication(sm, ind_data);
+  if(exp.has_value == true){
+    free(exp.data.ind_hdr);
+    free(exp.data.ind_msg);
+    free(exp.data.call_process_id);
+  }
+}
+
+void e2_async_event_agent(e2_agent_t* ag, ric_gen_id_t ric_id, void* ind_data)
 {
   assert(ag != NULL);
 
@@ -516,10 +540,12 @@ void e2_async_event_agent(e2_agent_t* ag, uint32_t ric_req_id, void* ind_data)
   void* l = NULL;
   void* it = NULL;
 
-  ind_event_t tmp = {.ric_id.ric_req_id = ric_req_id, 
-    .sm = NULL, 
-    .action_id = 0 };
-
+  // Match the whole RIC ID. The Requestor ID alone does not identify a subscription
+  // -- E2AP identifies one by {RequestorID, InstanceID}, and an xApp may reuse a
+  // Requestor ID across RAN functions -- so ag->ind_event legitimately holds several
+  // entries sharing it. Keying on it alone hands the indication to whichever entry
+  // cmp_ric_gen_id happens to order first, and a service model that is given another
+  // one's ind_data aborts the RAN process.
   assoc_rb_tree_t* tree = &ag->ind_event.right;
  
   for(size_t i =0; i < 10; ++i){
@@ -528,7 +554,7 @@ void e2_async_event_agent(e2_agent_t* ag, uint32_t ric_req_id, void* ind_data)
 
     f = assoc_rb_tree_front(tree);
     l = assoc_rb_tree_end(tree);
-    it = find_if_rb_tree(tree, f, l, &tmp, eq_ind_event_ric_req_id); 
+    it = find_if_rb_tree(tree, f, l, &ric_id, eq_ind_event); 
     if(it != l) break; 
 
     rc = pthread_mutex_unlock(&ag->mtx_ind_event);
@@ -539,7 +565,12 @@ void e2_async_event_agent(e2_agent_t* ag, uint32_t ric_req_id, void* ind_data)
     usleep(10);
   }
 
-  assert(it != l && "Not found RIC Request ID");
+  // The loop breaks while still holding the lock on success and releases it at the
+  // end of every failing iteration, so here the mutex is already unlocked.
+  if(it == l){
+    drop_orphan_aind(ag, ric_id, ind_data);
+    return;
+  }
 
   ind_event_t* ind_ev = assoc_rb_tree_key(tree, it);
 
@@ -556,8 +587,9 @@ void e2_async_event_agent(e2_agent_t* ag, uint32_t ric_req_id, void* ind_data)
 
   // Inform epoll that an aperiodic event happened. Exactly one token of
   // sizeof(uint32_t) bytes per event, as read by consume_fd_async()
-  ssize_t const bytes = write(ag->io.pipe.w, &ric_req_id, sizeof(ric_req_id));
-  assert(bytes == (ssize_t)sizeof(ric_req_id));
+  uint32_t const token = ric_id.ric_req_id;
+  ssize_t const bytes = write(ag->io.pipe.w, &token, sizeof(token));
+  assert(bytes == (ssize_t)sizeof(token));
 }
 
 //////////////////////////////////

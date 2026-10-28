@@ -77,7 +77,7 @@ void e2_start_agent(e2_agent_t* ag);
 
 void e2_free_agent(e2_agent_t* ag);
      
-void e2_async_event_agent(e2_agent_t* ag, uint32_t ric_req_id, void* ind_data);
+void e2_async_event_agent(e2_agent_t* ag, ric_gen_id_t ric_id, void* ind_data);
 
 ///////////////////////////////////////////////
 // E2AP AGENT FUNCTIONAL PROCEDURES MESSAGES //
