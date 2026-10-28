@@ -109,7 +109,9 @@ uint64_t cp_nr_cell_id_to_u64(BIT_STRING_t src)
     uint64_t dst = {0}; 
     
     dst = src.buf[4] >> 4;
-    dst = dst << 32 | src.buf[3] << 24 | src.buf[2] << 16 | src.buf[1] << 8 | src.buf[0];
+    // Cast before shifting: a uint8_t is promoted to int, and buf[3] << 24
+    // overflows it when bit 31 of the cell ID is set
+    dst = dst << 32 | (uint64_t)src.buf[3] << 24 | src.buf[2] << 16 | src.buf[1] << 8 | src.buf[0];
 
     return dst;
 }
