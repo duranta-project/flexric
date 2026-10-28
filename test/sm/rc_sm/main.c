@@ -4,6 +4,7 @@
 
 
 #include "../../rnd/fill_rnd_data_rc.h"
+#include "../../rnd/rnd_seed.h"
 #include "../../../src/util/alg_ds/alg/defer.h"
 #include "../../../src/sm/rc_sm/rc_sm_agent.h"
 #include "../../../src/sm/rc_sm/rc_sm_ric.h"
@@ -253,9 +254,9 @@ void check_e2_setup(sm_agent_t* ag, sm_ric_t* ric)
   free_e2sm_rc_func_def(&cp_e2_setup.ran_func_def);
 }
 
-int main()
+int main(int argc, char* argv[])
 {
-  srand(time(0)); 
+  init_rnd_seed(argc > 1 ? argv[1] : NULL);
 
   sm_io_ag_ran_t io_ag = {0}; //.read = read_RAN, .write = write_RAN};  
   // Read 

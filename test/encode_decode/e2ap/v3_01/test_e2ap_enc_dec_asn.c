@@ -9,6 +9,7 @@
 #include <E2AP-PDU.h>
 
 #include "../../../rnd/fill_rnd_data_e2_setup_req.h"
+#include "../../../rnd/rnd_seed.h"
 #include "../src/lib/e2ap/e2ap_msg_enc_generic_wrapper.h"
 #include "../src/lib/e2ap/e2ap_msg_dec_generic_wrapper.h"
 #include "../src/lib/e2ap/e2ap_msg_free_wrapper.h"
@@ -817,8 +818,6 @@ void fill_ran_function(ran_function_t* rf)
 
 void test_e42_setup_request()
 {
-  time_t t;
-  srand((unsigned) time(&t));
   uint32_t r = rand()%8 + 1;
 
   e42_setup_request_t sr_begin = {
@@ -862,8 +861,6 @@ void test_e42_setup_request()
 
 void test_e42_setup_response()
 {
-  time_t t;
-  srand((unsigned) time(&t));
 
   e2ap_plmn_t plmn = {
     .mcc = 10,
@@ -1091,8 +1088,9 @@ void test_e42_control_request()
 
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+  init_rnd_seed(argc > 1 ? argv[1] : NULL);
     test_subscription_request();
     test_subscription_response();
 
