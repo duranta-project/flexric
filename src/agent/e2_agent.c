@@ -255,6 +255,22 @@ int consume_fd_async(int fd)
   return bytes;
 }
 
+// Indications belong to an E2 session, and there is none between the end of an
+// association and the next E2 SETUP RESPONSE. A send in that window does not
+// fail: the socket is one-to-many, so sctp_sendmsg() silently opens a new
+// association to the RIC's address and delivers the message there, to a
+// nearRT-RIC that has seen no E2 SETUP from this node. Answers to a RIC message
+// need no check: they go back on the association the message came in on.
+static
+bool in_e2_session(e2_agent_t const* ag, char const* what)
+{
+  if(ag->e2_session_up == true)
+    return true;
+
+  printf("[E2 AGENT]: no E2 session with the nearRT-RIC, dropping %s\n", what);
+  return false;
+}
+
 static
 async_event_t next_async_event_agent(e2_agent_t* ag)
 {
@@ -337,8 +353,18 @@ void e2_event_loop_agent(e2_agent_t* ag)
             // Condition not matched e.g., No UE matches condition 
             if(exp.has_value == false) {
               int rc = consume_fd_async(ag->io.pipe.r); 
-              assert(rc != 1 && "No bytes in the pipe but message in the queue! ");
+              assert(rc == (int)sizeof(uint32_t) && "No bytes in the pipe but message in the queue! ");
               continue;  
+            }
+
+            // Queued before the session ended, or raced its end. on_indication
+            // has released ind_data either way; only the encoded parts are left.
+            if(in_e2_session(ag, "an aperiodic indication") == false){
+              free(exp.data.ind_hdr);
+              free(exp.data.ind_msg);
+              free(exp.data.call_process_id);
+              consume_fd_async(ag->io.pipe.r);
+              continue;
             }
 
             ric_indication_t ind = generate_aindication(ag, &exp.data, &aind->arr[i]);
@@ -350,7 +376,7 @@ void e2_event_loop_agent(e2_agent_t* ag)
             e2ap_send_bytes_agent(&ag->ep, ba);
 
             int rc = consume_fd_async(ag->io.pipe.r); 
-            assert(rc != 1 && "No bytes in the pipe but message in the queue! ");
+            assert(rc == (int)sizeof(uint32_t) && "No bytes in the pipe but message in the queue! ");
           }
           break;
         }
@@ -415,7 +441,7 @@ void e2_event_loop_agent(e2_agent_t* ag)
   ag->agent_stopped = true;
 }
 
-e2_agent_t* e2_init_agent(const char* addr, int port, global_e2_node_id_t ge2nid, sm_io_ag_ran_t io, char const* libs_dir)
+e2_agent_t* e2_init_agent(const char* addr, int port, fr_sctp_timers_t sctp_timers, global_e2_node_id_t ge2nid, sm_io_ag_ran_t io, char const* libs_dir)
 {
   assert(addr != NULL);
   assert(port > 0 && port < 65535);
@@ -425,7 +451,7 @@ e2_agent_t* e2_init_agent(const char* addr, int port, global_e2_node_id_t ge2nid
   e2_agent_t* ag = calloc(1, sizeof(*ag));
   assert(ag != NULL && "Memory exhausted");
 
-  e2ap_init_ep_agent(&ag->ep, addr, port);
+  e2ap_init_ep_agent(&ag->ep, addr, port, sctp_timers);
 
   init_asio_agent(&ag->io); 
 
@@ -453,6 +479,7 @@ e2_agent_t* e2_init_agent(const char* addr, int port, global_e2_node_id_t ge2nid
 #endif
 
   ag->global_e2_node_id = ge2nid;
+  ag->e2_session_up = false;
   ag->stop_token = false;
   ag->agent_stopped = false;
   
@@ -508,7 +535,31 @@ void e2_free_agent(e2_agent_t* ag)
   free(ag);
 }
 
-void e2_async_event_agent(e2_agent_t* ag, uint32_t ric_req_id, void* ind_data)
+// Nothing is subscribed under this RIC ID. Discard the payload rather than abort:
+// the RAN owns no free function for it, so hand it to the RAN function's own SM,
+// which frees it on the way out of on_indication, and throw the encoded buffers away.
+static
+void drop_orphan_aind(e2_agent_t* ag, ric_gen_id_t ric_id, void* ind_data)
+{
+  printf("[E2 AGENT]: no subscription for RAN_FUNC_ID %d RIC_REQ_ID %d INST_ID %d, dropping indication\n",
+         ric_id.ran_func_id, ric_id.ric_req_id, ric_id.ric_inst_id);
+
+  sm_agent_t* sm = sm_plugin_ag(&ag->plugin, ric_id.ran_func_id);
+  if(sm == NULL){
+    printf("[E2 AGENT]: RAN_FUNC_ID %d has no service model either, leaking the indication data\n",
+           ric_id.ran_func_id);
+    return;
+  }
+
+  exp_ind_data_t exp = sm->proc.on_indication(sm, ind_data);
+  if(exp.has_value == true){
+    free(exp.data.ind_hdr);
+    free(exp.data.ind_msg);
+    free(exp.data.call_process_id);
+  }
+}
+
+void e2_async_event_agent(e2_agent_t* ag, ric_gen_id_t ric_id, void* ind_data)
 {
   assert(ag != NULL);
 
@@ -516,10 +567,12 @@ void e2_async_event_agent(e2_agent_t* ag, uint32_t ric_req_id, void* ind_data)
   void* l = NULL;
   void* it = NULL;
 
-  ind_event_t tmp = {.ric_id.ric_req_id = ric_req_id, 
-    .sm = NULL, 
-    .action_id = 0 };
-
+  // Match the whole RIC ID. The Requestor ID alone does not identify a subscription
+  // -- E2AP identifies one by {RequestorID, InstanceID}, and an xApp may reuse a
+  // Requestor ID across RAN functions -- so ag->ind_event legitimately holds several
+  // entries sharing it. Keying on it alone hands the indication to whichever entry
+  // cmp_ric_gen_id happens to order first, and a service model that is given another
+  // one's ind_data aborts the RAN process.
   assoc_rb_tree_t* tree = &ag->ind_event.right;
  
   for(size_t i =0; i < 10; ++i){
@@ -528,7 +581,7 @@ void e2_async_event_agent(e2_agent_t* ag, uint32_t ric_req_id, void* ind_data)
 
     f = assoc_rb_tree_front(tree);
     l = assoc_rb_tree_end(tree);
-    it = find_if_rb_tree(tree, f, l, &tmp, eq_ind_event_ric_req_id); 
+    it = find_if_rb_tree(tree, f, l, &ric_id, eq_ind_event); 
     if(it != l) break; 
 
     rc = pthread_mutex_unlock(&ag->mtx_ind_event);
@@ -539,7 +592,12 @@ void e2_async_event_agent(e2_agent_t* ag, uint32_t ric_req_id, void* ind_data)
     usleep(10);
   }
 
-  assert(it != l && "Not found RIC Request ID");
+  // The loop breaks while still holding the lock on success and releases it at the
+  // end of every failing iteration, so here the mutex is already unlocked.
+  if(it == l){
+    drop_orphan_aind(ag, ric_id, ind_data);
+    return;
+  }
 
   ind_event_t* ind_ev = assoc_rb_tree_key(tree, it);
 
@@ -554,15 +612,11 @@ void e2_async_event_agent(e2_agent_t* ag, uint32_t ric_req_id, void* ind_data)
   // Push the data into the queue
   push_tsq(&ag->aind, &aind, sizeof(aind_event_t));
 
-  // Inform epoll that an aperiodic event happened
-  int const num_char = 32;
-  char str[num_char];
-  memset(str, '\0', num_char);
-  rc = snprintf(str, num_char ,"%u", ric_req_id );
-  assert(rc > 0 && rc < num_char -1);
-
-  rc = write(ag->io.pipe.w, str, rc);
-  assert(rc != 0);
+  // Inform epoll that an aperiodic event happened. Exactly one token of
+  // sizeof(uint32_t) bytes per event, as read by consume_fd_async()
+  uint32_t const token = ric_id.ric_req_id;
+  ssize_t const bytes = write(ag->io.pipe.w, &token, sizeof(token));
+  assert(bytes == (ssize_t)sizeof(token));
 }
 
 //////////////////////////////////
@@ -592,6 +646,9 @@ void e2_send_indication_agent(e2_agent_t* ag, const ric_indication_t* indication
 {
   assert(ag != NULL);
   assert(indication != NULL);
+
+  if(in_e2_session(ag, "a RIC INDICATION") == false)
+    return;
 
   byte_array_t ba = e2ap_enc_indication_ag(&ag->ap, indication);
   e2ap_send_bytes_agent(&ag->ep, ba);
