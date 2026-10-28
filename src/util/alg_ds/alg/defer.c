@@ -23,11 +23,3 @@ SOFTWARE.
 */
 
 #include "defer.h"
-
-#if defined __GNUC__ // nested-function-in-stmt-expressionstatic
-void cleanup_deferred (void (**d) (void))
-{ 
-  (*d)();
-}
-#endif
-
