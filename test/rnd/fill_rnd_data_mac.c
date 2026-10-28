@@ -12,7 +12,6 @@
 void fill_mac_ind_data(mac_ind_data_t* ind)
 {
   assert(ind != NULL);
-  srand(time(0));
 
   int const mod = 1024;
 

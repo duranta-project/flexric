@@ -3,6 +3,7 @@
  */
 
 #include "fill_rnd_data_kpm.h"
+#include "rnd_bits.h"
 #include "../../src/sm/kpm_sm/kpm_sm_id_wrapper.h"
 #include "../../src/util/time_now_us.h"
 #include "../../src/util/byte_array.h"
@@ -148,7 +149,7 @@ static kpm_act_def_format_1_t fill_rnd_kpm_action_def_frm_1(void)
         action_def_frm_1.meas_info_lst[i].label_info_lst[j].sliceID = calloc(1, sizeof(s_nssai_e2sm_t));
         action_def_frm_1.meas_info_lst[i].label_info_lst[j].sliceID->sST = (rand() % (1 << 8)) + 1;
         action_def_frm_1.meas_info_lst[i].label_info_lst[j].sliceID->sD = calloc(1, sizeof(uint32_t));
-        *action_def_frm_1.meas_info_lst[i].label_info_lst[j].sliceID->sD = 786432; //  (rand() % 2^24) + 0;
+        *action_def_frm_1.meas_info_lst[i].label_info_lst[j].sliceID->sD = 786432; //  rand_bits(24);
         action_def_frm_1.meas_info_lst[i].label_info_lst[j].distBinX = ecalloc(1, sizeof(uint16_t));
         *action_def_frm_1.meas_info_lst[i].label_info_lst[j].distBinX = (rand() % 65535) + 0;
         action_def_frm_1.meas_info_lst[i].label_info_lst[j].distBinY = ecalloc(1, sizeof(uint16_t));
@@ -170,12 +171,12 @@ static kpm_act_def_format_1_t fill_rnd_kpm_action_def_frm_1(void)
   {
   case NR_CGI_RAT_TYPE:
     action_def_frm_1.cell_global_id->nr_cgi.plmn_id = (e2sm_plmn_t) {.mcc = 505, .mnc = 1, .mnc_digit_len = 2};
-    action_def_frm_1.cell_global_id->nr_cgi.nr_cell_id = (rand() % 2^36) + 1;
+    action_def_frm_1.cell_global_id->nr_cgi.nr_cell_id = rand_bits(36);
     break;
 
   case EUTRA_CGI_RAT_TYPE:
     action_def_frm_1.cell_global_id->eutra.plmn_id = (e2sm_plmn_t) {.mcc = 505, .mnc = 1, .mnc_digit_len = 2};
-    action_def_frm_1.cell_global_id->eutra.eutra_cell_id = (rand() % 2^28) + 0;
+    action_def_frm_1.cell_global_id->eutra.eutra_cell_id = rand_bits(28);
     break;
   
   default:
@@ -229,15 +230,15 @@ static gnb_e2sm_t fill_rnd_gnb_data(void)
   // 6.2.3.16
   // Mandatory
   // AMF UE NGAP ID
-  gnb.amf_ue_ngap_id = (rand() % 2^40) + 0;
+  gnb.amf_ue_ngap_id = rand_bits(40);
 
   // Mandatory
   //GUAMI 6.2.3.17 
   gnb.guami.plmn_id = (e2sm_plmn_t) {.mcc = 505, .mnc = 1, .mnc_digit_len = 2};
   
-  gnb.guami.amf_region_id = (rand() % 2^8) + 0;
-  gnb.guami.amf_set_id = (rand() % 2^10) + 0;
-  gnb.guami.amf_ptr = (rand() % 2^6) + 0;
+  gnb.guami.amf_region_id = rand_bits(8);
+  gnb.guami.amf_set_id = rand_bits(10);
+  gnb.guami.amf_ptr = rand_bits(6);
 
   // gNB-CU UE F1AP ID List
   // C-ifCUDUseparated 
@@ -262,7 +263,7 @@ static gnb_e2sm_t fill_rnd_gnb_data(void)
   // 6.2.3.25
   gnb.ran_ue_id = calloc(1, sizeof(uint64_t));
   assert(gnb.ran_ue_id != NULL && "Memory exhausted");
-  *gnb.ran_ue_id = 14294967296; // (rand() % 2^64) + 0;
+  *gnb.ran_ue_id = 14294967296; // rand_bits(64);
 
   //  M-NG-RAN node UE XnAP ID
   // C- ifDCSetup
@@ -306,15 +307,15 @@ static gnb_e2sm_t fill_rnd_gnb_data(void)
     switch (gnb.global_ng_ran_node_id->global_ng_enb_id.type)
     {
     case MACRO_NG_ENB_TYPE_ID:
-      gnb.global_ng_ran_node_id->global_ng_enb_id.macro_ng_enb_id = (rand() % 2^20) + 0;
+      gnb.global_ng_ran_node_id->global_ng_enb_id.macro_ng_enb_id = rand_bits(20);
       break;
 
     case SHORT_MACRO_NG_ENB_TYPE_ID:
-      gnb.global_ng_ran_node_id->global_ng_enb_id.short_macro_ng_enb_id = (rand() % 2^18) + 0;
+      gnb.global_ng_ran_node_id->global_ng_enb_id.short_macro_ng_enb_id = rand_bits(18);
       break;
 
     case LONG_MACRO_NG_ENB_TYPE_ID:
-      gnb.global_ng_ran_node_id->global_ng_enb_id.long_macro_ng_enb_id = (rand() % 2^21) + 0;
+      gnb.global_ng_ran_node_id->global_ng_enb_id.long_macro_ng_enb_id = rand_bits(21);
       break;
     
     default:
@@ -335,7 +336,7 @@ static gnb_du_e2sm_t fill_rnd_gnb_du_data(void)
   gnb_du.gnb_cu_ue_f1ap = (rand() % 4294967296) + 0;
 
   gnb_du.ran_ue_id = calloc(1, sizeof(*gnb_du.ran_ue_id));
-  *gnb_du.ran_ue_id = (rand() % 2^64) + 0;
+  *gnb_du.ran_ue_id = rand_bits(64);
 
   return gnb_du;
 }
@@ -346,7 +347,7 @@ static gnb_cu_up_e2sm_t fill_rnd_gnb_cu_up_data(void)
   gnb_cu_up.gnb_cu_cp_ue_e1ap = (rand() % 4294967296) + 0;
 
   gnb_cu_up.ran_ue_id = calloc(1, sizeof(*gnb_cu_up.ran_ue_id));
-  *gnb_cu_up.ran_ue_id = (rand() % 2^64) + 0;
+  *gnb_cu_up.ran_ue_id = rand_bits(64);
 
   return gnb_cu_up;
 }
@@ -358,16 +359,16 @@ static ng_enb_e2sm_t fill_rnd_ng_enb_data(void)
   // 6.2.3.16
   // Mandatory
   // AMF UE NGAP ID
-  ng_enb.amf_ue_ngap_id = (rand() % 2^40) + 0;
+  ng_enb.amf_ue_ngap_id = rand_bits(40);
 
   // 6.2.3.17
   // Mandatory
   // GUAMI
   ng_enb.guami.plmn_id = (e2sm_plmn_t) {.mcc = 505, .mnc = 1, .mnc_digit_len = 2};
   
-  ng_enb.guami.amf_region_id = (rand() % 2^8) + 0;
-  ng_enb.guami.amf_set_id = (rand() % 2^10) + 0;
-  ng_enb.guami.amf_ptr = (rand() % 2^6) + 0;
+  ng_enb.guami.amf_region_id = rand_bits(8);
+  ng_enb.guami.amf_set_id = rand_bits(10);
+  ng_enb.guami.amf_ptr = rand_bits(6);
 
   // 6.2.3.22
   // C-if CU DU separated
@@ -394,15 +395,15 @@ static ng_enb_e2sm_t fill_rnd_ng_enb_data(void)
   switch (ng_enb.global_ng_enb_id->type)
   {
   case MACRO_NG_ENB_TYPE_ID:
-    ng_enb.global_ng_enb_id->macro_ng_enb_id = (rand() % 2^20) + 0;
+    ng_enb.global_ng_enb_id->macro_ng_enb_id = rand_bits(20);
     break;
 
   case SHORT_MACRO_NG_ENB_TYPE_ID:
-    ng_enb.global_ng_enb_id->short_macro_ng_enb_id = (rand() % 2^18) + 0;
+    ng_enb.global_ng_enb_id->short_macro_ng_enb_id = rand_bits(18);
     break;
 
   case LONG_MACRO_NG_ENB_TYPE_ID:
-    ng_enb.global_ng_enb_id->long_macro_ng_enb_id = (rand() % 2^21) + 0;
+    ng_enb.global_ng_enb_id->long_macro_ng_enb_id = rand_bits(21);
     break;
   
   default:
@@ -434,15 +435,15 @@ static ng_enb_e2sm_t fill_rnd_ng_enb_data(void)
     switch (ng_enb.global_ng_ran_node_id->global_ng_enb_id.type)
     {
     case MACRO_NG_ENB_TYPE_ID:
-      ng_enb.global_ng_ran_node_id->global_ng_enb_id.macro_ng_enb_id = (rand() % 2^20) + 0;
+      ng_enb.global_ng_ran_node_id->global_ng_enb_id.macro_ng_enb_id = rand_bits(20);
       break;
 
     case SHORT_MACRO_NG_ENB_TYPE_ID:
-      ng_enb.global_ng_ran_node_id->global_ng_enb_id.short_macro_ng_enb_id = (rand() % 2^18) + 0;
+      ng_enb.global_ng_ran_node_id->global_ng_enb_id.short_macro_ng_enb_id = rand_bits(18);
       break;
 
     case LONG_MACRO_NG_ENB_TYPE_ID:
-      ng_enb.global_ng_ran_node_id->global_ng_enb_id.long_macro_ng_enb_id = (rand() % 2^21) + 0;
+      ng_enb.global_ng_ran_node_id->global_ng_enb_id.long_macro_ng_enb_id = rand_bits(21);
       break;
     
     default:
@@ -495,11 +496,11 @@ static en_gnb_e2sm_t fill_rnd_en_gnb_data(void)
   switch (en_gnb.global_enb_id.type)
   {
   case MACRO_ENB_TYPE_ID:
-    en_gnb.global_enb_id.macro_enb_id = (rand() % 2^20) + 0;
+    en_gnb.global_enb_id.macro_enb_id = rand_bits(20);
     break;
   
   case HOME_ENB_TYPE_ID:
-    en_gnb.global_enb_id.home_enb_id = (rand() % 2^28) + 0;
+    en_gnb.global_enb_id.home_enb_id = rand_bits(28);
     break;
 
   /* Possible extensions: */
@@ -536,7 +537,7 @@ static en_gnb_e2sm_t fill_rnd_en_gnb_data(void)
   // 6.2.3.25
   en_gnb.ran_ue_id = calloc(1, sizeof(uint64_t));
   assert(en_gnb.ran_ue_id != NULL && "Memory exhausted");
-  *en_gnb.ran_ue_id = (rand() % 2^64) + 0;
+  *en_gnb.ran_ue_id = rand_bits(64);
 
   return en_gnb;
 }
@@ -554,8 +555,8 @@ static enb_e2sm_t fill_rnd_enb_data(void)
   // Mandatory
   // GUMMEI
   enb.gummei.plmn_id = (e2sm_plmn_t) {.mcc = 505, .mnc = 1, .mnc_digit_len = 2};
-  enb.gummei.mme_group_id = (rand() % 2^16) + 0;
-  enb.gummei.mme_code = (rand() % 2^8) + 0;
+  enb.gummei.mme_group_id = rand_bits(16);
+  enb.gummei.mme_code = rand_bits(8);
 
   // 6.2.3.23
   // C-ifDCSetup
@@ -584,11 +585,11 @@ static enb_e2sm_t fill_rnd_enb_data(void)
   switch (enb.global_enb_id->type)
   {
   case MACRO_ENB_TYPE_ID:
-    enb.global_enb_id->macro_enb_id = (rand() % 2^20) + 0;
+    enb.global_enb_id->macro_enb_id = rand_bits(20);
     break;
   
   case HOME_ENB_TYPE_ID:
-    enb.global_enb_id->home_enb_id = (rand() % 2^28) + 0;
+    enb.global_enb_id->home_enb_id = rand_bits(28);
     break;
 
   /* Possible extensions: */
@@ -938,12 +939,12 @@ static kpm_act_def_format_3_t fill_rnd_kpm_action_def_frm_3(void)
   {
   case NR_CGI_RAT_TYPE:
     action_def_frm_3.cell_global_id->nr_cgi.plmn_id = (e2sm_plmn_t) {.mcc = 505, .mnc = 1, .mnc_digit_len = 2};
-    action_def_frm_3.cell_global_id->nr_cgi.nr_cell_id = (rand() % 2^36) + 1;
+    action_def_frm_3.cell_global_id->nr_cgi.nr_cell_id = rand_bits(36);
     break;
 
   case EUTRA_CGI_RAT_TYPE:
     action_def_frm_3.cell_global_id->eutra.plmn_id = (e2sm_plmn_t) {.mcc = 505, .mnc = 1, .mnc_digit_len = 2};
-    action_def_frm_3.cell_global_id->eutra.eutra_cell_id = (rand() % 2^28) + 0;
+    action_def_frm_3.cell_global_id->eutra.eutra_cell_id = rand_bits(28);
     break;
   
   default:

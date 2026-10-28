@@ -73,7 +73,9 @@ gnb_e2sm_t dec_gNB_UE_asn(const UEID_GNB_t * gnb_asn)
     // Mandatory
     // AMF UE NGAP ID
     assert(gnb_asn->amf_UE_NGAP_ID.buf != NULL);
-    assert(gnb_asn->amf_UE_NGAP_ID.size < 6); // 2^40 max -> 2^(8*5) max 
+    // 2^40 - 1 max -> 5 bytes, plus a leading 0x00 byte for values >= 2^39,
+    // as an INTEGER is stored in two's complement
+    assert(gnb_asn->amf_UE_NGAP_ID.size < 7);
 
     //asn_INTEGER2ulong_e2ap_v2_03(&gnb_asn->amf_UE_NGAP_ID, &gnb.amf_ue_ngap_id );
     asn_INTEGER2ulong_static(&gnb_asn->amf_UE_NGAP_ID, &gnb.amf_ue_ngap_id );
