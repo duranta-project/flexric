@@ -218,8 +218,6 @@ void fill_tc_ind_data(tc_ind_data_t* ind_msg)
 {
   assert(ind_msg != NULL);
 
-  srand(time(0));
-
   ind_msg->msg.tstamp = time_now_us();
 
   fill_tc_sch(&ind_msg->msg.sch);

@@ -3,6 +3,7 @@
  */
 
 #include "../../rnd/fill_rnd_data_rlc.h"
+#include "../../rnd/rnd_seed.h"
 #include "../../../src/sm/rlc_sm/rlc_sm_agent.h"
 #include "../../../src/sm/rlc_sm/rlc_sm_ric.h"
 
@@ -114,8 +115,9 @@ void check_indication(sm_agent_t* ag, sm_ric_t* ric)
   free_exp_ind_data(&exp); 
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+  init_rnd_seed(argc > 1 ? argv[1] : NULL);
   sm_io_ag_ran_t io_ag = {0};
 
   io_ag.read_ind_tbl[RLC_SUBS_V0] = read_rlc_ind; 

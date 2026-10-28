@@ -6,12 +6,12 @@
 #---------------------------------------------------------------------
 #
 # Dockerfile for the Open-Air-Interface AMF service
-#   Valid for Ubuntu-22.04 (jammy)
+#   Valid for Ubuntu-24.04 (noble)
 #
 #---------------------------------------------------------------------
 # BUILDER IMAGE
 #---------------------------------------------------------------------
-ARG BASE_IMAGE=ubuntu:jammy
+ARG BASE_IMAGE=ubuntu:noble
 
 FROM $BASE_IMAGE AS oai-flexric-base
 ENV DEBIAN_FRONTEND=noninteractive
@@ -42,8 +42,6 @@ RUN apt-get update && \
        libpcre2-dev \
        python3-dev \
        python3-pip \
-       gcc-12 \
-       g++-12 \
        mold \
        ninja-build && \
     apt-get clean
@@ -76,8 +74,6 @@ COPY . .
 RUN mkdir build && \
     cd build && \
     cmake -GNinja \
-          -DCMAKE_C_COMPILER=gcc-12 \
-          -DCMAKE_CXX_COMPILER=g++-12 \
           -DSANITIZER=$SANITIZER \
           -DE2AP_VERSION=$E2AP_VERSION \
           -DKPM_VERSION=$KPM_VERSION \
