@@ -337,7 +337,7 @@ void e2_event_loop_agent(e2_agent_t* ag)
             // Condition not matched e.g., No UE matches condition 
             if(exp.has_value == false) {
               int rc = consume_fd_async(ag->io.pipe.r); 
-              assert(rc != 1 && "No bytes in the pipe but message in the queue! ");
+              assert(rc == (int)sizeof(uint32_t) && "No bytes in the pipe but message in the queue! ");
               continue;  
             }
 
@@ -350,7 +350,7 @@ void e2_event_loop_agent(e2_agent_t* ag)
             e2ap_send_bytes_agent(&ag->ep, ba);
 
             int rc = consume_fd_async(ag->io.pipe.r); 
-            assert(rc != 1 && "No bytes in the pipe but message in the queue! ");
+            assert(rc == (int)sizeof(uint32_t) && "No bytes in the pipe but message in the queue! ");
           }
           break;
         }
@@ -554,15 +554,10 @@ void e2_async_event_agent(e2_agent_t* ag, uint32_t ric_req_id, void* ind_data)
   // Push the data into the queue
   push_tsq(&ag->aind, &aind, sizeof(aind_event_t));
 
-  // Inform epoll that an aperiodic event happened
-  int const num_char = 32;
-  char str[num_char];
-  memset(str, '\0', num_char);
-  rc = snprintf(str, num_char ,"%u", ric_req_id );
-  assert(rc > 0 && rc < num_char -1);
-
-  rc = write(ag->io.pipe.w, str, rc);
-  assert(rc != 0);
+  // Inform epoll that an aperiodic event happened. Exactly one token of
+  // sizeof(uint32_t) bytes per event, as read by consume_fd_async()
+  ssize_t const bytes = write(ag->io.pipe.w, &ric_req_id, sizeof(ric_req_id));
+  assert(bytes == (ssize_t)sizeof(ric_req_id));
 }
 
 //////////////////////////////////
