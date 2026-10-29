@@ -85,9 +85,9 @@ void log_int_ran_param_value_rrc_state(int64_t value)
 static
 void log_meas_report(const NR_MeasResults_t *results)
 {
-  for (int i = 0; i < results->measResultServingMOList.list.count; i++) {
-    NR_MeasResultServMO_t *measresultservmo = results->measResultServingMOList.list.array[i];
-    NR_MeasResultNR_t *measresultnr = &measresultservmo->measResultServingCell;
+  for (int i = 0; i < results->measResultServingMOList->list.count; i++) {
+    NR_MeasResultServMO_t *measresultservmo = results->measResultServingMOList->list.array[i];
+    NR_MeasResultNR_t *measresultnr = measresultservmo->measResultServingCell;
     NR_MeasQuantityResults_t *mqr = measresultnr->measResult.cellResults.resultsSSB_Cell;
 
     if (mqr != NULL) {
@@ -129,9 +129,9 @@ void log_octet_str_ran_param_value(const e2sm_rc_ind_hdr_frmt_1_t *hdr, byte_arr
         assert(dec_rval.code == RC_OK);
         xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, msg);
   
-        assert(msg->message.present == NR_DL_DCCH_MessageType_PR_c1);
-        assert(msg->message.choice.c1->present == NR_DL_DCCH_MessageType__c1_PR_rrcReconfiguration);
-        NR_RRCReconfiguration_t *reconfig = msg->message.choice.c1->choice.rrcReconfiguration;
+        assert(msg->message->present == NR_DL_DCCH_MessageType_PR_c1);
+        assert(msg->message->choice.c1->present == NR_DL_DCCH_MessageType__c1_PR_rrcReconfiguration);
+        NR_RRCReconfiguration_t *reconfig = msg->message->choice.c1->choice.rrcReconfiguration;
   
         assert(reconfig->criticalExtensions.present == NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration);
         NR_RRCReconfiguration_IEs_t *ies = reconfig->criticalExtensions.choice.rrcReconfiguration;
@@ -154,9 +154,9 @@ void log_octet_str_ran_param_value(const e2sm_rc_ind_hdr_frmt_1_t *hdr, byte_arr
                                           (void **)&msg, octet_str.buf, octet_str.len, 0, 0);
         assert(dec_rval.code == RC_OK);
         xer_fprint(stdout, &asn_DEF_NR_UL_DCCH_Message, msg);
-        assert(msg->message.present == NR_UL_DCCH_MessageType_PR_c1);
-        if (msg->message.choice.c1->present == NR_UL_DCCH_MessageType__c1_PR_measurementReport) {
-          NR_MeasResults_t *results = &msg->message.choice.c1->choice.measurementReport->criticalExtensions.choice.measurementReport->measResults;
+        assert(msg->message->present == NR_UL_DCCH_MessageType_PR_c1);
+        if (msg->message->choice.c1->present == NR_UL_DCCH_MessageType__c1_PR_measurementReport) {
+          NR_MeasResults_t *results = msg->message->choice.c1->choice.measurementReport->criticalExtensions.choice.measurementReport->measResults;
           if (results == NULL) {
             printf("Received RRC MeasaurementReport message but no measurements are filled.\n");
           } else {
