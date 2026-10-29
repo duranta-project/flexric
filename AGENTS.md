@@ -92,7 +92,7 @@ sudo make install
 ctest -j8 --output-on-failure
 ```
 
-The CI runs the same tests in `ci-scripts/Dockerfile.ctest`, except `Unit_test_TC_SM`.
+The CI runs the same tests in `ci-scripts/Dockerfile.ctest`.
 
 ## Actions that need explicit instructions
 
