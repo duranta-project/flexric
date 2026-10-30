@@ -13,6 +13,8 @@
 #include "F1AP_F1AP-PDU.h"
 #include "F1AP_InitiatingMessage.h"
 #include "F1AP_ProtocolIE-Field.h"
+#include "F1AP_ProtocolIE-Container.h"
+#include "F1AP_Served-Cell-Information.h"
 
 #include <inttypes.h>
 #include <semaphore.h>
@@ -279,25 +281,25 @@ f1_du_t decode_f1_setup_req(byte_array_t f1_setup_req)
     return du;
   }
 
-  const F1AP_F1SetupRequest_t* req = &pdu->choice.initiatingMessage->value.choice.F1SetupRequest;
-  for (int i = 0; i < req->protocolIEs.list.count; i++) {
-    const F1AP_F1SetupRequestIEs_t* ie = req->protocolIEs.list.array[i];
+  const F1AP_F1SetupRequest_t* req = pdu->choice.initiatingMessage->value.choice.F1SetupRequest;
+  for (int i = 0; i < req->protocolIEs->list.count; i++) {
+    const F1AP_F1SetupRequestIEs_t* ie = req->protocolIEs->list.array[i];
     switch (ie->id) {
       case F1AP_ProtocolIE_ID_id_gNB_DU_ID: {
         unsigned long gnb_du_id = 0;
-        asn_INTEGER2ulong(&ie->value.choice.GNB_DU_ID, &gnb_du_id);
+        asn_INTEGER2ulong(ie->value.choice.GNB_DU_ID, &gnb_du_id);
         du.gnb_du_id = gnb_du_id;
         break;
       }
       case F1AP_ProtocolIE_ID_id_gNB_DU_Served_Cells_List: {
         /* Optional IE, 0 served cells if absent; this xApp only ever sees a
          * single-cell DU, so only the first item (if any) is kept. */
-        const F1AP_GNB_DU_Served_Cells_List_t* cells = &ie->value.choice.GNB_DU_Served_Cells_List;
+        const F1AP_GNB_DU_Served_Cells_List_t* cells = ie->value.choice.GNB_DU_Served_Cells_List;
         // At the moment, assuming one DU only serves one cell.
         if (cells->list.count > 0) {
           const F1AP_GNB_DU_Served_Cells_ItemIEs_t* item_ie = (const F1AP_GNB_DU_Served_Cells_ItemIEs_t*)cells->list.array[0];
-          const F1AP_GNB_DU_Served_Cells_Item_t* cell = &item_ie->value.choice.GNB_DU_Served_Cells_Item;
-          du.nr_cgi = decode_nr_cgi(&cell->served_Cell_Information.nRCGI);
+          const F1AP_GNB_DU_Served_Cells_Item_t* cell = item_ie->value.choice.GNB_DU_Served_Cells_Item;
+          du.nr_cgi = decode_nr_cgi(cell->served_Cell_Information->nRCGI);
         }
         break;
       }

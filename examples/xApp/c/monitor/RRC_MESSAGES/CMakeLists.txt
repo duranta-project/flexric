@@ -16,7 +16,7 @@ set(ASN1C_EXEC ${ASN1C_EXEC_PATH} CACHE FILEPATH "path to asn1c executable")
 run_asn1c(${CMAKE_CURRENT_SOURCE_DIR}/${NR_RRC_GRAMMAR}
           "NR_"
           OUTPUT ${nr_rrc_source} ${nr_rrc_headers}
-          OPTIONS -pdu=all -fcompound-names -gen-UPER -no-gen-BER -no-gen-JER -no-gen-OER -gen-APER -no-gen-example -findirect-choice
+          OPTIONS -pdu=all -fcompound-names -gen-UPER -no-gen-BER -no-gen-JER -no-gen-OER -no-gen-CBOR -gen-APER -no-gen-example -findirect-choice
           COMMENT "NR RRC source files"
 )
 

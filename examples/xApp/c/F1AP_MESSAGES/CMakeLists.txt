@@ -16,7 +16,7 @@ set(ASN1C_EXEC ${ASN1C_EXEC_PATH} CACHE FILEPATH "path to asn1c executable")
 run_asn1c(${CMAKE_CURRENT_SOURCE_DIR}/${F1AP_GRAMMAR}
           "F1AP_"
           OUTPUT ${f1ap_source} ${f1ap_headers}
-          OPTIONS -gen-APER -no-gen-BER -no-gen-JER -no-gen-OER -gen-UPER -fcompound-names -no-gen-example -findirect-choice -fno-include-deps
+          OPTIONS -gen-APER -no-gen-BER -no-gen-JER -no-gen-OER -no-gen-CBOR -gen-UPER -fcompound-names -no-gen-example -findirect-choice -fno-include-deps
           COMMENT "F1AP source files"
 )
 

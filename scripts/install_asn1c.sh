@@ -17,8 +17,9 @@ sudo git clone https://github.com/mouse07410/asn1c /tmp/asn1c
 # Navigate to the cloned repository
 cd /tmp/asn1c
 
-# Checkout the specific commit
-sudo git checkout 940dd5fa9f3917913fd487b13dfddfacd0ded06e
+# Checkout the specific commit: v1.5.3 plus 69 commits, with the fix for struct names
+# of pointer members (mouse07410/asn1c#592); not in a release yet
+sudo git checkout d0bea1c5ebc09a56d2ca2f106460f2918236692c
 
 # Generate configuration files  
 sudo autoreconf -iv
