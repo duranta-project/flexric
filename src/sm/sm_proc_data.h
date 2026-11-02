@@ -6,6 +6,7 @@
 #define SM_PROCEDURES_DATA_H 
 
 #include "../lib/e2ap/e2ap_ran_function_wrapper.h"
+#include "../lib/e2ap/ric_gen_id_wrapper.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -24,7 +25,10 @@
 
 
 typedef struct{
-  uint32_t ric_req_id;
+  // Identifies the subscription. The RIC Requestor ID alone does not: E2AP
+  // identifies a subscription by {RequestorID, InstanceID} and nothing stops an
+  // xApp from reusing one Requestor ID across RAN functions.
+  ric_gen_id_t ric_id;
 
   uint8_t* event_trigger;
   size_t len_et;
