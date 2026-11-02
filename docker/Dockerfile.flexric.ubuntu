@@ -56,7 +56,7 @@ RUN git clone https://github.com/swig/swig.git && \
 RUN rm -rf /tmp/asn1c && \
     git clone https://github.com/mouse07410/asn1c /tmp/asn1c && \
     cd /tmp/asn1c && \
-    git checkout 940dd5fa9f3917913fd487b13dfddfacd0ded06e && \
+    git checkout d0bea1c5ebc09a56d2ca2f106460f2918236692c && \
     # Showing which version is used
     git log -n1 && \
     autoreconf -iv && \
