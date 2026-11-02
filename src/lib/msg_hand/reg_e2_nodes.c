@@ -289,8 +289,14 @@ sm_ran_function_def_t mv_rd_e2_setup(sm_ag_if_rd_e2setup_t const* src)
   } else if(src->type == RAN_CTRL_V1_3_AGENT_IF_E2_SETUP_ANS_V0){
     dst.type = RC_RAN_FUNC_DEF_E; 
     dst.rc = src->rc.ran_func_def;
+  } else if(src->type == DAPP_AGENT_IF_E2_SETUP_ANS_V0){
+    dst.type = DAPP_RAN_FUNC_DEF_E;
+    dst.dapp = src->dapp.ran_func_def;
   } else {
-    assert(0!=0 && "Unknown types");
+    /* Tolerate service-model definition types this build does not model instead
+       of aborting the E2 node: subscriptions target a service model by
+       RAN-function id, so a type that is not modelled here is simply never
+       selected. dst stays zeroed. */
   }
 
   return dst;
@@ -502,3 +508,61 @@ void rm_reg_e2_node(reg_e2_nodes_t* n, global_e2_node_id_t const* id)
   }
 }
 
+void update_reg_e2_node(reg_e2_nodes_t* n,
+                        global_e2_node_id_t const* id,
+                        size_t len_added,    ran_function_t const* added,
+                        size_t len_modified,  ran_function_t const* modified,
+                        size_t len_deleted,   e2ap_ran_function_id_rev_t const* deleted)
+{
+  assert(n != NULL);
+  assert(id != NULL);
+
+  lock_guard(&n->mtx);
+
+  void* it = assoc_front(&n->node_to_rf);
+  void* end = assoc_end(&n->node_to_rf);
+  it = find_if(&n->node_to_rf, it, end, id, eq_global_e2_node_id_wrapper);
+  assert(it != end && "E2 Node not found in reg_e2_nodes");
+
+  pair_rf_cca_t* rf_cca = assoc_value(&n->node_to_rf, it);
+  seq_arr_t* arr = &rf_cca->ran_func;
+
+  for (size_t i = 0; i < len_deleted; ++i) {
+    void* rf_it = seq_front(arr);
+    void* rf_end = seq_end(arr);
+    while (rf_it != rf_end) {
+      ran_function_t* rf = (ran_function_t*)rf_it;
+      if (rf->id == deleted[i].id) {
+        void* rf_next = seq_next(arr, rf_it);
+        free_ran_function(rf);
+        seq_erase(arr, rf_it, rf_next);
+        break;
+      }
+      rf_it = seq_next(arr, rf_it);
+    }
+  }
+
+  for (size_t i = 0; i < len_modified; ++i) {
+    void* rf_it = seq_front(arr);
+    void* rf_end = seq_end(arr);
+    while (rf_it != rf_end) {
+      ran_function_t* rf = (ran_function_t*)rf_it;
+      if (rf->id == modified[i].id) {
+        free_ran_function(rf);
+        *rf = cp_ran_function(&modified[i]);
+        break;
+      }
+      rf_it = seq_next(arr, rf_it);
+    }
+  }
+
+  for (size_t i = 0; i < len_added; ++i) {
+    ran_function_t tmp = cp_ran_function(&added[i]);
+    seq_push_back(arr, &tmp, sizeof(ran_function_t));
+  }
+
+  printf("[REG-E2-NODES]: Updated node MCC %d MNC %d NB_ID %u "
+         "(added=%zu, modified=%zu, deleted=%zu)\n",
+         id->plmn.mcc, id->plmn.mnc, id->nb_id.nb_id,
+         len_added, len_modified, len_deleted);
+}
