@@ -104,5 +104,8 @@ e2ap_msg_t e2ap_handle_e42_ric_control_ack_iapp(e42_iapp_t* iapp, const e2ap_msg
 // iApp -> xApp
 e2ap_msg_t e2ap_handle_e42_ric_control_failure_iapp(e42_iapp_t* iapp, const e2ap_msg_t* msg);
 
+// RIC -> iApp (forwarded from near_ric msg handler)
+e2ap_msg_t e2ap_handle_ric_service_update_iapp(e42_iapp_t* iapp, const e2ap_msg_t* msg);
+
 #endif
 

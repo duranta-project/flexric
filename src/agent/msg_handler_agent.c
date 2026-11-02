@@ -271,6 +271,18 @@ e2ap_msg_t e2ap_handle_control_request_agent(e2_agent_t* ag, const e2ap_msg_t* m
   sm_ctrl_out_data_t ctrl_ans = sm->proc.on_control(sm, &data);
   defer({ free_sm_ctrl_out_data(&ctrl_ans); } );
 
+  if(ctrl_ans.deferred == true){
+    /* Park the RIC ID and answer nothing now. The event loop skips a
+     * NONE_E2_MSG_TYPE, so no acknowledge goes out until the SM completes the
+     * procedure. A table that is full is not a reason to lose the exchange:
+     * fall through and acknowledge immediately, the same as an SM that never
+     * deferred. */
+    if(park_pending_ctrl(&ag->pending_ctrl, ctrl_ans.defer_key, ctrl_req->ric_id) == true){
+      e2ap_msg_t none = {.type = NONE_E2_MSG_TYPE};
+      return none;
+    }
+    printf("[E2-AGENT]: pending control table full, acknowledging immediately\n");
+  }
 
   byte_array_t* ba_ctrl_ans = ba_from_ctrl_out(&ctrl_ans);
 
@@ -426,7 +438,16 @@ e2ap_msg_t e2ap_handle_service_update_ack_agent(e2_agent_t* ag, const e2ap_msg_t
 {
   assert(ag != NULL);
   assert(msg != NULL);
-  assert(0!=0 && "Not implemented");
+  assert(msg->type == RIC_SERVICE_UPDATE_ACKNOWLEDGE);
+
+  const ric_service_update_ack_t* ack = &msg->u_msgs.ric_serv_updt_ack;
+  printf("[E2-AGENT]: RIC SERVICE UPDATE ACKNOWLEDGE rx (accepted=%zu, rejected=%zu)\n",
+         ack->len_accepted, ack->len_rejected);
+
+  for (size_t i = 0; i < ack->len_rejected; ++i) {
+    printf("[E2-AGENT]: RAN function %d REJECTED by the RIC, cause group %d\n",
+           ack->rejected[i].id, ack->rejected[i].cause.present);
+  }
 
   e2ap_msg_t ans = {.type = NONE_E2_MSG_TYPE};
   return ans; 
