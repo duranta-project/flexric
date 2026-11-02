@@ -14,6 +14,10 @@ void init_handle_msg_agent(size_t len, handle_msg_fp_agent (*handle_msg)[len]);
 
 e2ap_msg_t e2ap_msg_handle_agent(e2_agent_t* agent, const e2ap_msg_t* msg);
 
+// Drop every installed RIC subscription, stopping its timer and releasing its
+// action definition. Agent thread only.
+void stop_all_ind_events(e2_agent_t* ag);
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // O-RAN E2APv01.01: Messages for Global Procedures ///////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////

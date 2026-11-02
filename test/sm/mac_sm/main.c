@@ -4,6 +4,7 @@
 
 
 #include "../../rnd/fill_rnd_data_mac.h"
+#include "../../rnd/rnd_seed.h"
 #include "../../../src/sm/mac_sm/mac_sm_agent.h"
 #include "../../../src/sm/mac_sm/mac_sm_ric.h"
 
@@ -120,8 +121,9 @@ void check_ctrl(sm_agent_t* ag, sm_ric_t* ric)
   free_sm_ctrl_req_data(&msg);
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+  init_rnd_seed(argc > 1 ? argv[1] : NULL);
   sm_io_ag_ran_t io_ag = {0};
   io_ag.read_ind_tbl[MAC_STATS_V0] = read_ind_mac; 
   io_ag.write_ctrl_tbl[MAC_CTRL_REQ_V0] = write_ctrl; 
