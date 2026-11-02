@@ -10,6 +10,15 @@
 #include "../e2ap/e2_node_connected_wrapper.h"
 #include "e2_node_arr.h"
 #include "../../xApp/e2_node_arr_xapp.h"
+#ifdef E2AP_V1
+#include "../e2ap/v1_01/e2ap_types/common/e2ap_ran_function_id_rev.h"
+#elif defined(E2AP_V2)
+#include "../e2ap/v2_03/e2ap_types/common/e2ap_ran_function_id_rev.h"
+#elif defined(E2AP_V3)
+#include "../e2ap/v3_01/e2ap_types/common/e2ap_ran_function_id_rev.h"
+#else
+static_assert(0!=0, "Unknown E2AP Version");
+#endif
 
 #include <stddef.h>
 #include <stdint.h>
@@ -51,6 +60,12 @@ assoc_rb_tree_t cp_reg_e2_node(reg_e2_nodes_t* n);
 e2_node_arr_t generate_e2_node_arr(reg_e2_nodes_t* n);
 
 e2_node_arr_xapp_t generate_e2_node_arr_xapp(reg_e2_nodes_t* n, plugin_ric_t const* plg_ric);
+
+void update_reg_e2_node(reg_e2_nodes_t* n,
+                        global_e2_node_id_t const* id,
+                        size_t len_added,    ran_function_t const* added,
+                        size_t len_modified,  ran_function_t const* modified,
+                        size_t len_deleted,   e2ap_ran_function_id_rev_t const* deleted);
 
 #endif
 
