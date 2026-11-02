@@ -11,13 +11,27 @@
 #include "dec_global_ng_ran.h"
 
 
+// AMF UE NGAP ID: INTEGER (0..2^40-1), stored big-endian in two's complement
+// in at most 6 octets (a leading 0x00 octet for values >= 2^39)
+static
+uint64_t dec_amf_ue_ngap_id(INTEGER_t const* src)
+{
+    assert(src->buf != NULL);
+    assert(src->size > 0 && src->size < 7);
+    assert((src->buf[0] & 0x80) == 0 && "Negative AMF UE NGAP ID");
+
+    uint64_t val = 0;
+    for (size_t i = 0; i < src->size; ++i)
+        val = (val << 8) | src->buf[i];
+    return val;
+}
+
 ng_enb_e2sm_t dec_ng_eNB_UE_asn(const UEID_NG_ENB_t * ng_enb_asn)
 {
     ng_enb_e2sm_t ng_enb = {0};
 
     // AMF UE NGAP ID
-    assert(ng_enb_asn->amf_UE_NGAP_ID.buf != NULL);
-    memcpy(&ng_enb.amf_ue_ngap_id, ng_enb_asn->amf_UE_NGAP_ID.buf, 5);
+    ng_enb.amf_ue_ngap_id = dec_amf_ue_ngap_id(&ng_enb_asn->amf_UE_NGAP_ID);
     assert(ng_enb.amf_ue_ngap_id < (1UL << 40) );
 
     // GUAMI
