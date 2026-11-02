@@ -66,18 +66,23 @@ typedef struct e2_agent_s
   _Atomic uint32_t trans_id_setup_req;
 #endif
 
+  // An E2 session runs from an accepted E2 SETUP RESPONSE to the end of the
+  // association it arrived on (see notification_handle_ag). Outside one,
+  // indications may not go out. Written by the agent thread, read by any.
+  atomic_bool e2_session_up;
+
   atomic_bool stop_token;
   atomic_bool agent_stopped;
 } e2_agent_t;
 
-e2_agent_t* e2_init_agent(const char* addr, int port, global_e2_node_id_t ge2nid, sm_io_ag_ran_t io, char const*  libs_dir);
+e2_agent_t* e2_init_agent(const char* addr, int port, fr_sctp_timers_t sctp_timers, global_e2_node_id_t ge2nid, sm_io_ag_ran_t io, char const*  libs_dir);
 
 // Blocking call
 void e2_start_agent(e2_agent_t* ag);
 
 void e2_free_agent(e2_agent_t* ag);
      
-void e2_async_event_agent(e2_agent_t* ag, uint32_t ric_req_id, void* ind_data);
+void e2_async_event_agent(e2_agent_t* ag, ric_gen_id_t ric_id, void* ind_data);
 
 ///////////////////////////////////////////////
 // E2AP AGENT FUNCTIONAL PROCEDURES MESSAGES //

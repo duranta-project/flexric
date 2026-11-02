@@ -1860,7 +1860,8 @@ e2ap_msg_t e2ap_dec_setup_failure(const E2AP_PDU_t* pdu)
   // TransactionID. Mandatory
   const E2setupFailureIEs_t* trans_id = out->protocolIEs.list.array[0];
   assert(trans_id->id == ProtocolIE_ID_id_TransactionID);
-  assert(trans_id->criticality == Criticality_reject);
+  // The O-RAN SC RIC sends this IE with criticality ignore instead of reject.
+  // Nothing depends on it, so it is accepted either way.
   assert(trans_id->value.present == E2setupFailureIEs__value_PR_TransactionID);
   assert(trans_id->value.choice.TransactionID < 256);
   sf->trans_id = trans_id->value.choice.TransactionID;
@@ -1917,8 +1918,6 @@ e2ap_msg_t e2ap_dec_reset_request(const E2AP_PDU_t* pdu)
 {
   assert(pdu != NULL);
 
-  assert(0!=0 && "Untested code");
-
   e2ap_msg_t ret = {.type = E2AP_RESET_REQUEST};
   e2ap_reset_request_t* rr = &ret.u_msgs.rst_req;
 
@@ -1930,6 +1929,8 @@ e2ap_msg_t e2ap_dec_reset_request(const E2AP_PDU_t* pdu)
 
   const ResetRequest_t* out = &pdu->choice.initiatingMessage->value.choice.ResetRequest;
  
+  assert(out->protocolIEs.list.count >= 2 && "TransactionID and Cause are mandatory");
+
   // TransactionID. Mandatory
   const ResetRequestIEs_t* trans_id = out->protocolIEs.list.array[0];
   assert(trans_id->id == ProtocolIE_ID_id_TransactionID);
@@ -1953,8 +1954,6 @@ e2ap_msg_t e2ap_dec_reset_response(const E2AP_PDU_t* pdu)
 {
   assert(pdu != NULL);
 
-  assert(0!=0 && "Untested code");
-
   e2ap_msg_t ret = {.type = E2AP_RESET_RESPONSE};
   e2ap_reset_response_t* rr = &ret.u_msgs.rst_resp;
 
@@ -1965,6 +1964,8 @@ e2ap_msg_t e2ap_dec_reset_response(const E2AP_PDU_t* pdu)
   assert(pdu->choice.successfulOutcome->value.present == SuccessfulOutcome__value_PR_ResetResponse);
 
  const ResetResponse_t* out = &pdu->choice.successfulOutcome->value.choice.ResetResponse;
+  assert(out->protocolIEs.list.count >= 1 && "TransactionID is mandatory");
+
   // TransactionID. Mandatory
   const ResetResponseIEs_t* trans_id = out->protocolIEs.list.array[0];
   assert(trans_id->id == ProtocolIE_ID_id_TransactionID);

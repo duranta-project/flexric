@@ -65,19 +65,21 @@ Please see [NOTICE](NOTICE) for third party softwares that are used by flexric.
 ### 1.1 Prerequisites
 
 #### 1.1.1 GCC compiler
-- Please make sure you have gcc-13 installed (gcc-10 and 12 are compatible as well). Follow the next steps:
+- Upgrade to the recommended GCC version 16:
 ```bash
 sudo apt update -y
 sudo apt upgrade -y
 sudo apt install -y build-essential
-sudo apt install -y gcc-13 g++-13 cpp-13
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100 --slave /usr/bin/g++ g++ /usr/bin/g++-13 --slave /usr/bin/gcov gcov /usr/bin/gcov-13
-sudo update-alternatives --config gcc # chose gcc-13
+sudo apt install -y gcc-16
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-16 16
+sudo update-alternatives --config gcc # chose gcc-16
 ```
 > **Note:** gcc-11 is not supported in FlexRIC
 
 #### 1.1.2 (opt.) Wireshark
-Per `O-RAN.WG3.E2GAP-v02.00` specifications, no SCTP port is specified for E2AP protocol. In our implementation, we use port number 36421. Please, add the following configuration in Wireshark:
+According to the O-RAN.WG3.E2GAP-v02.00 specification, no SCTP port is specified for the E2AP protocol. In our implementation, the port is defined by `E2AP_PORT`, which defaults to 36421.
+
+Please add the following decoding configuration in Wireshark:
 
 ![E2AP configuration](fig/4.png)
 
@@ -107,7 +109,7 @@ sudo make install
 
 - Python dependency
 ```bash
-sudo apt-get install python3.10-dev
+sudo apt-get install python3-dev
 ```
 #### 1.2.3 ASN.1 compiler (asn1c)
 E2AP, E2SM common IE, KPM and RC ASN.1 definitions are already precompiled in the
@@ -154,6 +156,13 @@ If you want to profile FlexRIC, or just need a fast nearRT-RIC, you should build
 ```bash
 mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j8
 ```
+
+If you build FlexRIC with TSan (`-DSANITIZER=THREAD`), check the address space layout randomization (ASLR) setting of your kernel first:
+```bash
+cat /proc/sys/vm/mmap_rnd_bits
+```
+Some recent kernels set it to `32`. TSan reserves fixed memory ranges for its own use and expects the binary and the shared libraries to be loaded in the default ASLR range (`28` bits).
+To set this permanently, add `vm.mmap_rnd_bits=28` line in `/etc/sysctl.conf`.
 
 ### 2.3 Installation of Service Models (SMs)
 The service models are shared by xApps and the RAN. Therefore, they have to be installed in a place where the RAN can access them. The easiest is to install them globally, by typing:
@@ -450,13 +459,27 @@ sudo phc2sys -m -s InterfaceName -w
 
 ![alt text](fig/3.png)
 
+### 5.6 E2 agent: noticing a lost nearRT-RIC
+
+The E2 agent ends the E2 session -- it drops every RIC subscription and sends a new E2 SETUP REQUEST -- whenever its SCTP association to the nearRT-RIC ends: on a graceful SHUTDOWN, when the association is lost (`SCTP_COMM_LOST`, e.g. the nearRT-RIC host or the network went away), or when the nearRT-RIC restarts (`SCTP_RESTART`).
+
+How fast a lost association is noticed depends on SCTP timers. The kernel defaults take minutes, so the agent sets its own:
+
+| `[NEAR-RIC]` key in `flexric.conf` | `fr_args_t` field | Default | Meaning |
+|---|---|---|---|
+| `SCTP_HB_INTERVAL_MS` | `sctp_hb_interval_ms` | 1000 | Heartbeat interval on an idle association |
+| `SCTP_RTO_MAX_MS` | `sctp_rto_max_ms` | 2000 | Ceiling of the retransmission timeout |
+| `SCTP_MAX_RETRANS` | `sctp_max_retrans` | 5 | Retransmissions before the association is declared lost |
+
+With the defaults, a lost association is noticed in roughly 10 s while indications flow, and somewhat later when it is idle. Lower values notice sooner but also treat a shorter outage as a loss, and every loss drops all subscriptions, which the xApps then have to install again: keep some margin on unstable links. A RAN that fills `fr_args_t` itself, such as OAI, sets the fields; `0` leaves a field to the config file and then to the default.
+
 ## 6. Integration with other nearRT-RICs
 
 ### 6.1 O-RAN SC nearRT-RIC
 We showcased the successful integration between OAI E2 agent and O-RAN SC nearRT-RIC in [the OAI E2AP tutorial](https://github.com/duranta-project/openairinterface5g/blob/develop/openair2/E2AP/README.md#5-o-ran-sc-nearrt-ric-interoperability).
 
 > **Note** that the OSC nearRT-RIC can also be tested with FlexRIC E2 agent emulators (`build/examples/emulator/agent/`).
-Before proceeding with integration, please set the `e2ap_server_port` to 36422 (the default is 36421), as the E2AP port for OSC nearRT-RIC is 36422.
+Before proceeding with integration, set `E2AP_PORT = 36422` in `flexric.conf` (or pass `-e 36422`), as the E2AP port for OSC nearRT-RIC is 36422 (the default is 36421).
 
 ## 7. Support/further resources
 * Mailing list: if you need help or have some questions, you can subscribe to the mailing list `techs@mosaic-5g.io` that you can find at [GitHub](https://github.com/duranta-project/flexric/wiki/MailingList). The emails are archived and available publicly.

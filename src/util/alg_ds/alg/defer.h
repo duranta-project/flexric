@@ -32,21 +32,14 @@ SOFTWARE.
 
 #define CONCAT_IMPL( x, y ) x##y
 #define MACRO_CONCAT( x, y ) CONCAT_IMPL( x, y )
-#define FUNC_DEFER4 MACRO_CONCAT(DF_, __LINE__ ) 
-#define FUNC_DEFER3 MACRO_CONCAT(FUNC_DEFER4, _line_ ) 
-#define FUNC_DEFER2 MACRO_CONCAT(FUNC_DEFER3, __COUNTER__ ) 
-#define FUNC_DEFER MACRO_CONCAT(FUNC_DEFER2, _counter ) 
-#define FUNC_DEFER_IMPL MACRO_CONCAT(FUNC_DEFER3, __impl ) 
 
-#if defined __GNUC__ // nested-function-in-stmt-expression
+#if defined __GNUC__ // nested function called directly by the cleanup attribute
 
-void cleanup_deferred (void (**d) (void));
+#define DEFER_IMPL(name, ...) \
+  void name(int* defer_unused_arg_) { (void)defer_unused_arg_; __VA_ARGS__ } \
+  __attribute__((__cleanup__(name))) int MACRO_CONCAT(name, _var) = 0
 
-#define defer(...)  \
-  __attribute__((__cleanup__ (cleanup_deferred)))    \
-  void (*FUNC_DEFER) (void) = ({  \
-void  FUNC_DEFER_IMPL (void) __VA_ARGS__  \
- FUNC_DEFER_IMPL; })
+#define defer(...) DEFER_IMPL(MACRO_CONCAT(DF_, __COUNTER__), __VA_ARGS__)
 
 #endif
 

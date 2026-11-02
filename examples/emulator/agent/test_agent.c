@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <poll.h>
 #include <pthread.h>
+#include <time.h>
 #include <unistd.h>
 
 static
@@ -158,6 +159,9 @@ sm_ag_if_ans_t write_RAN(sm_ag_if_wr_t const* ag_wr)
 int main(int argc, char *argv[])
 {
   init_sig_handler();
+
+  // Random data for the emulated indications
+  srand(time(NULL));
 
   // Init the Agent
   // Values defined in the CMakeLists.txt file

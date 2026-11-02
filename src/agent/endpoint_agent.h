@@ -7,6 +7,7 @@
 
 #include "lib/ep/e2ap_ep.h"   // for e2ap_ep_t
 #include "util/byte_array.h"  // for byte_array_t
+#include "util/conf_file.h"   // for fr_sctp_timers_t
 
 typedef struct e2ap_ep_ag
 {
@@ -21,7 +22,7 @@ typedef struct e2ap_ep_ag
 
 
 
-void e2ap_init_ep_agent(e2ap_ep_ag_t* ep, const char* addr, int port);
+void e2ap_init_ep_agent(e2ap_ep_ag_t* ep, const char* addr, int port, fr_sctp_timers_t sctp_timers);
 
 void e2ap_free_ep_agent(e2ap_ep_ag_t* ep);
 
