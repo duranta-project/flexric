@@ -37,9 +37,10 @@ WARNING_RE = re.compile(
     r'^(?:#\d+\s+[\d.]+\s+)?(/\S+?):(\d+):\d+:\s+(warning|error):\s*(.*)$')
 
 # ctest result line: " 1/12 Test  #6: Unit_test_MAC_SM ....   Passed    0.01 sec"
+# The status is everything between the dots and the run time, e.g. "Passed",
+# "***Failed", "Subprocess aborted***Exception:" or "***Not Run"; only "Passed" is OK.
 CTEST_RESULT_RE = re.compile(
-    # ctest pads with dots and puts NO space before a ***Failed marker, unlike Passed.
-    r'Test\s+#\d+:\s+(\S+)\s+\.+\s*(Passed|\*\*\*Failed|\*\*\*Timeout|\*\*\*Exception|Failed)')
+    r'Test\s+#\d+:\s+(\S+)\s+\.*\s*(.+?)\s+[0-9.]+\s+sec\b')
 CTEST_SUMMARY_RE = re.compile(r'(\d+)% tests passed,\s+(\d+) tests failed out of\s+(\d+)')
 
 # Shown wherever a value could not be determined.

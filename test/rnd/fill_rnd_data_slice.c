@@ -212,8 +212,6 @@ void fill_slice_ind_data(slice_ind_data_t* ind_msg)
 {
   assert(ind_msg != NULL);
 
-  srand(time(0));
-
   fill_slice_conf(&ind_msg->msg.slice_conf);
   fill_ue_slice_conf(&ind_msg->msg.ue_slice_conf);
   ind_msg->msg.tstamp = time_now_us();
