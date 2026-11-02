@@ -11,6 +11,8 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
 #include <time.h>
 
 void test_kpm_ric_event_trigger_def_asn(void)
@@ -54,6 +56,27 @@ void test_kpm_ind_hdr(void)
   defer({ free_kpm_ind_hdr(&out); });
 
   assert(eq_kpm_ind_hdr(&hdr, &out) == true);
+}
+
+// Collection Start Time is an RFC 5905 NTP timestamp (UTC, 1900 epoch, big-endian) on the wire
+void test_kpm_ind_hdr_ntp_wire(void)
+{
+  kpm_ind_hdr_t hdr = fill_rnd_kpm_ind_hdr();
+  defer({ free_kpm_ind_hdr(&hdr); });
+  hdr.kpm_ric_ind_hdr_format_1.collectStartTime = 1717776000; // 2024-06-07T16:00:00Z
+
+  byte_array_t ba = kpm_enc_ind_hdr_asn(&hdr);
+  defer({ free_byte_array(ba); });
+
+  const uint8_t ntp[] = {0xEA, 0x0D, 0xAD, 0x00};
+  bool found = false;
+  for (size_t i = 0; i + sizeof(ntp) <= ba.len; ++i)
+    found |= memcmp(ba.buf + i, ntp, sizeof(ntp)) == 0;
+  assert(found == true);
+
+  kpm_ind_hdr_t out = kpm_dec_ind_hdr_asn(ba.len, ba.buf);
+  defer({ free_kpm_ind_hdr(&out); });
+  assert(out.kpm_ric_ind_hdr_format_1.collectStartTime == 1717776000);
 }
 
 void test_kpm_ind_msg(void)
@@ -105,6 +128,9 @@ int main()
     // Indication Header
     test_kpm_ind_hdr();
     printf("KPM Indication Header test succeeded\n");
+
+    test_kpm_ind_hdr_ntp_wire();
+    printf("KPM Indication Header NTP wire test succeeded\n");
 
     // Indication Message
     test_kpm_ind_msg();
