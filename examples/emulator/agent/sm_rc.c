@@ -477,16 +477,16 @@ sm_ag_if_ans_t write_ctrl_rc_sm(void const* data)
 }
 
 static
-uint32_t *ric_req_id_list = NULL;
+ric_gen_id_t *ric_id_list = NULL;
 static
 size_t sz_ric_req_id = 0;
 
 static
-void free_aperiodic_subscription(uint32_t ric_req_id)
+void free_aperiodic_subscription(ric_gen_id_t ric_id)
 {
   for (size_t i = 0; i < sz_ric_req_id; i++) {
-    if (ric_req_id == ric_req_id_list[i])
-      (void)ric_req_id_list[i];
+    if (eq_ric_gen_id(&ric_id, &ric_id_list[i]))
+      (void)ric_id_list[i];
   }
 }
 
@@ -502,8 +502,9 @@ void* emulate_ric_ind(void* ptr)
       d->hdr = fill_rnd_rc_ind_hdr();
       d->msg = fill_rnd_rc_ind_msg();
 
-      async_event_agent_api(ric_req_id_list[j], d);
-      printf("Event for RIC Req ID %u generated\n", ric_req_id_list[j]);
+      async_event_agent_api(ric_id_list[j], d);
+      printf("Event for RAN_FUNC_ID %d RIC_REQ_ID %d INST_ID %d generated\n",
+             ric_id_list[j].ran_func_id, ric_id_list[j].ric_req_id, ric_id_list[j].ric_inst_id);
     }
   }
 
@@ -519,8 +520,8 @@ sm_ag_if_ans_t write_subs_rc_sm(void const* src)
 
   wr_rc_sub_data_t* wr_rc = (wr_rc_sub_data_t*)src;
 
-  ric_req_id_list = realloc(ric_req_id_list, (sz_ric_req_id + 1) * sizeof(uint32_t));
-  (ric_req_id_list)[sz_ric_req_id] = wr_rc->ric_req_id;
+  ric_id_list = realloc(ric_id_list, (sz_ric_req_id + 1) * sizeof(ric_gen_id_t));
+  (ric_id_list)[sz_ric_req_id] = wr_rc->ric_id;
   (sz_ric_req_id)++;
 
   int rc = pthread_create(&t_ran_ctrl, NULL, emulate_ric_ind, NULL);
