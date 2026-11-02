@@ -628,3 +628,15 @@ void e2_send_control_failure(e2_agent_t* ag, const ric_control_failure_t* cf)
   free_byte_array(ba);
 }
 
+void e2_send_ric_service_update(e2_agent_t* ag, const ric_service_update_t* su)
+{
+  assert(ag != NULL);
+  assert(su != NULL);
+
+  e2ap_msg_t msg = {.type = RIC_SERVICE_UPDATE};
+  msg.u_msgs.ric_serv_updt = *su;
+
+  byte_array_t ba = e2ap_msg_enc_ag(&ag->ap, &msg);
+  e2ap_send_bytes_agent(&ag->ep, ba);
+  free_byte_array(ba);
+}
