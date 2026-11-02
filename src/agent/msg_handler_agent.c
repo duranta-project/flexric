@@ -11,6 +11,7 @@
 #include "util/compare.h"
 
 #include <assert.h>
+#include <stdatomic.h>
 #include <stdio.h>
 
 static
@@ -32,40 +33,110 @@ bool check_valid_msg_type(e2_msg_type_t msg_type )
       || msg_type == E2_CONNECTION_UPDATE;
 }
 
+// Aperiodic subscriptions have no real fd; they are keyed by a negative one so
+// stop_ind_event() can tell them apart from the timer fds of periodic ones.
+static _Atomic int next_aperiodic_fd = -1;
+
+// Unlink the subscription under id from both trees and copy it out. Returns
+// false when there is none. The caller must then release_ind_event() it, with
+// ag->mtx_ind_event no longer held.
 static
-bool stop_ind_event(e2_agent_t* ag, ric_gen_id_t id)
+bool unlink_ind_event(e2_agent_t* ag, ric_gen_id_t id, ind_event_t* out)
 {
   assert(ag != NULL);
-  ind_event_t tmp = {.ric_id = id, .sm = NULL, .action_id =0 };
+  assert(out != NULL);
 
-  // Fix this! bi_map should liberate the memory itself 
-  void* start_r = assoc_rb_tree_front(&ag->ind_event.right);
-  void* end_r = assoc_rb_tree_end(&ag->ind_event.right);
-  void* it_r = find_if_rb_tree(&ag->ind_event.right, start_r, end_r, &tmp, eq_ind_event); 
+  // Insert takes the mutex, and e2_async_event_agent() traverses the right tree
+  // under it from the RAN threads, so the unlink must as well.
+  lock_guard(&ag->mtx_ind_event);
+
+  assoc_rb_tree_t* tree = &ag->ind_event.right;
+  void* end_r = assoc_rb_tree_end(tree);
+  void* it_r = find_if_rb_tree(tree, assoc_rb_tree_front(tree), end_r, &id, eq_ind_event);
   if(it_r == end_r){
     printf("[E2 AGENT]: RAN_FUNC_ID %d RIC_REQ_ID %d not found. Spuriously occurs when abruptly closing the xApp\n", id.ran_func_id, id.ric_req_id);
-    return false;;
+    return false;
   }
 
-  assert(it_r != end_r);
-  ind_event_t* ind_ev = assoc_rb_tree_key(&ag->ind_event.right, it_r);
+  *out = *(ind_event_t*)assoc_rb_tree_key(tree, it_r);
 
-  if (ind_ev->type == PERIODIC_SUBSCRIPTION_FLRC) {
-    if (ind_ev->sm->free_act_def != NULL)
-      ind_ev->sm->free_act_def(ind_ev->sm, ind_ev->act_def);
-  } else if(ind_ev->type == APERIODIC_SUBSCRIPTION_FLRC) {
-    ind_ev->free_subs_aperiodic(id.ric_req_id);
+  // Extract by the fd, i.e. the left key: it is unique, whereas several entries
+  // can share one RIC ID. Extracting by the right key let assoc_extract's binary
+  // search unlink a different entry than the linear scan above had found, which
+  // freed one entry's act_def and left the other live with a freed pointer and an
+  // armed timer.
+  int fd = out->fd;
+  ind_event_t* val = bi_map_extract_left(&ag->ind_event, &fd, sizeof(fd), NULL);
+  assert(val != NULL);
+  free(val);
+
+  return true;
+}
+
+// Stop the subscription's producer and hand its payload back to its owner. Must
+// run with ag->mtx_ind_event released: free_act_def and free_subs_aperiodic are
+// service model and RAN code that take their own locks.
+static
+void release_ind_event(e2_agent_t* ag, ind_event_t const* ev)
+{
+  assert(ag != NULL);
+  assert(ev != NULL);
+
+  if(ev->fd > -1)
+    rm_fd_asio_agent(&ag->io, ev->fd);
+
+  if(ev->type == PERIODIC_SUBSCRIPTION_FLRC){
+    if(ev->sm->free_act_def != NULL)
+      ev->sm->free_act_def(ev->sm, ev->act_def);
+  } else if(ev->type == APERIODIC_SUBSCRIPTION_FLRC){
+    ev->free_subs_aperiodic(ev->ric_id);
   } else {
     assert(0!=0 && "Unknown subscritpion type");
   }
+}
 
-  void (*free_ind_event)(void*) = NULL;
-  int* fd = bi_map_extract_right(&ag->ind_event, &tmp, sizeof(tmp), free_ind_event);
-  if (*fd > -1)
-    rm_fd_asio_agent(&ag->io, *fd);
-  free(fd);
+static
+bool stop_ind_event(e2_agent_t* ag, ric_gen_id_t id)
+{
+  ind_event_t ev = {0};
+  if(unlink_ind_event(ag, id, &ev) == false)
+    return false;
 
-  return true;;
+  release_ind_event(ag, &ev);
+  return true;
+}
+
+// Drop every installed subscription: E2AP keeps none across an association.
+// Agent thread only.
+void stop_all_ind_events(e2_agent_t* ag)
+{
+  assert(ag != NULL);
+
+  size_t dropped = 0;
+  for(;;){
+    ind_event_t ev = {0};
+    {
+      lock_guard(&ag->mtx_ind_event);
+
+      assoc_rb_tree_t* left = &ag->ind_event.left;
+      void* it = assoc_rb_tree_front(left);
+      if(it == assoc_rb_tree_end(left))
+        break;
+
+      // Re-read front() after every extraction: assoc_rb_tree_extract frees the
+      // node, so an iterator held across one would dangle.
+      int fd = *(int*)assoc_rb_tree_key(left, it);
+      ind_event_t* val = bi_map_extract_left(&ag->ind_event, &fd, sizeof(fd), NULL);
+      assert(val != NULL);
+      ev = *val;
+      free(val);
+    }
+    release_ind_event(ag, &ev);
+    ++dropped;
+  }
+
+  if(dropped > 0)
+    printf("[E2 AGENT]: dropped %zu RIC subscription(s) with the association\n", dropped);
 }
 
 void init_handle_msg_agent(size_t len, handle_msg_fp_agent (*handle_msg)[len])
@@ -114,7 +185,7 @@ sm_subs_data_t generate_sm_subs_data(ric_subscription_request_t const* sr)
   assert(sr != NULL);
   sm_subs_data_t data =  { .event_trigger = sr->event_trigger.buf,
                            .len_et = sr->event_trigger.len,
-                           .ric_req_id = sr->ric_id.ric_req_id };
+                           .ric_id = sr->ric_id };
 
   if(sr->action->definition != NULL){
     data.action_def = sr->action->definition->buf;
@@ -173,25 +244,34 @@ e2ap_msg_t e2ap_handle_subscription_request_agent(e2_agent_t* ag, const e2ap_msg
     // Periodic indication message generated i.e., every 5 ms
     assert(t.ms < 10001 && "Subscription for granularity larger than 10 seconds requested? ");
     int fd_timer = create_timer_ms_asio_agent(&ag->io, t.ms, t.ms);
+    // Must precede the insert: cmp_ind_event tie-breaks on it, so the right
+    // tree's ordering is wrong for any entry inserted with fd unset.
+    ev.fd = fd_timer;
     lock_guard(&ag->mtx_ind_event);
     bi_map_insert(&ag->ind_event, &fd_timer, sizeof(fd_timer), &ev, sizeof(ev));
   } else if(ev.type == APERIODIC_SUBSCRIPTION_FLRC){
     ev.free_subs_aperiodic = subs.aper.free_aper_subs;
     // Aperiodic indication generated i.e., the RAN will generate it via
-    // void async_event_agent_api(uint32_t ric_req_id, void* ind_data);
+    // void async_event_agent_api(ric_gen_id_t ric_id, void* ind_data);
     // however, the fd has to be unique per subscription (e.g. two xApp running in parallel
     // can subscribe to the same parameters, but when deleting one via bi_map_extract_right()
-    // it would not find the correct one due to cmp_fd() if not different)
-    int fd = -ev.ric_id.ric_req_id;
+    // it would not find the correct one due to cmp_fd() if not different).
+    // The Requestor ID is not that: E2AP identifies a subscription by
+    // {RequestorID, InstanceID}, so two subscriptions sharing one -- which is what the
+    // OSC near-RT RIC hands out -- would collide on this key. -ric_req_id also yields 0
+    // for Requestor ID 0, which reads back as a real fd. Count down instead.
+    int fd = atomic_fetch_sub(&next_aperiodic_fd, 1);
+    assert(fd < 0 && "Too many aperiodic subscriptions");
+    ev.fd = fd;
     {
       lock_guard(&ag->mtx_ind_event);
       bi_map_insert(&ag->ind_event, &fd, sizeof(int), &ev, sizeof(ev));
     }
 
     // Some report styles require sending RIC Indication out of on_subscription,
-    // but can only be sent when ric_req_id is registered.
+    // but can only be sent when the subscription is registered.
     if(subs.aper.imm_ind_data != NULL)
-      e2_async_event_agent(ag, ev.ric_id.ric_req_id, subs.aper.imm_ind_data);
+      e2_async_event_agent(ag, ev.ric_id, subs.aper.imm_ind_data);
   } else {
     assert(0!=0 && "Unknown subscritpion type");
   }
@@ -298,18 +378,41 @@ e2ap_msg_t e2ap_handle_error_indication_agent(e2_agent_t* ag, const e2ap_msg_t* 
   return ans; 
 }
 
+static inline
+bool eq_pending_event(const void* m0_v, const void* m1_v)
+{
+  assert(m0_v != NULL);
+  assert(m1_v != NULL);
+
+  pending_event_t const* m0 = (pending_event_t const*)m0_v;
+  pending_event_t const* m1 = (pending_event_t const*)m1_v;
+
+  return *m0 == *m1;
+}
+
 static
-void stop_pending_event(e2_agent_t* ag, pending_event_t event)
+bool stop_pending_event(e2_agent_t* ag, pending_event_t event)
 {
   assert(ag != NULL);
 
+  /* bi_map_extract_right() asserts that the key is in the tree, so probe first.
+   * A timer that is already stopped is a recoverable condition, not a bug. Same
+   * shape as stop_ind_event() above. */
+  void* start_r = assoc_rb_tree_front(&ag->pending.right);
+  void* end_r = assoc_rb_tree_end(&ag->pending.right);
+  void* it_r = find_if_rb_tree(&ag->pending.right, start_r, end_r, &event, eq_pending_event);
+  if(it_r == end_r)
+    return false;
+
   void (*free_pending_event)(void*)=NULL;
   int* fd = bi_map_extract_right(&ag->pending, &event, sizeof(event), free_pending_event);
+  assert(fd != NULL);
   assert(*fd > 0);
   //printf("[E2-AGENT]: stopping pending\n");
   //event = %d \n", *fd);
   rm_fd_asio_agent(&ag->io, *fd);
   free(fd);
+  return true;
 }
 
 
@@ -320,16 +423,36 @@ e2ap_msg_t e2ap_handle_setup_response_agent(e2_agent_t* ag, const e2ap_msg_t* ms
   assert(msg->type == E2_SETUP_RESPONSE);
   printf("[E2-AGENT]: E2 SETUP RESPONSE rx\n");
 
-  // Stop the timer
-  pending_event_t ev = SETUP_REQUEST_PENDING_EVENT;
-  stop_pending_event(ag,ev);
+  e2ap_msg_t ans = {.type = NONE_E2_MSG_TYPE};
 
 #if defined(E2AP_V2) || defined(E2AP_V3)
-  assert(ag->trans_id_setup_req > 0 && "Receiving an E2 SETUP-RESPONSE, eventhough not E2 SETUP-REQUEST not sent from this E2 Node" );
+  // Before the timer is stopped: a response this node never asked for must not
+  // cancel the retry of the request it is about to send. After a lost
+  // association the retry is armed but nothing is sent until it fires, and
+  // stopping it here would leave the agent with no E2 SETUP to send, ever.
+  if(ag->trans_id_setup_req == 0){
+    printf("[E2-AGENT]: E2 SETUP RESPONSE rx, eventhough no E2 SETUP-REQUEST was sent from this E2 Node. Ignoring it\n");
+    return ans;
+  }
+#endif
+
+  // Stop the timer
+  pending_event_t ev = SETUP_REQUEST_PENDING_EVENT;
+  if(stop_pending_event(ag, ev) == false){
+    printf("[E2-AGENT]: E2 SETUP RESPONSE rx with no E2 SETUP REQUEST outstanding. Ignoring it\n");
+    return ans;
+  }
+
+#if defined(E2AP_V2) || defined(E2AP_V3)
+  /* The two transaction ids are reported but not compared: a RIC is not
+   * guaranteed to echo the one it was sent, and rejecting the mismatch would
+   * drop the only response such a RIC ever sends. */
   printf("[E2-AGENT]: Transaction ID E2 SETUP-REQUEST %u E2 SETUP-RESPONSE %u \n", --ag->trans_id_setup_req, msg->u_msgs.e2_stp_resp.trans_id);
   ag->trans_id_setup_req = 0;
 #endif
-  e2ap_msg_t ans = {.type = NONE_E2_MSG_TYPE};
+
+  // Indications may go out from here on, until the association ends.
+  ag->e2_session_up = true;
   return ans; 
 }
 
