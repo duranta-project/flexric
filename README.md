@@ -146,6 +146,16 @@ If you want to profile FlexRIC, or just need a fast nearRT-RIC, you should build
 mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j8
 ```
 
+If you build FlexRIC with TSan or ASan (`-DSANITIZER=THREAD` or `ADDRESS`), check the ASLR setting of your kernel:
+```bash
+cat /proc/sys/vm/mmap_rnd_bits
+```
+With `32`, set by some recent kernels, these crash at startup:
+- TSan from GCC 14 or older (LLVM 17 or older), or any TSan in Docker: `FATAL: ThreadSanitizer: unexpected memory mapping`.
+- ASan from GCC 13 or older (LLVM 16 or older): `AddressSanitizer:DEADLYSIGNAL`. Ubuntu 24.04's `libasan8` is not affected.
+
+To avoid it, add `vm.mmap_rnd_bits=28` to `/etc/sysctl.conf` on the host.
+
 ### 2.3 Installation of Service Models (SMs)
 The service models are shared by xApps and the RAN. Therefore, they have to be installed in a place where the RAN can access them. The easiest is to install them globally, by typing:
 ```bash
