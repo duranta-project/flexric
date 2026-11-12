@@ -15,6 +15,7 @@ set(E2_AGENT_SRC
             e2_agent_api.c
             endpoint_agent.c
             msg_handler_agent.c
+            pending_ctrl.c
             e2_agent_api.c
             plugin_agent.c
             not_handler_agent.c

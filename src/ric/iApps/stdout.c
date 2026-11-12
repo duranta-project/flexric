@@ -340,7 +340,9 @@ void notify_stdout_listener(sm_ag_if_rd_ind_t const* data)
              (int)data->ccc.msg.format2.list_of_cells_reported.len,
              data->ccc.msg.format2.list_of_cells_reported.data);
   }
- } else {
+  } else if (data->type == DAPP_STATS_V0){
+    // The payload is opaque to the RIC; nothing to print.
+  } else {
     assert(0 != 0 && "Unknown data type");
   }
 }
