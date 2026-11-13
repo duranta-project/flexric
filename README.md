@@ -64,17 +64,8 @@ Please see [NOTICE](NOTICE) for third party softwares that are used by flexric.
 
 ### 1.1 Prerequisites
 
-#### 1.1.1 GCC compiler
-- Please make sure you have gcc-13 installed (gcc-10 and 12 are compatible as well). Follow the next steps:
-```bash
-sudo apt update -y
-sudo apt upgrade -y
-sudo apt install -y build-essential
-sudo apt install -y gcc-13 g++-13 cpp-13
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100 --slave /usr/bin/g++ g++ /usr/bin/g++-13 --slave /usr/bin/gcov gcov /usr/bin/gcov-13
-sudo update-alternatives --config gcc # chose gcc-13
-```
-> **Note:** gcc-11 is not supported in FlexRIC
+#### 1.1.1 Compiler
+Feel free to use any compiler, except gcc-11 as it is not supported in FlexRIC.
 
 #### 1.1.2 (opt.) Wireshark
 Per `O-RAN.WG3.E2GAP-v02.00` specifications, no SCTP port is specified for E2AP protocol. In our implementation, we use port number 36421. Please, add the following configuration in Wireshark:
@@ -107,7 +98,7 @@ sudo make install
 
 - Python dependency
 ```bash
-sudo apt-get install python3.10-dev
+sudo apt-get install python3-dev
 ```
 #### 1.2.3 ASN.1 compiler (asn1c)
 E2AP, E2SM common IE, KPM and RC ASN.1 definitions are already precompiled in the
@@ -154,6 +145,16 @@ If you want to profile FlexRIC, or just need a fast nearRT-RIC, you should build
 ```bash
 mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j8
 ```
+
+If you build FlexRIC with TSan or ASan (`-DSANITIZER=THREAD` or `ADDRESS`), check the ASLR setting of your kernel:
+```bash
+cat /proc/sys/vm/mmap_rnd_bits
+```
+With `32`, set by some recent kernels, these crash at startup:
+- TSan from GCC 14 or older (LLVM 17 or older), or any TSan in Docker: `FATAL: ThreadSanitizer: unexpected memory mapping`.
+- ASan from GCC 13 or older (LLVM 16 or older): `AddressSanitizer:DEADLYSIGNAL`. Ubuntu 24.04's `libasan8` is not affected.
+
+To avoid it, add `vm.mmap_rnd_bits=28` to `/etc/sysctl.conf` on the host.
 
 ### 2.3 Installation of Service Models (SMs)
 The service models are shared by xApps and the RAN. Therefore, they have to be installed in a place where the RAN can access them. The easiest is to install them globally, by typing:

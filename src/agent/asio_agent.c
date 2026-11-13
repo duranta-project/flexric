@@ -11,6 +11,7 @@
 #include <stdio.h>                         // for NULL, fprintf, stderr
 #include <string.h>                        // for strerror
 #include <sys/epoll.h>                     // for epoll_event, epoll_ctl
+#include <sys/eventfd.h>                   // for eventfd
 #include <sys/time.h>                      // for CLOCK_MONOTONIC
 #include <sys/timerfd.h>                   // for timerfd_create, timerfd_se...
 #include <sys/types.h>                     // for time_t
@@ -18,23 +19,17 @@
 #include <unistd.h>                        // for close
 
 static
-fd_pair_t create_pipe_asio_agent(asio_agent_t* io)
+int create_eventfd_asio_agent(asio_agent_t* io)
 {
   assert(io != NULL);
 
-  fd_pair_t fds = {0}; 
+  // Non-blocking, so that neither the event loop nor the writers ever block
+  const int fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+  assert(fd != -1 && "error creating the eventfd");
 
-  int tmp_fds[2] = {0};
+  add_fd_asio_agent(io, fd);
 
-  int rc = pipe(tmp_fds);
-  assert(rc == 0 && "error creating the pipe");
-
-  fds.r = tmp_fds[0];
-  fds.w = tmp_fds[1];
-
-  add_fd_asio_agent(io, fds.r);
-
-  return fds; 
+  return fd;
 }
 
 static
@@ -61,7 +56,7 @@ void init_asio_agent(asio_agent_t* io)
   io->efd = init_epoll();
   set_fd_non_blocking(io->efd);
 
-  io->pipe = create_pipe_asio_agent(io);
+  io->aind_fd = create_eventfd_asio_agent(io);
 }
 
 void add_fd_asio_agent(asio_agent_t* io, int fd)
@@ -69,7 +64,10 @@ void add_fd_asio_agent(asio_agent_t* io, int fd)
   assert(io != NULL);
   const int op = EPOLL_CTL_ADD;
   const epoll_data_t e_data = {.fd = fd};
-  const int e_events = EPOLLIN | EPOLLET; // open for reading and edge triggered instead of level triggered
+  // Level triggered: the event loop handles one event per epoll_wait() and
+  // reads one SCTP message per event, so an fd must be reported again while
+  // data is still pending. Edge triggered left messages stuck in the socket.
+  const int e_events = EPOLLIN; // open for reading
   struct epoll_event event = {.events = e_events, .data = e_data};
   int rc = epoll_ctl(io->efd, op, fd, &event);
   assert(rc != -1);

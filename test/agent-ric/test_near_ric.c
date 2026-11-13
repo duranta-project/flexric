@@ -15,6 +15,7 @@
 #include "../rnd/fill_rnd_data_kpm.h"                  
 #include "../rnd/fill_rnd_data_slice.h"                  
 #include "../rnd/fill_rnd_data_e2_setup_req.h"
+#include "../rnd/rnd_seed.h"
 
 #include <assert.h>
 #include <ctype.h>
@@ -223,6 +224,8 @@ sm_io_ag_ran_t init_sm_io_ag_ran(void)
 
 int main(int argc, char *argv[])
 {
+  init_rnd_seed(NULL);
+
   // Init the Agent
   const int mcc = 208; 
   const int mnc = 92; 

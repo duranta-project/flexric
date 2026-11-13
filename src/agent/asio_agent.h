@@ -7,16 +7,11 @@
 #define ASYNC_INPUT_OUTPUT_AGENT_H
 
 typedef struct{
-  int r;
-  int w;
-} fd_pair_t;
-
-typedef struct{
   // epoll based fd
-  int efd; 
+  int efd;
   // Aperiodic events
-  // pipe fd, for communication with epoll
-  fd_pair_t pipe; 
+  // eventfd counting the queued events, for communication with epoll
+  int aind_fd;
 } asio_agent_t;
 
 void init_asio_agent(asio_agent_t* io);

@@ -200,12 +200,21 @@ bool ind_event(e2_agent_t* ag, int fd, ind_event_t** i_ev)
 static inline
 bool aind_event(e2_agent_t* ag, int fd, arr_aind_event_t* dst)
 {
-  if(fd != ag->io.pipe.r)
+  if(fd != ag->io.aind_fd)
     return false;
 
+  // Reset the eventfd counter before draining the queue. An event pushed
+  // after this read is either drained below, or wakes up epoll again. Hence,
+  // the queue may be empty here, if its event was already drained.
+  uint64_t cnt = 0;
+  ssize_t const bytes = read(fd, &cnt, sizeof(cnt));
+  assert(bytes == (ssize_t)sizeof(cnt));
+
   const size_t sz = size_tsq(&ag->aind);
-  assert(sz > 0 && "Aperiodic Event detected but the queue is empty!");
   dst->len = sz;
+  if(sz == 0)
+    return true;
+
   dst->arr = calloc(sz, sizeof(aind_event_t));
   assert(dst->arr != NULL && "Memory exhausted");
 
@@ -242,17 +251,6 @@ void consume_fd_sync(int fd)
   ssize_t const bytes = read(fd,&read_buf, sizeof(read_buf));
   //assert(bytes == -1);
   assert(bytes <= (ssize_t)sizeof(read_buf));
-}
-
-static
-int consume_fd_async(int fd)
-{
-  assert(fd > 0);
-  uint32_t read_buf = 0;
-  ssize_t const bytes = read(fd,&read_buf, sizeof(read_buf));
-  //assert(bytes == 4);
-  //printf("Consumed %u \n", read_buf);
-  return bytes;
 }
 
 static
@@ -326,8 +324,11 @@ void e2_event_loop_agent(e2_agent_t* ag)
         }
       case APERIODIC_INDICATION_EVENT:
         {
-          arr_aind_event_t* aind = &e.ai_ev;  
-          assert(aind->len > 0 && aind->arr != NULL);
+          arr_aind_event_t* aind = &e.ai_ev;
+          // Empty if the events were already handled at an earlier wake-up
+          if(aind->len == 0)
+            break;
+          assert(aind->arr != NULL);
           defer({ free(aind->arr); });
           for(size_t i = 0; i < aind->len; ++i){
 
@@ -335,11 +336,8 @@ void e2_event_loop_agent(e2_agent_t* ag)
             void* ind_data = aind->arr[i].ind_data; 
             exp_ind_data_t exp = sm->proc.on_indication(sm, ind_data); // , &e.i_ev->ric_id);
             // Condition not matched e.g., No UE matches condition 
-            if(exp.has_value == false) {
-              int rc = consume_fd_async(ag->io.pipe.r); 
-              assert(rc != 1 && "No bytes in the pipe but message in the queue! ");
-              continue;  
-            }
+            if(exp.has_value == false)
+              continue;
 
             ric_indication_t ind = generate_aindication(ag, &exp.data, &aind->arr[i]);
             defer({ e2ap_free_indication(&ind); } );
@@ -348,9 +346,6 @@ void e2_event_loop_agent(e2_agent_t* ag)
             defer({ free_byte_array(ba); } );
 
             e2ap_send_bytes_agent(&ag->ep, ba);
-
-            int rc = consume_fd_async(ag->io.pipe.r); 
-            assert(rc != 1 && "No bytes in the pipe but message in the queue! ");
           }
           break;
         }
@@ -554,15 +549,11 @@ void e2_async_event_agent(e2_agent_t* ag, uint32_t ric_req_id, void* ind_data)
   // Push the data into the queue
   push_tsq(&ag->aind, &aind, sizeof(aind_event_t));
 
-  // Inform epoll that an aperiodic event happened
-  int const num_char = 32;
-  char str[num_char];
-  memset(str, '\0', num_char);
-  rc = snprintf(str, num_char ,"%u", ric_req_id );
-  assert(rc > 0 && rc < num_char -1);
-
-  rc = write(ag->io.pipe.w, str, rc);
-  assert(rc != 0);
+  // Inform epoll that an aperiodic event happened, after pushing it. The
+  // non-blocking eventfd counter never blocks nor overflows in practice
+  uint64_t const one = 1;
+  ssize_t const bytes = write(ag->io.aind_fd, &one, sizeof(one));
+  assert(bytes == (ssize_t)sizeof(one));
 }
 
 //////////////////////////////////
