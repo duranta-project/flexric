@@ -32,6 +32,7 @@ if(SM_ENCODING_KPM STREQUAL "ASN")
     dec/kpm_dec_asn.c 
     ie/kpm_data_ie.c
     $<TARGET_OBJECTS:e2_conv_obj>
+    $<TARGET_OBJECTS:e2_ntp_obj>
     $<TARGET_OBJECTS:e2ap_ran_func_obj>
     $<TARGET_OBJECTS:e2sm_kpm_asn1_obj>
     $<TARGET_OBJECTS:kpm_ric_info_common_obj>

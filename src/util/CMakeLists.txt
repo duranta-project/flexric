@@ -48,6 +48,13 @@ add_library(e2_conv_obj OBJECT
 target_compile_options(e2_conv_obj PRIVATE -Wno-missing-field-initializers -Wno-unused-parameter -fPIC -fvisibility=hidden )
 
 
+add_library(e2_ntp_obj OBJECT 
+                        ntp_time.c
+                        )
+
+target_compile_options(e2_ntp_obj PRIVATE -fPIC -fvisibility=hidden )
+
+
 add_library(e2_time_obj OBJECT 
                         time_now_us.c
                         )
