@@ -237,7 +237,7 @@ sm_ind_data_t ind_sm_payload(ric_indication_t const* src)
   assert(msg_disp.rd.ind.type == MAC_STATS_V0 || msg_disp.rd.ind.type == RLC_STATS_V0 
       || msg_disp.rd.ind.type == PDCP_STATS_V0 || msg_disp.rd.ind.type == SLICE_STATS_V0 
       || msg_disp.rd.ind.type == KPM_STATS_V3_0 || msg_disp.rd.ind.type == GTP_STATS_V0
-      || msg_disp.rd.ind.type == RAN_CTRL_STATS_V1_03 || msg_disp.rd.ind.type == CCC_STATS_V6);
+      || msg_disp.rd.ind.type == RAN_CTRL_STATS_V1_03 || msg_disp.rd.ind.type == CCC_STATS_V6 || msg_disp.rd.ind.type == DAPP_STATS_V0);
   
   act_proc_ans_t ans = find_act_proc(&xapp->act_proc, src->ric_id.ric_req_id);
 
@@ -285,8 +285,19 @@ sm_ind_data_t ind_sm_payload(ric_indication_t const* src)
   // Unblock UI thread  
   signal_sync_ui(&xapp->sync);
 
-  // If the answer of control_ack is needed 
-  // use the field ack->control_outcome 
+  // The control outcome is optional in E2AP, and not every service model
+  // decodes one. Hand it to the SM that owns the RAN function when it does.
+  if (ack->control_outcome != NULL && ack->control_outcome->buf != NULL) {
+    sm_ric_t* sm_out = sm_plugin_ric(&xapp->plugin_ric, ack->ric_id.ran_func_id);
+    if (sm_out != NULL && sm_out->proc.on_control_out != NULL) {
+      sm_ctrl_out_data_t out_data = {.ctrl_out = ack->control_outcome->buf,
+                                     .len_out = ack->control_outcome->len};
+      sm_ag_if_ans_ctrl_t out = sm_out->proc.on_control_out(sm_out, &out_data);
+
+      if (sm_out->alloc.free_ctrl_out_data != NULL)
+        sm_out->alloc.free_ctrl_out_data(&out);
+    }
+  }
 
   e2ap_msg_t ans = {.type = NONE_E2_MSG_TYPE};
   return ans;

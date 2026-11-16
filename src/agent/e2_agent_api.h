@@ -8,6 +8,7 @@
 #include "../sm/sm_io.h"
 #include "../util/conf_file.h"
 #include "../util/ngran_types.h"
+#include <stdint.h>
 
 void init_agent_api(int mcc, 
                     int mnc, 
@@ -21,6 +22,8 @@ void init_agent_api(int mcc,
 void stop_agent_api(void);
 
 void async_event_agent_api(uint32_t ric_req_id, void* ind_data);
+
+void trigger_ric_service_update_api(uint16_t ran_func_id);
 
 #endif
 
