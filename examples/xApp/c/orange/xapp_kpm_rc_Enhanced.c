@@ -192,11 +192,16 @@ void sm_cb_kpm(sm_ag_if_rd_t const* rd)
   kpm_ric_ind_hdr_format_1_t const* hdr_frm_1 = &ind->hdr.kpm_ric_ind_hdr_format_1;
 
   int64_t const now = time_now_us();
+#if defined KPM_V2_01 || defined KPM_V2_03
+  int64_t const start_us = (int64_t)hdr_frm_1->collectStartTime * 1000000; // whole seconds in v2
+#else
+  int64_t const start_us = hdr_frm_1->collectStartTime;
+#endif
   static int counter = 1;
   {
     lock_guard(&mtx);
 
-    printf("\n%7d KPM ind_msg latency = %ld [μs]\n", counter, now - hdr_frm_1->collectStartTime); // xApp <-> E2 Node
+    printf("\n%7d KPM ind_msg latency = %ld [μs]\n", counter, now - start_us); // xApp <-> E2 Node
 
     if (ind->msg.type == FORMAT_1_INDICATION_MESSAGE) {
       log_kpm_measurements(&ind->msg.frm_1);

@@ -8,6 +8,7 @@
 #include <stdlib.h>
 
 #include "../../../../../util/conversions.h"
+#include "../../../../../util/ntp_time.h"
 
 #include "enc_ric_ind_hdr_frm_1.h"
 
@@ -16,8 +17,8 @@ E2SM_KPM_IndicationHeader_Format1_t * kpm_enc_ind_hdr_frm_1_asn(const kpm_ric_in
     E2SM_KPM_IndicationHeader_Format1_t * ind_hdr_asn = calloc(1, sizeof(E2SM_KPM_IndicationHeader_Format1_t));
     assert(ind_hdr_asn != NULL && "Memory exhausted");
 
-    uint32_t ts = htonl(ind_hdr->collectStartTime);
-    INT32_TO_OCTET_STRING(ts, &ind_hdr_asn->colletStartTime);
+    uint32_t ts = unix_s_to_ntp32(ind_hdr->collectStartTime);
+    INT32_TO_OCTET_STRING(ts, &ind_hdr_asn->colletStartTime); // big-endian, as per RFC 5905
 
     int ret;
 

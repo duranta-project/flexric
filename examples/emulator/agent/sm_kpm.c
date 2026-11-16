@@ -268,7 +268,11 @@ kpm_ric_ind_hdr_format_1_t fill_rnd_kpm_ind_hdr_frm_1(void)
 {
   kpm_ric_ind_hdr_format_1_t hdr_frm_1 = {0};
 
+#if defined KPM_V2_01 || defined KPM_V2_03
+  hdr_frm_1.collectStartTime = time_now_us() / 1000000; // seconds in v2, microseconds in v3
+#else
   hdr_frm_1.collectStartTime = time_now_us();
+#endif
   
   hdr_frm_1.fileformat_version = NULL;
   
