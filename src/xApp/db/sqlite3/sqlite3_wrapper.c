@@ -1406,7 +1406,11 @@ void write_kpm_stats(sqlite3* db, global_e2_node_id_t const* id, kpm_ind_data_t 
   // Check the header format and get collectStartTime
   switch(ind->hdr.type) {
     case FORMAT_1_INDICATION_HEADER:
-      collectStartTime = time_now_us()/1000000;
+#if defined KPM_V2_01 || defined KPM_V2_03
+      collectStartTime = ind->hdr.kpm_ric_ind_hdr_format_1.collectStartTime;
+#else
+      collectStartTime = ind->hdr.kpm_ric_ind_hdr_format_1.collectStartTime / 1000000; // KPM_MeasRecord.tstamp is in seconds
+#endif
       break;
     case END_INDICATION_HEADER:
       fprintf(stderr, "Indication header format not defined\n");
