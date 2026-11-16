@@ -76,6 +76,7 @@ set(XAPP_SRC
   $<TARGET_OBJECTS:e2sm_rc_ir_obj>
   
   ../util/ngran_types.c
+  ../util/ntp_time.c
   ../sm/mac_sm/ie/mac_data_ie.c
   ../sm/rlc_sm/ie/rlc_data_ie.c
   ../sm/pdcp_sm/ie/pdcp_data_ie.c
