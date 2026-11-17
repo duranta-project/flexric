@@ -311,6 +311,38 @@ void print_usage(void)
 } 
 
 static
+const char* const optstring = "hc:p:a:d:n:";
+
+// Only -c, as the config file has to be known before the other flags are applied.
+// The whole optstring is scanned so that getopt() does not move the argument of another flag.
+static
+void parse_conf_file_arg(int argc, char* const* argv, fr_args_t* args)
+{
+  assert(argc > 1 && "No argument passed");
+  assert(argv != NULL);
+  assert(args != NULL);
+
+  opterr = 0; // the other flags are left to parse_args()
+  int opt = '?';
+  while((opt = getopt(argc, argv, optstring)) != -1) {
+    if(opt == 'c'){
+      int const len = strlen(optarg);
+      assert(len < FR_CONF_FILE_LEN - 1);
+
+      if(!is_regular_file(optarg)){
+        printf("Error: %s is not a regular file \n", optarg);
+        exit(EXIT_FAILURE);
+      }
+
+      memset(args->conf_file, '\0', FR_CONF_FILE_LEN);
+      strncpy(args->conf_file, optarg, len );
+    }
+  }
+  opterr = 1;
+  optind = 1;
+}
+
+static
 void parse_args(int argc, char* const* argv, fr_args_t* args)
 {
   assert(argc > 1 && "No argument passed");
@@ -318,7 +350,6 @@ void parse_args(int argc, char* const* argv, fr_args_t* args)
   assert(args != NULL);
 
   int opt = '?';
-  const char *optstring = "hc:p:a:d:n:";
   while((opt = getopt(argc, argv, optstring)) != -1) {
     switch(opt) {
       case 'h':{
@@ -327,17 +358,7 @@ void parse_args(int argc, char* const* argv, fr_args_t* args)
                  exit(EXIT_SUCCESS);
                }
       case 'c':  {
-                   int const len = strlen(optarg);
-                   assert(len < FR_CONF_FILE_LEN - 1);
-
-                   if(!is_regular_file(optarg)){
-                     printf("Error: %s is not a regular file \n", optarg);  
-                     exit(EXIT_FAILURE);
-                   }
-
-                   memset(args->conf_file, '\0', FR_CONF_FILE_LEN);
-                   strncpy(args->conf_file, optarg, len );
-
+                   // already applied by parse_conf_file_arg()
                    break;
                  }
       case 'p':{
@@ -432,6 +453,7 @@ fr_args_t init_fr_args(int argc, char* argv[])
   if(argc > 1){
     assert(argc < 12 && "Supported flags: -h -c -p -a -d -n");
     assert(argv != NULL);
+    parse_conf_file_arg(argc, argv, &args);
     parse_args(argc, argv, &args);
   }
   assert(is_directory(args.libs_dir) == true && "Did you forget to: sudo make install ?");
