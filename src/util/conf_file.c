@@ -256,6 +256,19 @@ char *rtrim(char *s)
 }
 
 static
+bool parse_port(const char* str, uint16_t* port)
+{
+  char* end = NULL;
+  unsigned long const val = strtoul(str, &end, 10);
+
+  if (end == str || *end != '\0' || val > UINT16_MAX)
+    return false;
+
+  *port = val;
+  return true;
+}
+
+static
 bool is_directory(const char* path)
 {
   assert(path != NULL);
@@ -305,15 +318,17 @@ void print_usage(void)
   printf("  -a         : nearRT-RIC IP address\n");
   printf("  -d         : DB_DIR\n");
   printf("  -n         : DB_NAME\n");
+  printf("  -e         : E2AP port, i.e., the nearRT-RIC port the E2 agents connect to\n");
+  printf("  -x         : E42 port, i.e., the nearRT-RIC port the xApps connect to\n");
   printf(
       "\n");
-  printf("Ex. -p /usr/local/lib/flexric/ -c /usr/local/etc/flexric/flexric.conf -a 127.0.0.1 -d /flexric/ -n xapp_db\n");
+  printf("Ex. -p /usr/local/lib/flexric/ -c /usr/local/etc/flexric/flexric.conf -a 127.0.0.1 -d /flexric/ -n xapp_db -e 36421 -x 36422\n");
 } 
 
 static
-const char* const optstring = "hc:p:a:d:n:";
+const char* const optstring = "hc:p:a:d:n:e:x:";
 
-// Only -c, as the config file has to be known before the other flags are applied.
+// Only -c, as the config file has to be known before the command line is applied on top of it.
 // The whole optstring is scanned so that getopt() does not move the argument of another flag.
 static
 void parse_conf_file_arg(int argc, char* const* argv, fr_args_t* args)
@@ -417,6 +432,22 @@ void parse_args(int argc, char* const* argv, fr_args_t* args)
 
                  break;
                }
+      case 'e':{
+                 if (parse_port(optarg, &args->e2ap_port) == false) {
+                   printf("Error: %s is not a valid E2AP port \n", optarg);
+                   exit(EXIT_FAILURE);
+                 }
+
+                 break;
+               }
+      case 'x':{
+                 if (parse_port(optarg, &args->e42_port) == false) {
+                   printf("Error: %s is not a valid E42 port \n", optarg);
+                   exit(EXIT_FAILURE);
+                 }
+
+                 break;
+               }
       case '?':{
                  printf("Error: unknown flag %c ??\n ",optopt);
                  print_usage();
@@ -441,23 +472,79 @@ void load_default_val(fr_args_t* args)
   memset(args, '\0', sizeof(*args));
   strncpy(args->conf_file, default_conf_file, FR_CONF_FILE_LEN);
   strncpy(args->libs_dir, default_libs_dir, FR_CONF_FILE_LEN);
+  args->e2ap_port = E2AP_DEFAULT_PORT;
+  args->e42_port = E42_DEFAULT_PORT;
+}
+
+// A missing key keeps the value already in def.
+static
+uint16_t read_conf_port(fr_args_t const* args, const char* needle, uint16_t def)
+{
+  assert(args != NULL);
+  assert(needle != NULL);
+
+  FILE* fp = fopen(args->conf_file, "r");
+  if (fp == NULL)
+    return def;
+
+  defer({ fclose(fp); });
+
+  char* line = NULL;
+  defer({ free(line); });
+  size_t len = 0;
+  ssize_t read = 0;
+
+  while ((read = getline(&line, &len, fp)) != -1) {
+    // strstr matches anywhere in the line, so a commented-out key would otherwise win
+    if (*ltrim(line) == '#')
+      continue;
+
+    char* ans = strstr(line, needle);
+    if (ans == NULL)
+      continue;
+
+    ans += strlen(needle);
+    ans = ltrim(ans);
+    ans = rtrim(ans);
+
+    uint16_t port = 0;
+    if (parse_port(ans, &port) == false) {
+      printf("Port invalid = %s in \"%s\" Check the config file\n", ans, needle);
+      exit(EXIT_FAILURE);
+    }
+
+    return port;
+  }
+
+  return def;
+}
+
+static
+void load_conf_ports(fr_args_t* args)
+{
+  args->e2ap_port = read_conf_port(args, "E2AP_PORT =", args->e2ap_port);
+  args->e42_port = read_conf_port(args, "E42_PORT =", args->e42_port);
 }
 
 fr_args_t init_fr_args(int argc, char* argv[])
 {
   assert(argc > -1);
 
+  // default, then the config file, then the command line
   fr_args_t args = {0};
   load_default_val(&args);
-  
+
   if(argc > 1){
-    assert(argc < 12 && "Supported flags: -h -c -p -a -d -n");
+    assert(argc < 16 && "Supported flags: -h -c -p -a -d -n -e -x");
     assert(argv != NULL);
     parse_conf_file_arg(argc, argv, &args);
-    parse_args(argc, argv, &args);
   }
-  assert(is_directory(args.libs_dir) == true && "Did you forget to: sudo make install ?");
   assert(is_regular_file(args.conf_file) == true && "Did you forget to: sudo make install ?");
+  load_conf_ports(&args);
+
+  if(argc > 1)
+    parse_args(argc, argv, &args);
+  assert(is_directory(args.libs_dir) == true && "Did you forget to: sudo make install ?");
 
   printf("[UTIL]: Setting the config -c file to %s\n",args.conf_file);
   printf("[UTIL]: Setting path -p for the shared libraries to %s\n",args.libs_dir);
