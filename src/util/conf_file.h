@@ -9,9 +9,14 @@
 #define FR_IP_ADDRESS_LEN 16
 #define FR_CONF_FILE_LEN 128
 
+#define E2AP_DEFAULT_PORT 36421
+#define E42_DEFAULT_PORT 36422
+
 typedef struct {
   // Option 1: overwrite the default values at run time
   char ip[FR_IP_ADDRESS_LEN];
+  uint16_t e2ap_port;
+  uint16_t e42_port;
   char db_dir[FR_CONF_FILE_LEN];
   char db_name[FR_CONF_FILE_LEN];
 
