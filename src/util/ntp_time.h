@@ -5,6 +5,7 @@
 #ifndef NTP_TIME_H
 #define NTP_TIME_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -23,6 +24,15 @@ uint64_t unix_us_to_ntp64(uint64_t unix_us);
 
 // 64-bit NTP timestamp -> microseconds since the Unix epoch; exact for any whole microsecond
 uint64_t ntp64_to_unix_us(uint64_t ntp);
+
+// Fits "YYYY-MM-DDTHH:MM:SS.uuuuuuZ" and its terminating NUL
+#define UTC_STR_LEN 32
+
+// Seconds since the Unix epoch -> ISO 8601 UTC, e.g. "2024-06-07T16:00:00Z". Returns buf
+const char* unix_s_to_utc_str(uint64_t unix_s, char* buf, size_t len);
+
+// Microseconds since the Unix epoch -> ISO 8601 UTC, e.g. "2024-06-07T16:00:00.500000Z". Returns buf
+const char* unix_us_to_utc_str(uint64_t unix_us, char* buf, size_t len);
 
 #ifdef __cplusplus
 }

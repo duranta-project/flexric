@@ -4,7 +4,7 @@
 
 #include "../../../../src/xApp/e42_xapp_api.h"
 #include "../../../../src/util/alg_ds/alg/defer.h"
-#include "../../../../src/util/time_now_us.h"
+#include "../../../../src/util/ntp_time.h"
 #include "../../../../src/util/alg_ds/alg/murmur_hash_32.h"
 #include "../../../../src/util/alg_ds/ds/lock_guard/lock_guard.h"
 #include "../../../../src/util/alg_ds/ds/assoc_container/assoc_generic.h"
@@ -247,17 +247,15 @@ void sm_cb_kpm(sm_ag_if_rd_t const* rd)
   kpm_ind_data_t const* ind = &rd->ind.kpm.ind;
   kpm_ric_ind_hdr_format_1_t const* hdr_frm_1 = &ind->hdr.kpm_ric_ind_hdr_format_1;
 
-  int64_t const now = time_now_us();
-#if defined KPM_V2_01 || defined KPM_V2_03
-  int64_t const start_us = (int64_t)hdr_frm_1->collectStartTime * 1000000; // whole seconds in v2
-#else
-  int64_t const start_us = hdr_frm_1->collectStartTime;
-#endif
   static int counter = 1;
   {
     lock_guard(&mtx);
-
-    printf("\n%7d KPM ind_msg latency = %ld [μs]\n", counter, now - start_us); // xApp <-> E2 Node
+    char utc[UTC_STR_LEN];
+#if defined KPM_V2_01 || defined KPM_V2_03
+    printf("\n%7d E2SM-KPM collectStartTime = %s\n", counter, unix_s_to_utc_str(hdr_frm_1->collectStartTime, utc, sizeof(utc)));
+#else
+    printf("\n%7d E2SM-KPM collectStartTime = %s\n", counter, unix_us_to_utc_str(hdr_frm_1->collectStartTime, utc, sizeof(utc)));
+#endif
 
     if (ind->msg.type == FORMAT_1_INDICATION_MESSAGE) {
       log_kpm_measurements(&ind->msg.frm_1);

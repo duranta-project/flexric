@@ -11,6 +11,7 @@
 #include "../../src/sm/rc_sm/rc_sm_id.h" 
 #include "../../src/util/alg_ds/alg/defer.h"
 #include "../../src/util/time_now_us.h"
+#include "../../src/util/ntp_time.h"
 
 #include "../rnd/fill_rnd_data_gtp.h"                  
 #include "../rnd/fill_rnd_data_tc.h"                  
@@ -277,13 +278,13 @@ void sm_cb_kpm(sm_ag_if_rd_t const* rd)
 
   kpm_ind_data_t const* kpm = &rd->ind.kpm.ind;
 
+  kpm_ric_ind_hdr_format_1_t const* hdr = &kpm->hdr.kpm_ric_ind_hdr_format_1;
+  char utc[UTC_STR_LEN];
 #if defined KPM_V2_01 || defined KPM_V2_03
-  int64_t const start_us = (int64_t)kpm->hdr.kpm_ric_ind_hdr_format_1.collectStartTime * 1000000; // whole seconds in v2
+  printf("E2SM-KPM collectStartTime = %s\n", unix_s_to_utc_str(hdr->collectStartTime, utc, sizeof(utc)));
 #else
-  int64_t const start_us = kpm->hdr.kpm_ric_ind_hdr_format_1.collectStartTime;
+  printf("E2SM-KPM collectStartTime = %s\n", unix_us_to_utc_str(hdr->collectStartTime, utc, sizeof(utc)));
 #endif
-  int64_t now = time_now_us();
-  printf("KPM ind_msg latency = %ld μs\n", now - start_us);
 }
 
 static
