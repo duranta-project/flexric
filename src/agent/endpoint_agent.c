@@ -27,8 +27,13 @@ void init_sctp_conn_client(e2ap_ep_ag_t* ep, const char* addr, int port)
   int rc = inet_pton(AF_INET, addr, &servaddr.sin_addr);
   assert(rc == 1);
 
+  // Association events report a nearRT-RIC that went away without a SHUTDOWN
+  // (SCTP_COMM_LOST) or came back under the same addresses (SCTP_RESTART).
+  // Subscribe to nothing else: cp_sctp_notification asserts on the types it
+  // does not decode.
   struct sctp_event_subscribe evnts = { .sctp_data_io_event = 1,
-                                        .sctp_shutdown_event = 1}; 
+                                        .sctp_association_event = 1,
+                                        .sctp_shutdown_event = 1};
 
   rc = setsockopt(sock_fd, IPPROTO_SCTP, SCTP_EVENTS, &evnts, sizeof (evnts));
   assert(rc == 0);
