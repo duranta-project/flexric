@@ -37,6 +37,8 @@ void free_sm_ag_if_rd_ind(sm_ag_if_rd_ind_t* d)
     free_kpm_ind_data(&d->kpm.ind);
   } else if(d->type == RAN_CTRL_STATS_V1_03 ){
     free_rc_ind_data(&d->rc.ind);
+  } else if(d->type == DAPP_STATS_V0){
+    free_dapp_ind_data(&d->dapp.ind);
   } else {
     assert(0!=0 && "Unforeseen case");
   }

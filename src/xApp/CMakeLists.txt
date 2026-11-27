@@ -83,6 +83,10 @@ set(XAPP_SRC
   ../sm/tc_sm/ie/tc_data_ie.c
   ../sm/gtp_sm/ie/gtp_data_ie.c
   ../sm/ccc_sm/ie/ccc_data_ie.c
+  ../sm/dapp_sm/ie/dapp_data_ie.c
+
+  $<TARGET_OBJECTS:e2sm_dapp_ir_obj>
+  $<TARGET_OBJECTS:e3sm_ir_obj>
 
   )
 
@@ -104,6 +108,17 @@ if(E2AP_ENCODING STREQUAL "ASN")
             $<TARGET_OBJECTS:e2ap_asn1_obj>
             $<TARGET_OBJECTS:e2_conv_obj>
             )
+
+          # The shared xApp library pulls in the RC service model's decoders, which
+          # reference the NR RRC ASN.1 definitions. Without these, e42_xapp_shared
+          # links but cannot be loaded: dlopen fails on an undefined
+          # asn_DEF_NR_UL_DCCH_Message, which is what the SWIG binding hits.
+          target_link_libraries(e42_xapp_shared
+                     PUBLIC
+                     asn1_nr_rrc
+                     sm_common_dec_asn_obj_rc
+                     3gpp_derived_ie_dec_asn_obj_rc
+                    )
 
 	 target_compile_options(e42_xapp_shared PRIVATE "-DASN_DISABLE_OER_SUPPORT" -fPIC)
 

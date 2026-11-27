@@ -426,7 +426,16 @@ e2ap_msg_t e2ap_handle_service_update_ack_agent(e2_agent_t* ag, const e2ap_msg_t
 {
   assert(ag != NULL);
   assert(msg != NULL);
-  assert(0!=0 && "Not implemented");
+  assert(msg->type == RIC_SERVICE_UPDATE_ACKNOWLEDGE);
+
+  const ric_service_update_ack_t* ack = &msg->u_msgs.ric_serv_updt_ack;
+  printf("[E2-AGENT]: RIC SERVICE UPDATE ACKNOWLEDGE rx (accepted=%zu, rejected=%zu)\n",
+         ack->len_accepted, ack->len_rejected);
+
+  for (size_t i = 0; i < ack->len_rejected; ++i) {
+    printf("[E2-AGENT]: RAN function %d REJECTED by the RIC, cause group %d\n",
+           ack->rejected[i].id, ack->rejected[i].cause.present);
+  }
 
   e2ap_msg_t ans = {.type = NONE_E2_MSG_TYPE};
   return ans; 

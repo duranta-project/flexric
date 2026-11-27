@@ -42,10 +42,26 @@
     $1 = (uint32_t) PyInt_AsLong($input);
 }
 %typemap(in) uint64_t {
-    $1 = (uint64_t) PyInt_AsLong($input);
+    $1 = (uint64_t) PyLong_AsUnsignedLongLong($input);
+    if (PyErr_Occurred()) SWIG_fail;
 }
 
-/* intXX_t mapping: Python -> C */
+/* const uintXX_t & mapping: Python -> C */
+%typemap(in) const uint8_t & (uint8_t temp) {
+    temp = (uint8_t) PyInt_AsLong($input); $1 = &temp;
+}
+%typemap(in) const uint16_t & (uint16_t temp) {
+    temp = (uint16_t) PyInt_AsLong($input); $1 = &temp;
+}
+%typemap(in) const uint32_t & (uint32_t temp) {
+    temp = (uint32_t) PyInt_AsLong($input); $1 = &temp;
+}
+%typemap(in) const uint64_t & (uint64_t temp) {
+    temp = (uint64_t) PyLong_AsUnsignedLongLong($input);
+    if (PyErr_Occurred()) SWIG_fail;
+    $1 = &temp;
+}
+
 %typemap(in) int8_t {
     $1 = (int8_t) PyInt_AsLong($input);
 }
@@ -56,36 +72,54 @@
     $1 = (int32_t) PyInt_AsLong($input);
 }
 %typemap(in) int64_t {
-    $1 = (int64_t) PyInt_AsLong($input);
+    $1 = (int64_t) PyLong_AsLongLong($input);
+    if (PyErr_Occurred()) SWIG_fail;
+}
+
+%typemap(in) const int8_t & (int8_t temp) {
+    temp = (int8_t) PyInt_AsLong($input); $1 = &temp;
+}
+%typemap(in) const int16_t & (int16_t temp) {
+    temp = (int16_t) PyInt_AsLong($input); $1 = &temp;
+}
+%typemap(in) const int32_t & (int32_t temp) {
+    temp = (int32_t) PyInt_AsLong($input); $1 = &temp;
+}
+%typemap(in) const int64_t & (int64_t temp) {
+    temp = (int64_t) PyLong_AsLongLong($input);
+    if (PyErr_Occurred()) SWIG_fail;
+    $1 = &temp;
 }
 
 /* uintXX_t mapping: C -> Python */
-%typemap(out) uint8_t {
-    $result = PyInt_FromLong((long) $1);
-}
-%typemap(out) uint16_t {
-    $result = PyInt_FromLong((long) $1);
-}
-%typemap(out) uint32_t {
-    $result = PyInt_FromLong((long) $1);
-}
-%typemap(out) uint64_t {
-    $result = PyInt_FromLong((long) $1);
-}
+%typemap(out) uint8_t  { $result = PyInt_FromLong((long) $1); }
+%typemap(out) uint16_t { $result = PyInt_FromLong((long) $1); }
+%typemap(out) uint32_t { $result = PyInt_FromLong((long) $1); }
+%typemap(out) uint64_t { $result = PyLong_FromUnsignedLongLong((unsigned long long) $1); }
+
+%typemap(out) uint8_t  & { $result = PyInt_FromLong((long) *$1); }
+%typemap(out) uint16_t & { $result = PyInt_FromLong((long) *$1); }
+%typemap(out) uint32_t & { $result = PyInt_FromLong((long) *$1); }
+%typemap(out) uint64_t & { $result = PyLong_FromUnsignedLongLong((unsigned long long) *$1); }
+%typemap(out) const uint8_t  & { $result = PyInt_FromLong((long) *$1); }
+%typemap(out) const uint16_t & { $result = PyInt_FromLong((long) *$1); }
+%typemap(out) const uint32_t & { $result = PyInt_FromLong((long) *$1); }
+%typemap(out) const uint64_t & { $result = PyLong_FromUnsignedLongLong((unsigned long long) *$1); }
 
 /* intXX_t mapping: C -> Python */
-%typemap(out) int8_t {
-    $result = PyInt_FromLong((long) $1);
-}
-%typemap(out) int16_t {
-    $result = PyInt_FromLong((long) $1);
-}
-%typemap(out) int32_t {
-    $result = PyInt_FromLong((long) $1);
-}
-%typemap(out) int64_t {
-    $result = PyInt_FromLong((long) $1);
-}
+%typemap(out) int8_t  { $result = PyInt_FromLong((long) $1); }
+%typemap(out) int16_t { $result = PyInt_FromLong((long) $1); }
+%typemap(out) int32_t { $result = PyInt_FromLong((long) $1); }
+%typemap(out) int64_t { $result = PyLong_FromLongLong((long long) $1); }
+
+%typemap(out) int8_t  & { $result = PyInt_FromLong((long) *$1); }
+%typemap(out) int16_t & { $result = PyInt_FromLong((long) *$1); }
+%typemap(out) int32_t & { $result = PyInt_FromLong((long) *$1); }
+%typemap(out) int64_t & { $result = PyLong_FromLongLong((long long) *$1); }
+%typemap(out) const int8_t  & { $result = PyInt_FromLong((long) *$1); }
+%typemap(out) const int16_t & { $result = PyInt_FromLong((long) *$1); }
+%typemap(out) const int32_t & { $result = PyInt_FromLong((long) *$1); }
+%typemap(out) const int64_t & { $result = PyLong_FromLongLong((long long) *$1); }
 
 #endif
 
@@ -94,6 +128,8 @@
 %feature("director") pdcp_cb;
 %feature("director") slice_cb;
 %feature("director") gtp_cb;
+%feature("director") dapp_e3_data_cb;
+%feature("director") dapp_sub_map_cb;
 
 namespace std {
   %template(IntVector) vector<int>;
@@ -106,6 +142,8 @@ namespace std {
   %template(SLICE_slicesStatsVector) vector<swig_fr_slice_t>;
   %template(SLICE_UEsStatsVector) vector<ue_slice_assoc_t>;
   %template(GTP_NGUTStatsVector) vector<gtp_ngu_t_stats_t>;
+  %template(DAPP_PRBVector) vector<uint16_t>;
+  %template(DAPP_SubItemVector) vector<swig_dapp_sub_item_t>;
 }
 
 
