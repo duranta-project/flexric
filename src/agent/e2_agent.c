@@ -224,6 +224,33 @@ bool aind_event(e2_agent_t* ag, int fd, arr_aind_event_t* dst)
   return true;
 }
 
+// Deferred control acknowledges that are ready to go out. Same shape as
+// aind_event above, on its own eventfd: reset the counter, then drain what is
+// queued. The queue may be empty here, if its event was already drained.
+static inline
+bool ctrl_ack_event(e2_agent_t* ag, int fd, arr_ctrl_ack_event_t* dst)
+{
+  if(fd != ag->io.ctrl_ack_fd)
+    return false;
+
+  uint64_t cnt = 0;
+  ssize_t const bytes = read(fd, &cnt, sizeof(cnt));
+  assert(bytes == (ssize_t)sizeof(cnt));
+
+  const size_t sz = size_tsq(&ag->ctrl_ack);
+  dst->len = sz;
+  if(sz == 0)
+    return true;
+
+  dst->arr = calloc(sz, sizeof(ctrl_ack_event_t));
+  assert(dst->arr != NULL && "Memory exhausted");
+
+  for(size_t i = 0; i < sz; ++i)
+    pop_tsq(&ag->ctrl_ack, &dst->arr[i], sizeof(ctrl_ack_event_t));
+
+  return true;
+}
+
 static inline
 bool pend_event(e2_agent_t* ag, int fd, pending_event_t** p_ev)
 {
@@ -280,6 +307,9 @@ async_event_t next_async_event_agent(e2_agent_t* ag)
 
   } else if(aind_event(ag, fd, &e.ai_ev) == true) {
     e.type = APERIODIC_INDICATION_EVENT;
+
+  } else if(ctrl_ack_event(ag, fd, &e.ca_ev) == true) {
+    e.type = CONTROL_ACK_EVENT;
 
   } else if (ind_event(ag, fd, &e.i_ev) == true) {
     e.type = INDICATION_EVENT;
@@ -346,6 +376,39 @@ void e2_event_loop_agent(e2_agent_t* ag)
             defer({ free_byte_array(ba); } );
 
             e2ap_send_bytes_agent(&ag->ep, ba);
+          }
+          break;
+        }
+      case CONTROL_ACK_EVENT:
+        {
+          // A control the Service Model deferred has completed. Everything the
+          // acknowledge needs was decided by the completing thread; all that is
+          // left here is to frame and send it on the agent's own thread, which
+          // is the only one that may touch the SCTP endpoint.
+          arr_ctrl_ack_event_t* ca = &e.ca_ev;
+          // Empty if the completions were already handled at an earlier wake-up
+          if(ca->len == 0)
+            break;
+          assert(ca->arr != NULL);
+          defer({ free(ca->arr); });
+          for(size_t i = 0; i < ca->len; ++i){
+            byte_array_t ba_out = {.buf = ca->arr[i].ctrl_out, .len = ca->arr[i].len_out};
+
+            ric_control_acknowledge_t ack = {.ric_id = ca->arr[i].ric_id,
+                                             .call_process_id = NULL,
+#ifdef E2AP_V1
+                                             .status = RIC_CONTROL_STATUS_SUCCESS,
+#endif
+                                             .control_outcome = ba_out.len > 0 ? &ba_out : NULL};
+
+            e2ap_msg_t msg = {.type = RIC_CONTROL_ACKNOWLEDGE};
+            msg.u_msgs.ric_ctrl_ack = ack;
+
+            byte_array_t ba = e2ap_msg_enc_ag(&ag->ap, &msg);
+            e2ap_send_bytes_agent(&ag->ep, ba);
+            free_byte_array(ba);
+
+            free(ca->arr[i].ctrl_out);
           }
           break;
         }
@@ -438,6 +501,8 @@ e2_agent_t* e2_init_agent(const char* addr, int port, global_e2_node_id_t ge2nid
   init_indication_event(ag);
 
   init_tsq(&ag->aind, sizeof(aind_event_t));
+  init_tsq(&ag->ctrl_ack, sizeof(ctrl_ack_event_t));
+  init_pending_ctrl(&ag->pending_ctrl);
 
 #if defined(E2AP_V2) || defined (E2AP_V3)
   // Read RAN 
@@ -495,12 +560,64 @@ void e2_free_agent(e2_agent_t* ag)
   free_indication_event(ag);
 
   free_tsq(&ag->aind, NULL);
+  free_tsq(&ag->ctrl_ack, NULL);
+  free_pending_ctrl(&ag->pending_ctrl);
 
   free_global_e2_node_id(&ag->global_e2_node_id);
 
   e2ap_free_ep_agent(&ag->ep);
 
   free(ag);
+}
+
+void e2_agent_complete_control(e2_agent_t* ag, uint64_t key, uint8_t* ctrl_out, size_t len_out)
+{
+  assert(ag != NULL);
+  assert(ctrl_out != NULL || len_out == 0);
+
+  ric_gen_id_t ric_id = {0};
+  if(claim_pending_ctrl(&ag->pending_ctrl, key, &ric_id) == false){
+    // Either the timeout sweep already answered this control, or the completion
+    // names a key that was never parked. Both are the caller's to notice, not
+    // ours to abort on -- drop the outcome and return.
+    free(ctrl_out);
+    return;
+  }
+
+  ctrl_ack_event_t ev = {.ric_id = ric_id, .ctrl_out = ctrl_out, .len_out = len_out};
+  push_tsq(&ag->ctrl_ack, &ev, sizeof(ctrl_ack_event_t));
+
+  // Wake the event loop, after pushing. The non-blocking eventfd counter never
+  // blocks nor overflows in practice
+  uint64_t const one = 1;
+  ssize_t written = 0;
+  do {
+    written = write(ag->io.ctrl_ack_fd, &one, sizeof(one));
+  } while (written == -1 && errno == EINTR);
+  assert(written == (ssize_t)sizeof(one) && "Failed to signal the deferred control ack queue");
+}
+
+void e2_agent_sweep_pending_control(e2_agent_t* ag)
+{
+  assert(ag != NULL);
+
+  ric_gen_id_t timed_out[PENDING_CTRL_MAX];
+  size_t const n = sweep_pending_ctrl(&ag->pending_ctrl, timed_out);
+
+  // Answer with an outcome-less acknowledge. The xApp learns the procedure
+  // ended without an applied result, which is what happened, rather than
+  // waiting forever on a dApp that is not going to answer.
+  for(size_t i = 0; i < n; ++i){
+    ctrl_ack_event_t ev = {.ric_id = timed_out[i], .ctrl_out = NULL, .len_out = 0};
+    push_tsq(&ag->ctrl_ack, &ev, sizeof(ctrl_ack_event_t));
+
+    uint64_t const one = 1;
+    ssize_t written = 0;
+    do {
+      written = write(ag->io.ctrl_ack_fd, &one, sizeof(one));
+    } while (written == -1 && errno == EINTR);
+    assert(written == (ssize_t)sizeof(one) && "Failed to signal the deferred control ack queue");
+  }
 }
 
 void e2_async_event_agent(e2_agent_t* ag, uint32_t ric_req_id, void* ind_data)
@@ -619,3 +736,15 @@ void e2_send_control_failure(e2_agent_t* ag, const ric_control_failure_t* cf)
   free_byte_array(ba);
 }
 
+void e2_send_ric_service_update(e2_agent_t* ag, const ric_service_update_t* su)
+{
+  assert(ag != NULL);
+  assert(su != NULL);
+
+  e2ap_msg_t msg = {.type = RIC_SERVICE_UPDATE};
+  msg.u_msgs.ric_serv_updt = *su;
+
+  byte_array_t ba = e2ap_msg_enc_ag(&ag->ap, &msg);
+  e2ap_send_bytes_agent(&ag->ep, ba);
+  free_byte_array(ba);
+}

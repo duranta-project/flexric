@@ -57,6 +57,7 @@ void init_asio_agent(asio_agent_t* io)
   set_fd_non_blocking(io->efd);
 
   io->aind_fd = create_eventfd_asio_agent(io);
+  io->ctrl_ack_fd = create_eventfd_asio_agent(io);
 }
 
 void add_fd_asio_agent(asio_agent_t* io, int fd)

@@ -15,6 +15,7 @@ set(E2_AGENT_SRC
             e2_agent_api.c
             endpoint_agent.c
             msg_handler_agent.c
+            pending_ctrl.c
             e2_agent_api.c
             plugin_agent.c
             not_handler_agent.c
@@ -26,6 +27,7 @@ set(E2_AGENT_SRC
             $<TARGET_OBJECTS:e2_conv_obj>
             $<TARGET_OBJECTS:e2ap_alg_obj>
             $<TARGET_OBJECTS:e2_conf_obj>
+            $<TARGET_OBJECTS:e2_time_obj>
             $<TARGET_OBJECTS:pending_events_obj>
             $<TARGET_OBJECTS:e2ap_types_obj>
             $<TARGET_OBJECTS:e2ap_msg_enc_obj>

@@ -12,6 +12,9 @@ typedef struct{
   // Aperiodic events
   // eventfd counting the queued events, for communication with epoll
   int aind_fd;
+  // Deferred control acknowledges
+  // eventfd counting the queued completions, for communication with epoll
+  int ctrl_ack_fd;
 } asio_agent_t;
 
 void init_asio_agent(asio_agent_t* io);
