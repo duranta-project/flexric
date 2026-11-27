@@ -29,4 +29,12 @@ int64_t time_now_us(void)
   return micros;
 }
 
+int64_t time_now_ns(void)
+{
+  struct timespec tms;
 
+  if (clock_gettime(CLOCK_REALTIME, &tms)) {
+    return -1;
+  }
+  return (int64_t)tms.tv_sec * 1000000000 + tms.tv_nsec;
+}
