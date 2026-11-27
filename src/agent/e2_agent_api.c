@@ -76,6 +76,8 @@ void init_agent_api(int mcc,
 
   uint16_t e2ap_server_port = args->e2ap_port;
 
+  const fr_sctp_timers_t sctp_timers = get_e2ap_sctp_timers(args);
+
   char* ran_type_str = get_ngran_name(ran_type);
   char str[128] = {0};
   int it = sprintf(str, "[E2 AGENT]: nearRT-RIC IP Address = %s, PORT = %d, RAN type = %s, nb_id = %d", server_ip_str, e2ap_server_port, ran_type_str, nb_id);
@@ -90,7 +92,7 @@ void init_agent_api(int mcc,
   assert(it < 128);
   printf("%s" ,str);
 
-  agent = e2_init_agent(server_ip_str, e2ap_server_port, ge2ni, io, args->libs_dir);
+  agent = e2_init_agent(server_ip_str, e2ap_server_port, sctp_timers, ge2ni, io, args->libs_dir);
 
   // Spawn a new thread for the agent
   const int rc = pthread_create(&thrd_agent, NULL, static_start_agent, NULL);
@@ -106,9 +108,9 @@ void stop_agent_api(void)
   assert(rc == 0);
 }
 
-void async_event_agent_api(uint32_t ric_req_id, void* ind_data)
+void async_event_agent_api(ric_gen_id_t ric_id, void* ind_data)
 {
   assert(agent != NULL);
-  e2_async_event_agent(agent, ric_req_id, ind_data);
+  e2_async_event_agent(agent, ric_id, ind_data);
 }
 
