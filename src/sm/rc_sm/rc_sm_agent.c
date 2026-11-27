@@ -58,10 +58,10 @@ sm_ag_if_ans_subs_t on_subscription_rc_sm_ag(sm_agent_t const* sm_agent, const s
 
   //sm_ag_if_wr_t wr = {.type = SUBSCRIPTION_SM_AG_IF_WR};
   //wr.subs.type = RAN_CTRL_SUBS_V1_03;
-  //wr.subs.wr_rc.ric_req_id = data->ric_req_id; 
+  //wr.subs.wr_rc.ric_id = data->ric_id; 
 
   wr_rc_sub_data_t wr_rc = {0};
-  wr_rc.ric_req_id = data->ric_req_id; 
+  wr_rc.ric_id = data->ric_id; 
 
   wr_rc.rc.et = rc_dec_event_trigger(&sm->enc, data->len_et, data->event_trigger);
   defer({ free_e2sm_rc_event_trigger(&wr_rc.rc.et); });
